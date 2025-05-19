@@ -1,111 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="google-adsense-account" content="ca-pub-9252193330548483">
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Commodity Options Calculator</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 20px auto;
       padding: 20px;
+      max-width: 600px;
+      margin: auto;
     }
-    label {
+    input, button {
       display: block;
       margin-top: 10px;
-    }
-    input, select, button {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-    }
-    #result {
-      margin-top: 20px;
-      background: #f9f9f9;
       padding: 10px;
-      border: 1px solid #ddd;
+      width: 100%;
+    }
+    label {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    .tooltip {
+      font-size: 12px;
+      color: #555;
+    }
+    .results {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
     }
   </style>
 </head>
 <body>
+
   <h2>Commodity Options Calculator</h2>
 
-  <label for="spot">Spot Price ($)</label>
-  <input type="number" id="spot" value="2900">
+  <label for="spot">Spot Price</label>
+  <input type="number" id="spot" value="4000">
 
-  <label for="strike">Strike Price ($)</label>
-  <input type="number" id="strike" value="2800">
+  <label for="strike">Strike Price</label>
+  <input type="number" id="strike" value="4200">
 
-  <label for="days">Days to Expiration</label>
-  <input type="number" id="days" value="30">
+  <label for="time">Time to Expiration (in years)</label>
+  <input type="number" step="0.01" id="time" value="0.1">
 
-  <label for="vol">Volatility (e.g., 0.25 = 25%)</label>
-  <input type="number" step="0.01" id="vol" value="0.25">
+  <label for="vol">Volatility (%)</label>
+  <input type="number" step="0.01" id="vol" value="30">
+  <div class="tooltip">Typical range: 20%–40%. Use 30% if unsure.</div>
 
-  <label for="rate">Risk-Free Rate (e.g., 0.05 = 5%)</label>
-  <input type="number" step="0.01" id="rate" value="0.05">
+  <label for="rate">Risk-free Rate (%)</label>
+  <input type="number" step="0.01" id="rate" value="4.5">
+  <div class="tooltip">Approximate yield of US Treasury bonds. Use 4.5% if unsure.</div>
 
-  <label for="type">Option Type</label>
-  <select id="type">
-    <option value="call">Call</option>
-    <option value="put">Put</option>
-  </select>
+  <button onclick="calculateOptions()">Calculate</button>
 
-  <button onclick="calculateOption()">Calculate</button>
-
-  <div id="result"></div>
+  <div class="results" id="results"></div>
 
   <script>
-    function norm_cdf(x) {
-      return (1.0 + Math.erf(x / Math.sqrt(2))) / 2.0;
-    }
+    function calculateOptions() {
+      const S = parseFloat(document.getElementById("spot").value);
+      const K = parseFloat(document.getElementById("strike").value);
+      const T = parseFloat(document.getElementById("time").value);
+      const vol = parseFloat(document.getElementById("vol").value) / 100;
+      const r = parseFloat(document.getElementById("rate").value) / 100;
 
-    Math.erf = function(x) {
-      // Approximate error function
-      const sign = (x >= 0) ? 1 : -1;
-      x = Math.abs(x);
-      const a1 =  0.254829592,
-            a2 = -0.284496736,
-            a3 =  1.421413741,
-            a4 = -1.453152027,
-            a5 =  1.061405429,
-            p  =  0.3275911;
-      const t = 1.0 / (1.0 + p * x);
-      const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
-      return sign * y;
-    };
+      const d1 = (Math.log(S / K) + (r + Math.pow(vol, 2) / 2) * T) / (vol * Math.sqrt(T));
+      const d2 = d1 - vol * Math.sqrt(T);
 
-    function calculateOption() {
-      const S = parseFloat(document.getElementById('spot').value);
-      const K = parseFloat(document.getElementById('strike').value);
-      const T = parseFloat(document.getElementById('days').value) / 365;
-      const v = parseFloat(document.getElementById('vol').value);
-      const r = parseFloat(document.getElementById('rate').value);
-      const type = document.getElementById('type').value;
+      const N = (x) => 0.5 * (1 + erf(x / Math.sqrt(2)));
+      const erf = (x) => {
+        const sign = (x >= 0) ? 1 : -1;
+        x = Math.abs(x);
+        const a1 =  0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+        const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+        const t = 1 / (1 + p * x);
+        const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+        return sign * y;
+      };
 
-      const d1 = (Math.log(S / K) + (r + v * v / 2) * T) / (v * Math.sqrt(T));
-      const d2 = d1 - v * Math.sqrt(T);
+      const call = S * N(d1) - K * Math.exp(-r * T) * N(d2);
+      const put = K * Math.exp(-r * T) * N(-d2) - S * N(-d1);
 
-      let price, delta, probITM;
-      if (type === 'call') {
-        price = S * norm_cdf(d1) - K * Math.exp(-r * T) * norm_cdf(d2);
-        delta = norm_cdf(d1);
-        probITM = norm_cdf(d2);
-      } else {
-        price = K * Math.exp(-r * T) * norm_cdf(-d2) - S * norm_cdf(-d1);
-        delta = norm_cdf(d1) - 1;
-        probITM = norm_cdf(-d2);
-      }
-
-      document.getElementById('result').innerHTML = `
-        <strong>Option Price:</strong> $${price.toFixed(2)}<br>
-        <strong>Delta:</strong> ${delta.toFixed(2)}<br>
-        <strong>Prob. In-The-Money:</strong> ${(probITM * 100).toFixed(1)}%
+      document.getElementById("results").innerHTML = `
+        <strong>Call Option Price:</strong> $${call.toFixed(2)}<br>
+        <strong>Put Option Price:</strong> $${put.toFixed(2)}
       `;
     }
   </script>
+
 <footer style="text-align:center; padding: 1rem; font-size: 0.9rem; color: #666;">
   <p>
     <a href="/privacy.html" style="color: #666; text-decoration: underline;">Privacy Policy</a>
