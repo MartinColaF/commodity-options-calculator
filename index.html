@@ -13,18 +13,19 @@
       background-color: #f9f9f9;
       color: #333;
     }
+
     h2 {
       text-align: center;
       color: #2c3e50;
       margin-bottom: 30px;
     }
-    .form-group {
-      margin-bottom: 20px;
-    }
+
     label {
-      margin-top: 15px;
       font-weight: bold;
+      margin-top: 15px;
+      display: block;
     }
+
     input, button {
       display: block;
       margin-top: 10px;
@@ -34,30 +35,36 @@
       border-radius: 5px;
       font-size: 1rem;
     }
+
     button {
       background-color: #2c3e50;
       color: white;
       cursor: pointer;
       transition: background-color 0.3s ease;
     }
+
     button:hover {
       background-color: #1a242f;
     }
+
     .tooltip {
       font-size: 12px;
       color: #555;
     }
+
     .results {
       margin-top: 20px;
       padding: 10px;
       border: 1px solid #ccc;
     }
+
     footer {
       text-align: center;
       padding: 1rem;
       font-size: 0.9rem;
       color: #666;
     }
+
     a {
       color: #666;
       text-decoration: underline;
@@ -68,8 +75,8 @@
 
   <h2>Commodity Options Calculator</h2>
 
-  <label for="fut">Futures Price</label>
-  <input type="number" id="fut" value="4000">
+  <label for="spot">Spot Price</label>
+  <input type="number" id="spot" value="4000">
 
   <label for="strike">Strike Price</label>
   <input type="number" id="strike" value="4200">
@@ -89,7 +96,7 @@
 
   <div class="results" id="results"></div>
 
-  <script>
+   <script>
     function cdf(x) {
       return 0.5 * (1 + erf(x / Math.sqrt(2)));
     }
@@ -125,9 +132,7 @@
   </script>
 
   <footer>
-    <p>
-      <a href="/privacy.html">Privacy Policy</a>
-    </p>
+    <p><a href="/privacy.html">Privacy Policy</a></p>
   </footer>
 
 </body>
