@@ -92,11 +92,215 @@
   <input type="number" step="0.01" id="rate" value="4.5">
   <div class="tooltip">Approximate yield of US Treasury bonds. Use 4.5% if unsure.</div>
 
+<label for="model">Pricing Model</label>
+<select id="model">
+  <option value="black-scholes">Black-Scholes (spot-based)</option>
+  <option value="black-76">Black-76 (futures-based)</option>
+</select>
+<div class="tooltip">
+  <strong>Black-Scholes:</strong> Usado para opciones sobre el precio spot. <br>
+  <strong>Black-76:</strong> Usado para opciones sobre futuros. Ideal para commodities.
+</div>
+
+  <button onclick="calculateOptions()">Calculate</button>
+
+ <!-- ... mantiene el encabezado y estilo como ya lo tienes ... -->
+
+<div class="results" id="results"></div>
+
+<script>
+  function cdf(x) {
+    return (1 + erf(x / Math.sqrt(2))) / 2;
+  }
+
+  function pdf(x) {
+    return (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * x * x);
+  }
+
+  function erf(x) {
+    const sign = (x >= 0) ? 1 : -1;
+    x = Math.abs(x);
+    const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+    const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+    const t = 1 / (1 + p * x);
+    const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+    return sign * y;
+  }
+
+  function calculateOptions() {
+    const S = parseFloat(document.getElementById("spot").value);
+    const K = parseFloat(document.getElementById("strike").value);
+    const days = parseFloat(document.getElementById("time").value);
+    const T = days / 365;
+    const vol = parseFloat(document.getElementById("vol").value) / 100;
+    const r = parseFloat(document.getElementById("rate").value) / 100;
+
+    const d1 = (Math.log(S / K) + (r + 0.5 * vol * vol) * T) / (vol * Math.sqrt(T));
+    const d2 = d1 - vol * Math.sqrt(T);
+
+    const call = S * cdf(d1) - K * Math.exp(-r * T) * cdf(d2);
+    const put = K * Math.exp(-r * T) * cdf(-d2) - S * cdf(-d1);
+
+    // Greeks para Call
+    const deltaCall = cdf(d1);
+    const deltaPut = deltaCall - 1;
+    const gamma = pdf(d1) / (S * vol * Math.sqrt(T));
+    const vega = S * pdf(d1) * Math.sqrt(T) / 100;
+    const thetaCall = (-S * pdf(d1) * vol / (2 * Math.sqrt(T)) - r * K * Math.exp(-r * T) * cdf(d2)) / 365;
+    const thetaPut = (-S * pdf(d1) * vol / (2 * Math.sqrt(T)) + r * K * Math.exp(-r * T) * cdf(-d2)) / 365;
+    const rhoCall = K * T * Math.exp(-r * T) * cdf(d2) / 100;
+    const rhoPut = -K * T * Math.exp(-r * T) * cdf(-d2) / 100;
+
+    document.getElementById("results").innerHTML = `
+      <strong>Call Option Price:</strong> $${call.toFixed(2)}<br>
+      <strong>Put Option Price:</strong> $${put.toFixed(2)}<br><br>
+
+      <strong>Call Greeks:</strong><br>
+      Delta: ${deltaCall.toFixed(4)}<br>
+      Gamma: ${gamma.toFixed(4)}<br>
+      Vega: ${vega.toFixed(4)}<br>
+      Theta: ${thetaCall.toFixed(4)}<br>
+      Rho: ${rhoCall.toFixed(4)}<br><br>
+
+      <strong>Put Greeks:</strong><br>
+      Delta: ${deltaPut.toFixed(4)}<br>
+      Gamma: ${gamma.toFixed(4)}<br>
+      Vega: ${vega.toFixed(4)}<br>
+      Theta: ${thetaPut.toFixed(4)}<br>
+      Rho: ${rhoPut.toFixed(4)}<br>
+    `;
+  }
+</script>
+
+  <footer>
+    <p><a href="/privacy.html">Privacy Policy</a></p>
+  </footer>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="google-adsense-account" content="ca-pub-9252193330548483">
+  <meta charset="UTF-8">
+  <title>Commodity Options Calculator</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+      background-color: var(--background, #f9f9f9);
+      color: var(--text, #333);
+    }
+
+    h2 {
+      text-align: center;
+      color: inherit;
+      margin-bottom: 30px;
+      font-weight: 600;
+      font-size: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      margin-top: 15px;
+      font-weight: bold;
+      display: block;
+    }
+
+    input, select, button {
+      margin-top: 10px;
+      padding: 10px;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #2c3e50;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #1a242f;
+    }
+
+    .tooltip {
+      font-size: 12px;
+      color: #777;
+    }
+
+    .results {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    a {
+      color: #666;
+      text-decoration: underline;
+    }
+
+    .note {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Commodity Options Calculator</h2>
+
+  <label for="model">Model</label>
+  <select id="model">
+    <option value="black-scholes">Black-Scholes (spot price)</option>
+    <option value="black-76">Black-76 (futures price)</option>
+  </select>
+  <div class="note">Use Black-76 if you're pricing options on futures contracts. Black-Scholes is for spot-based pricing.</div>
+
+  <label for="spot">Spot or Futures Price</label>
+  <input type="number" id="spot" value="4000">
+
+  <label for="strike">Strike Price</label>
+  <input type="number" id="strike" value="4200">
+
+  <label for="time">Time to Expiration (in days)</label>
+  <input type="number" id="time" value="30">
+
+  <label for="vol">Volatility (%)</label>
+  <input type="number" step="0.01" id="vol" value="30">
+  <div class="tooltip">Typical range: 20%–40%. Use 30% if unsure.</div>
+
+  <label for="rate">Risk-free Rate (%)</label>
+  <input type="number" step="0.01" id="rate" value="4.5">
+  <div class="tooltip">Approximate yield of US Treasury bonds. Use 4.5% if unsure.</div>
+
   <button onclick="calculateOptions()">Calculate</button>
 
   <div class="results" id="results"></div>
 
-   <script>
+  <script>
     function cdf(x) {
       return 0.5 * (1 + erf(x / Math.sqrt(2)));
     }
@@ -112,21 +316,48 @@
     }
 
     function calculateOptions() {
-      const F = parseFloat(document.getElementById("fut").value);
+      const model = document.getElementById("model").value;
+      const S = parseFloat(document.getElementById("spot").value);
       const K = parseFloat(document.getElementById("strike").value);
-      const T = parseFloat(document.getElementById("time").value);
+      const T_days = parseFloat(document.getElementById("time").value);
+      const T = T_days / 365;
       const vol = parseFloat(document.getElementById("vol").value) / 100;
       const r = parseFloat(document.getElementById("rate").value) / 100;
 
-      const d1 = (Math.log(F / K) + 0.5 * vol * vol * T) / (vol * Math.sqrt(T));
+      const d1 = (model === "black-scholes")
+        ? (Math.log(S / K) + (r + Math.pow(vol, 2) / 2) * T) / (vol * Math.sqrt(T))
+        : (Math.log(S / K) + 0.5 * Math.pow(vol, 2) * T) / (vol * Math.sqrt(T));
+
       const d2 = d1 - vol * Math.sqrt(T);
 
-      const call = Math.exp(-r * T) * (F * cdf(d1) - K * cdf(d2));
-      const put = Math.exp(-r * T) * (K * cdf(-d2) - F * cdf(-d1));
+      let call, put;
+      if (model === "black-scholes") {
+        call = S * cdf(d1) - K * Math.exp(-r * T) * cdf(d2);
+        put = K * Math.exp(-r * T) * cdf(-d2) - S * cdf(-d1);
+      } else {
+        call = Math.exp(-r * T) * (S * cdf(d1) - K * cdf(d2));
+        put = Math.exp(-r * T) * (K * cdf(-d2) - S * cdf(-d1));
+      }
+
+      const deltaCall = (model === "black-scholes") ? cdf(d1) : Math.exp(-r * T) * cdf(d1);
+      const deltaPut = deltaCall - 1;
+
+      const gamma = Math.exp(-r * T) * Math.exp(-Math.pow(d1, 2) / 2) / (S * vol * Math.sqrt(2 * Math.PI * T));
+      const vega = S * Math.exp(-r * T) * Math.sqrt(T) * Math.exp(-Math.pow(d1, 2) / 2) / Math.sqrt(2 * Math.PI);
+      const theta = - (S * vol * Math.exp(-Math.pow(d1, 2) / 2)) / (2 * Math.sqrt(2 * Math.PI * T))
+                    - r * K * Math.exp(-r * T) * cdf(d2);
+      const rhoCall = K * T * Math.exp(-r * T) * cdf(d2);
+      const rhoPut = -K * T * Math.exp(-r * T) * cdf(-d2);
 
       document.getElementById("results").innerHTML = `
         <strong>Call Option Price:</strong> $${call.toFixed(2)}<br>
-        <strong>Put Option Price:</strong> $${put.toFixed(2)}
+        <strong>Put Option Price:</strong> $${put.toFixed(2)}<br><br>
+        <strong>Greeks:</strong><br>
+        Δ (Delta): ${deltaCall.toFixed(4)} (Call), ${deltaPut.toFixed(4)} (Put)<br>
+        Γ (Gamma): ${gamma.toFixed(4)}<br>
+        Vega: ${vega.toFixed(4)}<br>
+        Theta: ${theta.toFixed(4)}<br>
+        Rho: ${rhoCall.toFixed(4)} (Call), ${rhoPut.toFixed(4)} (Put)
       `;
     }
   </script>
@@ -134,6 +365,5 @@
   <footer>
     <p><a href="/privacy.html">Privacy Policy</a></p>
   </footer>
-
 </body>
 </html>
