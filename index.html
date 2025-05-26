@@ -165,7 +165,13 @@
 
       document.getElementById("results").innerHTML = `
         <strong>Call Option Price:</strong> $${call.toFixed(2)}<br>
-        <strong>Put Option Price:</strong> $${put.toFixed(2)}<br>`;
+        <strong>Put Option Price:</strong> $${put.toFixed(2)}<br>
+<strong>Greeks:</strong><br>
+        Δ (Delta): ${deltaCall.toFixed(4)} (Call), ${deltaPut.toFixed(4)} (Put)<br>
+        Γ (Gamma): ${gamma.toFixed(4)}<br>
+        Vega: ${vega.toFixed(4)}<br>
+        Theta: ${theta.toFixed(4)}<br>
+        Rho: ${rhoCall.toFixed(4)} (Call), ${rhoPut.toFixed(4)} (Put)`;
 
       const prices = [];
       const callPayoff = [];
