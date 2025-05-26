@@ -63,11 +63,31 @@
       color: #777;
     }
 
-    .results {
+    .results, #history {
       margin-top: 20px;
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: 5px;
+    }
+
+    .history-entry {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed #ccc;
+    }
+
+    .remove-btn {
+      margin-top: 5px;
+      background-color: #c0392b;
+      border: none;
+      padding: 5px 10px;
+      color: white;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .remove-btn:hover {
+      background-color: #922b21;
     }
 
     footer {
@@ -93,7 +113,7 @@
 
   <h2>Commodity Options Calculator</h2>
 
- <label for="preset">Select a Commodity</label>
+  <label for="preset">Select a Commodity</label>
   <select id="preset" onchange="applyPreset()">
     <option value="">-- None --</option>
     <option value="gold">Gold</option>
@@ -114,14 +134,6 @@
   </select>
   <div class="note">Use Black-76 if you're pricing options on futures contracts. Black-Scholes is for spot-based pricing.</div>
 
-  <label for="commodity">Commodity</label>
-  <select id="commodity" onchange="suggestInputs()">
-    <option value="custom">-- Custom --</option>
-    <option value="gold">Gold</option>
-    <option value="oil">Oil</option>
-    <option value="wheat">Wheat</option>
-  </select>
-
   <label for="spot">Spot or Futures Price</label>
   <input type="number" id="spot" value="4000">
 
@@ -137,7 +149,7 @@
 
   <label for="rate">Risk-free Rate (%)</label>
   <input type="number" step="0.01" id="rate" value="4.5">
-  <div class="tooltip">Fetched from FRED or use 4.5% if unsure.</div>
+  <div class="tooltip">Approximate yield of US Treasury bonds. Use 4.5% if unsure.</div>
 
   <label for="yield">Convenience Yield (%)</label>
   <input type="number" step="0.01" id="yield" value="0">
@@ -149,27 +161,24 @@
 
   <canvas id="payoutChart" width="600" height="300" style="margin-top:30px;"></canvas>
 
+  <div id="history"></div>
+
   <script>
+    const history = [];
+
     function cdf(x) {
-      const a1 = 0.319381530, a2 = -0.356563782, a3 = 1.781477937, a4 = -1.821255978, a5 = 1.330274429;
+      const a1 = 0.319381530;
+      const a2 = -0.356563782;
+      const a3 = 1.781477937;
+      const a4 = -1.821255978;
+      const a5 = 1.330274429;
       const k = 1.0 / (1.0 + 0.2316419 * Math.abs(x));
-      const poly = a1 * k + a2 * k ** 2 + a3 * k ** 3 + a4 * k ** 4 + a5 * k ** 5;
-      const cdf = 1 - (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-x * x / 2) * poly;
+      const poly = a1 * k + a2 * Math.pow(k, 2) + a3 * Math.pow(k, 3) + a4 * Math.pow(k, 4) + a5 * Math.pow(k, 5);
+      const cdf = 1.0 - (1.0 / Math.sqrt(2 * Math.PI)) * Math.exp(-x * x / 2) * poly;
       return x >= 0 ? cdf : 1 - cdf;
     }
 
-    function suggestInputs() {
-      const commodity = document.getElementById("commodity").value;
-      if (commodity === "gold") {
-        document.getElementById("vol").value = 15;
-      } else if (commodity === "oil") {
-        document.getElementById("vol").value = 35;
-      } else if (commodity === "wheat") {
-        document.getElementById("vol").value = 25;
-      }
-    }
-
-function applyPreset() {
+    function applyPreset() {
       const presets = {
         gold: { vol: 15, rate: 4.5, yield: 0.1 },
         oil: { vol: 35, rate: 4.5, yield: 4 },
@@ -183,95 +192,67 @@ function applyPreset() {
       const selected = document.getElementById("preset").value;
       if (presets[selected]) {
         document.getElementById("vol").value = presets[selected].vol;
-}
-
-    let chart;
+        document.getElementById("rate").value = presets[selected].rate;
+        document.getElementById("yield").value = presets[selected].yield;
+      }
+    }
 
     function calculateOptions() {
-      const model = document.getElementById("model").value;
       const S = parseFloat(document.getElementById("spot").value);
       const K = parseFloat(document.getElementById("strike").value);
-      const T_days = parseFloat(document.getElementById("time").value);
-      const T = T_days / 365;
+      const T = parseFloat(document.getElementById("time").value) / 365;
+      const sigma = parseFloat(document.getElementById("vol").value) / 100;
       const r = parseFloat(document.getElementById("rate").value) / 100;
       const q = parseFloat(document.getElementById("yield").value) / 100;
+      const model = document.getElementById("model").value;
 
-      const d1 = (Math.log(S / K) + (r - q + 0.5 * vol ** 2) * T) / (vol * Math.sqrt(T));
-      const d2 = d1 - vol * Math.sqrt(T);
+      let d1, d2, call, put;
+      const fwd = model === "black-76" ? S * Math.exp((r - q) * T) : S;
 
-      const Nd1 = cdf(d1), Nd2 = cdf(d2);
-      const Nnd1 = cdf(-d1), Nnd2 = cdf(-d2);
+      d1 = (Math.log(fwd / K) + 0.5 * sigma * sigma * T) / (sigma * Math.sqrt(T));
+      d2 = d1 - sigma * Math.sqrt(T);
 
-      let call = model === "black-scholes"
-        ? S * Math.exp(-q * T) * Nd1 - K * Math.exp(-r * T) * Nd2
-        : Math.exp(-r * T) * (S * Nd1 - K * Nd2);
+      call = Math.exp(-r * T) * (fwd * cdf(d1) - K * cdf(d2));
+      put = Math.exp(-r * T) * (K * cdf(-d2) - fwd * cdf(-d1));
 
-      let put = model === "black-scholes"
-        ? K * Math.exp(-r * T) * Nnd2 - S * Math.exp(-q * T) * Nnd1
-        : Math.exp(-r * T) * (K * Nnd2 - S * Nnd1);
+      const delta = model === "black-76" ? Math.exp(-r * T) * cdf(d1) : Math.exp(-q * T) * cdf(d1);
+      const gamma = Math.exp(-q * T) / (S * sigma * Math.sqrt(T)) * (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-d1 * d1 / 2);
+      const vega = S * Math.exp(-q * T) * Math.sqrt(T) * (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-d1 * d1 / 2) / 100;
+      const theta = -(S * sigma * Math.exp(-q * T) * (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-d1 * d1 / 2)) / (2 * Math.sqrt(T)) / 365;
+      const rho = K * T * Math.exp(-r * T) * cdf(d2) / 100;
 
-      const delta = model === "black-scholes"
-        ? Math.exp(-q * T) * Nd1
-        : Nd1;
+      document.getElementById("results").innerHTML =
+        `<strong>Call Price:</strong> ${call.toFixed(2)}<br>
+         <strong>Put Price:</strong> ${put.toFixed(2)}<br>
+         <strong>Delta:</strong> ${delta.toFixed(4)}<br>
+         <strong>Gamma:</strong> ${gamma.toFixed(4)}<br>
+         <strong>Vega:</strong> ${vega.toFixed(4)}<br>
+         <strong>Theta:</strong> ${theta.toFixed(4)}<br>
+         <strong>Rho:</strong> ${rho.toFixed(4)}`;
 
-      const gamma = Math.exp(-q * T) / (S * vol * Math.sqrt(T)) * (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * d1 ** 2);
-      const vega = S * Math.exp(-q * T) * Math.sqrt(T) * (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * d1 ** 2);
-      const theta = - (S * vol * Math.exp(-q * T) * (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * d1 ** 2)) / (2 * Math.sqrt(T));
-      const rho = K * T * Math.exp(-r * T) * Nd2;
+      const entry = {
+        model, S, K, T: (T * 365), sigma: sigma * 100, r: r * 100, q: q * 100,
+        call: call.toFixed(2), put: put.toFixed(2), delta, gamma, vega, theta, rho
+      };
+      history.push(entry);
+      renderHistory();
+    }
 
-      document.getElementById("results").innerHTML = `
-        <strong>Call Option Price:</strong> $${call.toFixed(2)}<br>
-        <strong>Put Option Price:</strong> $${put.toFixed(2)}<br>
-        <br><strong>Greeks:</strong><br>
-        Delta: ${delta.toFixed(4)}<br>
-        Gamma: ${gamma.toFixed(4)}<br>
-        Vega: ${vega.toFixed(4)}<br>
-        Theta: ${theta.toFixed(4)}<br>
-        Rho: ${rho.toFixed(4)}<br>`;
+    function renderHistory() {
+      const container = document.getElementById("history");
+      container.innerHTML = "<h3>Calculation History</h3>" + history.map((h, i) => `
+        <div class="history-entry">
+          <strong>Model:</strong> ${h.model} | <strong>Spot:</strong> ${h.S} | <strong>Strike:</strong> ${h.K}<br>
+          <strong>Days:</strong> ${h.T} | <strong>Vol:</strong> ${h.sigma}% | <strong>Rate:</strong> ${h.r}% | <strong>Yield:</strong> ${h.q}%<br>
+          <strong>Call:</strong> ${h.call} | <strong>Put:</strong> ${h.put}<br>
+          Δ ${h.delta.toFixed(4)} Γ ${h.gamma.toFixed(4)} 𝜈 ${h.vega.toFixed(4)} Θ ${h.theta.toFixed(4)} 𝜌 ${h.rho.toFixed(4)}<br>
+          <button class="remove-btn" onclick="removeHistory(${i})">Remove</button>
+        </div>`).join("");
+    }
 
-      const prices = [];
-      const callPayoff = [];
-      const putPayoff = [];
-
-      for (let i = S * 0.5; i <= S * 1.5; i += (S * 0.02)) {
-        prices.push(i);
-        callPayoff.push(Math.max(i - K, 0) - call);
-        putPayoff.push(Math.max(K - i, 0) - put);
-      }
-
-      const ctx = document.getElementById('payoutChart').getContext('2d');
-      if (chart) chart.destroy();
-      chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: prices,
-          datasets: [
-            {
-              label: 'Call Payoff',
-              data: callPayoff,
-              borderColor: 'green',
-              fill: false
-            },
-            {
-              label: 'Put Payoff',
-              data: putPayoff,
-              borderColor: 'red',
-              fill: false
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { position: 'top' },
-            title: { display: true, text: 'Option Payoff at Expiration' }
-          },
-          scales: {
-            x: { title: { display: true, text: 'Underlying Price' } },
-            y: { title: { display: true, text: 'Profit / Loss' } }
-          }
-        }
-      });
+    function removeHistory(index) {
+      history.splice(index, 1);
+      renderHistory();
     }
   </script>
 
