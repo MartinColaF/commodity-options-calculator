@@ -165,6 +165,7 @@
 
   <script>
     const history = [];
+    let chart;
 
     function cdf(x) {
       const a1 = 0.319381530;
@@ -236,6 +237,38 @@
       };
       history.push(entry);
       renderHistory();
+      renderPayoutChart(S, K, call);
+    }
+
+    function renderPayoutChart(S, K, premium) {
+      const prices = [];
+      const payouts = [];
+      for (let price = S * 0.5; price <= S * 1.5; price += (S * 1) / 40) {
+        prices.push(price.toFixed(2));
+        payouts.push(Math.max(price - K, 0) - premium);
+      }
+      if (chart) chart.destroy();
+      const ctx = document.getElementById('payoutChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: prices,
+          datasets: [{
+            label: 'Call Option Payout',
+            data: payouts,
+            borderColor: '#2c3e50',
+            fill: false,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: 'Underlying Price at Expiration' } },
+            y: { title: { display: true, text: 'Payout' } }
+          }
+        }
+      });
     }
 
     function renderHistory() {
@@ -245,7 +278,7 @@
           <strong>Model:</strong> ${h.model} | <strong>Spot:</strong> ${h.S} | <strong>Strike:</strong> ${h.K}<br>
           <strong>Days:</strong> ${h.T} | <strong>Vol:</strong> ${h.sigma}% | <strong>Rate:</strong> ${h.r}% | <strong>Yield:</strong> ${h.q}%<br>
           <strong>Call:</strong> ${h.call} | <strong>Put:</strong> ${h.put}<br>
-          Δ ${h.delta.toFixed(4)} Γ ${h.gamma.toFixed(4)} 𝜈 ${h.vega.toFixed(4)} Θ ${h.theta.toFixed(4)} 𝜌 ${h.rho.toFixed(4)}<br>
+          Δ ${h.delta.toFixed(4)} Γ ${h.gamma.toFixed(4)} ᵗ ${h.vega.toFixed(4)} Θ ${h.theta.toFixed(4)} ᵡ ${h.rho.toFixed(4)}<br>
           <button class="remove-btn" onclick="removeHistory(${i})">Remove</button>
         </div>`).join("");
     }
