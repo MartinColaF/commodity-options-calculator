@@ -93,6 +93,20 @@
 
   <h2>Commodity Options Calculator</h2>
 
+ <label for="preset">Select a Commodity</label>
+  <select id="preset" onchange="applyPreset()">
+    <option value="">-- None --</option>
+    <option value="gold">Gold</option>
+    <option value="oil">Oil</option>
+    <option value="wheat">Wheat</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="coffee">Coffee</option>
+    <option value="corn">Corn</option>
+    <option value="soybean">Soybean</option>
+    <option value="sugar">Sugar</option>
+  </select>
+  <div class="note">These presets use historical averages and are indicative. Please adjust if you have market-specific data.</div>
+
   <label for="model">Model</label>
   <select id="model">
     <option value="black-scholes">Black-Scholes (spot price)</option>
@@ -155,6 +169,22 @@
       }
     }
 
+function applyPreset() {
+      const presets = {
+        gold: { vol: 15, rate: 4.5, yield: 0.1 },
+        oil: { vol: 35, rate: 4.5, yield: 4 },
+        wheat: { vol: 30, rate: 4.5, yield: 3 },
+        cocoa: { vol: 40, rate: 4.5, yield: 1 },
+        coffee: { vol: 45, rate: 4.5, yield: 1.5 },
+        corn: { vol: 28, rate: 4.5, yield: 2.5 },
+        soybean: { vol: 25, rate: 4.5, yield: 2.5 },
+        sugar: { vol: 40, rate: 4.5, yield: 2 }
+      };
+      const selected = document.getElementById("preset").value;
+      if (presets[selected]) {
+        document.getElementById("vol").value = presets[selected].vol;
+}
+
     let chart;
 
     function calculateOptions() {
@@ -163,7 +193,6 @@
       const K = parseFloat(document.getElementById("strike").value);
       const T_days = parseFloat(document.getElementById("time").value);
       const T = T_days / 365;
-      const vol = parseFloat(document.getElementById("vol").value) / 100;
       const r = parseFloat(document.getElementById("rate").value) / 100;
       const q = parseFloat(document.getElementById("yield").value) / 100;
 
