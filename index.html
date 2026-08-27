@@ -3,294 +3,217 @@
 <head>
   <meta name="google-adsense-account" content="ca-pub-9252193330548483">
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Free commodity options calculator: Black-76 and Black-Scholes pricing, greeks, multi-leg strategy payoff charts and live risk-free rates.">
   <title>Commodity Options Calculator</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    :root {
-      color-scheme: light dark;
-    }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      padding: 20px;
-      max-width: 600px;
-      margin: auto;
-      background-color: var(--background, #f9f9f9);
-      color: var(--text, #333);
-    }
-
-    h2 {
-      text-align: center;
-      color: inherit;
-      margin-bottom: 30px;
-      font-weight: 600;
-      font-size: 1.5rem;
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    label {
-      margin-top: 15px;
-      font-weight: bold;
-      display: block;
-    }
-
-    input, select, button {
-      margin-top: 10px;
-      padding: 10px;
-      width: 100%;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 1rem;
-      box-sizing: border-box;
-    }
-
-    button {
-      background-color: #2c3e50;
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-
-    button:hover {
-      background-color: #1a242f;
-    }
-
-    .tooltip {
-      font-size: 12px;
-      color: #777;
-    }
-
-    .results, #history {
-      margin-top: 20px;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
-    .history-entry {
-      margin-bottom: 10px;
-      padding-bottom: 10px;
-      border-bottom: 1px dashed #ccc;
-    }
-
-    .remove-btn {
-      margin-top: 5px;
-      background-color: #c0392b;
-      border: none;
-      padding: 5px 10px;
-      color: white;
-      border-radius: 3px;
-      cursor: pointer;
-    }
-
-    .remove-btn:hover {
-      background-color: #922b21;
-    }
-
-    footer {
-      text-align: center;
-      padding: 1rem;
-      font-size: 0.9rem;
-      color: #666;
-    }
-
-    a {
-      color: #666;
-      text-decoration: underline;
-    }
-
-    .note {
-      font-size: 0.85rem;
-      color: #888;
-      margin-top: 10px;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
+<div class="wrap">
 
-  <h2>Commodity Options Calculator</h2>
+  <header>
+    <h1>Commodity Options Calculator</h1>
+    <p>Black-76 / Black-Scholes pricing, greeks and multi-leg payoff analysis for commodity futures options.</p>
+  </header>
 
-  <label for="preset">Select a Commodity</label>
-  <select id="preset" onchange="applyPreset()">
-    <option value="">-- None --</option>
-    <option value="gold">Gold</option>
-    <option value="oil">Oil</option>
-    <option value="wheat">Wheat</option>
-    <option value="cocoa">Cocoa</option>
-    <option value="coffee">Coffee</option>
-    <option value="corn">Corn</option>
-    <option value="soybean">Soybean</option>
-    <option value="sugar">Sugar</option>
-  </select>
-  <div class="note">These presets use historical averages and are indicative. Please adjust if you have market-specific data.</div>
+  <div class="grid">
 
-  <label for="model">Model</label>
-  <select id="model">
-    <option value="black-scholes">Black-Scholes (spot price)</option>
-    <option value="black-76">Black-76 (futures price)</option>
-  </select>
-  <div class="note">Use Black-76 if you're pricing options on futures contracts. Black-Scholes is for spot-based pricing.</div>
+    <!-- ============ left column: inputs ============ -->
+    <div>
 
-  <label for="spot">Spot or Futures Price</label>
-  <input type="number" id="spot" value="4000">
+      <div class="card">
+        <h2>Contract</h2>
 
-  <label for="strike">Strike Price</label>
-  <input type="number" id="strike" value="4200">
+        <label for="commodity">Commodity</label>
+        <select id="commodity"></select>
+        <p class="note" id="proxyNote"></p>
 
-  <label for="time">Time to Expiration (in days)</label>
-  <input type="number" id="time" value="30">
+        <label for="model">Model</label>
+        <select id="model">
+          <option value="b76">Black-76 (option on futures)</option>
+          <option value="bs">Black-Scholes-Merton (spot + carry)</option>
+        </select>
+        <p class="note">Black-76 is the market standard for options on commodity futures. Use Black-Scholes only when your underlying is the physical spot price.</p>
 
-  <label for="vol">Volatility (%)</label>
-  <input type="number" step="0.01" id="vol" value="30">
-  <div class="tooltip">Typical range: 20%–40%. Use 30% if unsure.</div>
+        <label for="spot"><span id="spotLabel">Futures price</span></label>
+        <input type="number" id="spot" step="any" value="4000">
 
-  <label for="rate">Risk-free Rate (%)</label>
-  <input type="number" step="0.01" id="rate" value="4.5">
-  <div class="tooltip">Approximate yield of US Treasury bonds. Use 4.5% if unsure.</div>
+        <label for="days">Days to expiration (default for new legs)</label>
+        <input type="number" id="days" min="0" step="1" value="30">
 
-  <label for="yield">Convenience Yield (%)</label>
-  <input type="number" step="0.01" id="yield" value="0">
-  <div class="tooltip">Optional. Use for commodities with storage benefits or carrying costs.</div>
+        <label for="vol">Volatility (% annualised)</label>
+        <input type="number" id="vol" step="any" value="15">
 
-  <button onclick="calculateOptions()">Calculate</button>
+        <label for="rate">Risk-free rate (% continuous)</label>
+        <input type="number" id="rate" step="any" value="4">
 
-  <div class="results" id="results"></div>
+        <label for="yield">Convenience yield (%)</label>
+        <input type="number" id="yield" step="any" value="0.3">
+        <p class="note" id="yieldNote"></p>
 
-  <canvas id="payoutChart" width="600" height="300" style="margin-top:30px;"></canvas>
+        <h3>Contract size</h3>
+        <div class="row">
+          <div>
+            <label for="size">Units per contract</label>
+            <input type="number" id="size" step="any" value="100">
+          </div>
+          <div>
+            <label for="quote">Price quoted in</label>
+            <select id="quote">
+              <option value="USD">USD</option>
+              <option value="cents">cents</option>
+            </select>
+          </div>
+        </div>
+        <p class="note" id="multInfo"></p>
+      </div>
 
-  <div id="history"></div>
+      <div class="card">
+        <h2>Market data</h2>
 
-  <script>
-    const history = [];
-    let chart;
+        <button id="fetchRate">Fetch risk-free rate (US Treasury)</button>
+        <p class="note">Daily par yield curve from home.treasury.gov, interpolated to your expiry and converted to a continuously compounded rate. No API key needed.</p>
 
-    function cdf(x) {
-      const a1 = 0.319381530;
-      const a2 = -0.356563782;
-      const a3 = 1.781477937;
-      const a4 = -1.821255978;
-      const a5 = 1.330274429;
-      const k = 1.0 / (1.0 + 0.2316419 * Math.abs(x));
-      const poly = a1 * k + a2 * Math.pow(k, 2) + a3 * Math.pow(k, 3) + a4 * Math.pow(k, 4) + a5 * Math.pow(k, 5);
-      const cdf = 1.0 - (1.0 / Math.sqrt(2 * Math.PI)) * Math.exp(-x * x / 2) * poly;
-      return x >= 0 ? cdf : 1 - cdf;
-    }
+        <h3>Realised volatility</h3>
+        <label for="avKey">Alpha Vantage API key <span class="muted">(free, stored only in this browser)</span></label>
+        <input type="password" id="avKey" placeholder="paste your key" autocomplete="off">
+        <p class="note"><a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">Get a free key</a> - 25 requests/day. Responses are cached for 12 hours.</p>
 
-    function applyPreset() {
-      const presets = {
-        gold: { vol: 15, rate: 4.5, yield: 0.1 },
-        oil: { vol: 35, rate: 4.5, yield: 4 },
-        wheat: { vol: 30, rate: 4.5, yield: 3 },
-        cocoa: { vol: 40, rate: 4.5, yield: 1 },
-        coffee: { vol: 45, rate: 4.5, yield: 1.5 },
-        corn: { vol: 28, rate: 4.5, yield: 2.5 },
-        soybean: { vol: 25, rate: 4.5, yield: 2.5 },
-        sugar: { vol: 40, rate: 4.5, yield: 2 }
-      };
-      const selected = document.getElementById("preset").value;
-      if (presets[selected]) {
-        document.getElementById("vol").value = presets[selected].vol;
-        document.getElementById("rate").value = presets[selected].rate;
-        document.getElementById("yield").value = presets[selected].yield;
-      }
-    }
+        <div class="row tight">
+          <div>
+            <label for="volSymbol">Price proxy</label>
+            <input type="text" id="volSymbol" placeholder="e.g. GLD">
+          </div>
+          <div>
+            <label for="volWindow">Window</label>
+            <select id="volWindow">
+              <option value="20">20d</option>
+              <option value="30" selected>30d</option>
+              <option value="60">60d</option>
+              <option value="90">90d</option>
+            </select>
+          </div>
+          <div>
+            <label for="volEstimator">Estimator</label>
+            <select id="volEstimator">
+              <option value="close">Close-to-close</option>
+              <option value="ewma">EWMA (0.94)</option>
+              <option value="parkinson">Parkinson</option>
+            </select>
+          </div>
+        </div>
+        <button id="fetchVol" style="margin-top:8px">Estimate volatility from price history</button>
+        <p class="note">Historical (realised) volatility, not implied. The proxy ETF is used for its <em>returns</em> only - its price level is not the futures price.</p>
 
-    function calculateOptions() {
-      const S = parseFloat(document.getElementById("spot").value);
-      const K = parseFloat(document.getElementById("strike").value);
-      const T = parseFloat(document.getElementById("time").value) / 365;
-      const sigma = parseFloat(document.getElementById("vol").value) / 100;
-      const r = parseFloat(document.getElementById("rate").value) / 100;
-      const q = parseFloat(document.getElementById("yield").value) / 100;
-      const model = document.getElementById("model").value;
+        <h3>Convenience yield from the basis</h3>
+        <div class="row tight">
+          <div><label for="carryS">Spot</label><input type="number" id="carryS" step="any" placeholder="S"></div>
+          <div><label for="carryF">Futures</label><input type="number" id="carryF" step="any" placeholder="F"></div>
+          <div><label for="carryDays">Days</label><input type="number" id="carryDays" step="1" placeholder="90"></div>
+        </div>
+        <button id="implyYield" style="margin-top:8px">Imply convenience yield</button>
+        <p class="note">Inverts F = S&middot;e<sup>(r&minus;y)T</sup>. The result is net of storage costs.</p>
 
-      let d1, d2, call, put;
-      const fwd = model === "black-76" ? S * Math.exp((r - q) * T) : S;
+        <button id="usePreset" class="ghost" style="margin-top:12px">Reset to commodity presets</button>
 
-      d1 = (Math.log(fwd / K) + 0.5 * sigma * sigma * T) / (sigma * Math.sqrt(T));
-      d2 = d1 - sigma * Math.sqrt(T);
+        <div class="status" id="dataStatus"></div>
+        <div id="sources"></div>
+      </div>
 
-      call = Math.exp(-r * T) * (fwd * cdf(d1) - K * cdf(d2));
-      put = Math.exp(-r * T) * (K * cdf(-d2) - fwd * cdf(-d1));
+    </div>
 
-      const delta = model === "black-76" ? Math.exp(-r * T) * cdf(d1) : Math.exp(-q * T) * cdf(d1);
-      const gamma = Math.exp(-q * T) / (S * sigma * Math.sqrt(T)) * (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-d1 * d1 / 2);
-      const vega = S * Math.exp(-q * T) * Math.sqrt(T) * (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-d1 * d1 / 2) / 100;
-      const theta = -(S * sigma * Math.exp(-q * T) * (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-d1 * d1 / 2)) / (2 * Math.sqrt(T)) / 365;
-      const rho = K * T * Math.exp(-r * T) * cdf(d2) / 100;
+    <!-- ============ right column: strategy, results, chart ============ -->
+    <div>
 
-      document.getElementById("results").innerHTML =
-        `<strong>Call Price:</strong> ${call.toFixed(2)}<br>
-         <strong>Put Price:</strong> ${put.toFixed(2)}<br>
-         <strong>Delta:</strong> ${delta.toFixed(4)}<br>
-         <strong>Gamma:</strong> ${gamma.toFixed(4)}<br>
-         <strong>Vega:</strong> ${vega.toFixed(4)}<br>
-         <strong>Theta:</strong> ${theta.toFixed(4)}<br>
-         <strong>Rho:</strong> ${rho.toFixed(4)}`;
+      <div class="card" id="legs">
+        <h2>Strategy</h2>
+        <div class="row">
+          <select id="strategy"></select>
+          <button id="addLeg" class="ghost">+ Add leg</button>
+          <button id="clearLegs" class="ghost">Clear</button>
+        </div>
 
-      const entry = {
-        model, S, K, T: (T * 365), sigma: sigma * 100, r: r * 100, q: q * 100,
-        call: call.toFixed(2), put: put.toFixed(2), delta, gamma, vega, theta, rho
-      };
-      history.push(entry);
-      renderHistory();
-      renderPayoutChart(S, K, call);
-    }
+        <div class="table-scroll" style="margin-top:12px">
+          <table>
+            <thead>
+              <tr>
+                <th></th><th>Side</th><th>Type</th><th>Qty</th><th>Strike</th>
+                <th>Days</th><th>Vol %</th><th>Entry</th>
+                <th class="num">Theo.</th><th class="num">Delta</th><th class="num">Cost $</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="legsBody"></tbody>
+          </table>
+        </div>
+        <p class="note">Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Entry</strong> overrides the theoretical premium with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
+      </div>
 
-    function renderPayoutChart(S, K, premium) {
-      const prices = [];
-      const payouts = [];
-      for (let price = S * 0.5; price <= S * 1.5; price += (S * 1) / 40) {
-        prices.push(price.toFixed(2));
-        payouts.push(Math.max(price - K, 0) - premium);
-      }
-      if (chart) chart.destroy();
-      const ctx = document.getElementById('payoutChart').getContext('2d');
-      chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: prices,
-          datasets: [{
-            label: 'Call Option Payout',
-            data: payouts,
-            borderColor: '#2c3e50',
-            fill: false,
-            tension: 0.1
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            x: { title: { display: true, text: 'Underlying Price at Expiration' } },
-            y: { title: { display: true, text: 'Payout' } }
-          }
-        }
-      });
-    }
+      <div class="card">
+        <h2>Results</h2>
+        <div id="summary"></div>
+        <div id="greeks" style="margin-top:14px"></div>
+      </div>
 
-    function renderHistory() {
-      const container = document.getElementById("history");
-      container.innerHTML = "<h3>Calculation History</h3>" + history.map((h, i) => `
-        <div class="history-entry">
-          <strong>Model:</strong> ${h.model} | <strong>Spot:</strong> ${h.S} | <strong>Strike:</strong> ${h.K}<br>
-          <strong>Days:</strong> ${h.T} | <strong>Vol:</strong> ${h.sigma}% | <strong>Rate:</strong> ${h.r}% | <strong>Yield:</strong> ${h.q}%<br>
-          <strong>Call:</strong> ${h.call} | <strong>Put:</strong> ${h.put}<br>
-          Δ ${h.delta.toFixed(4)} Γ ${h.gamma.toFixed(4)} ᵗ ${h.vega.toFixed(4)} Θ ${h.theta.toFixed(4)} ᵡ ${h.rho.toFixed(4)}<br>
-          <button class="remove-btn" onclick="removeHistory(${i})">Remove</button>
-        </div>`).join("");
-    }
+      <div class="card">
+        <h2>Payoff</h2>
+        <div class="chart-controls">
+          <div>
+            <label for="chartMode">Show</label>
+            <select id="chartMode">
+              <option value="payoff">Profit / loss</option>
+              <option value="delta">Delta profile</option>
+              <option value="gamma">Gamma profile</option>
+              <option value="vega">Vega profile</option>
+              <option value="theta">Theta profile</option>
+            </select>
+          </div>
+          <div>
+            <label for="tDays">Evaluate</label>
+            <input type="range" id="tDays" min="0" max="30" step="1" value="0">
+            <span id="tDaysLabel" class="muted"></span>
+          </div>
+          <div>
+            <label for="range">Range</label>
+            <input type="range" id="range" min="10" max="80" step="5" value="40">
+            <span id="rangeLabel" class="muted"></span>
+          </div>
+          <div>
+            <label for="showLegs">Legs</label>
+            <input type="checkbox" id="showLegs" checked>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="payoffChart"></canvas></div>
+        <p class="note">The solid line is the P&amp;L at the nearest expiry among your legs; the dashed line is the mark-to-market value at the evaluation date you pick. Vertical marks show the strikes and the current price.</p>
+      </div>
 
-    function removeHistory(index) {
-      history.splice(index, 1);
-      renderHistory();
-    }
-  </script>
+      <div class="card">
+        <h2>Save &amp; share</h2>
+        <div class="row">
+          <button id="share" class="ghost">Copy shareable link</button>
+          <button id="exportJson" class="ghost">Export JSON</button>
+          <label class="ghost" style="margin:0">
+            <span class="muted small">Import JSON</span>
+            <input type="file" id="importJson" accept="application/json">
+          </label>
+        </div>
+        <p class="note">Your inputs are also saved automatically in this browser.</p>
+      </div>
+
+      <div class="disclaimer">
+        <strong>Not investment advice.</strong> Prices come from a theoretical model, and the market-data helpers give
+        historical or reference values, not live quotes or implied volatility. Verify against your broker before trading.
+        Models assume European exercise; most commodity futures options are American, so early exercise value is not captured.
+      </div>
+
+    </div>
+  </div>
 
   <footer>
     <p><a href="/privacy.html">Privacy Policy</a></p>
   </footer>
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>

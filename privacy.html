@@ -23,7 +23,16 @@
   <p>Thank you for visiting <em>Commodity Options Calculator</em>. This website provides an educational tool for simulating options pricing for agricultural commodities.</p>
 
   <h2>1. Information We Collect</h2>
-  <p>We do <strong>not</strong> collect any personal information from users. However, we may use third-party services like Google AdSense that may collect anonymized data through cookies or tracking technologies to display relevant ads.</p>
+  <p>We do <strong>not</strong> collect any personal information from users, and we run no server of our own: the calculator runs entirely in your browser. However, we may use third-party services like Google AdSense that may collect anonymized data through cookies or tracking technologies to display relevant ads.</p>
+
+  <h2>1b. Data Stored in Your Browser</h2>
+  <p>To keep your work between visits, the calculator saves the following in your browser's <em>local storage</em>, on your device only. It is never transmitted to us:</p>
+  <ul>
+    <li>Your calculator inputs and option legs.</li>
+    <li>Cached market data responses (to avoid repeat requests).</li>
+    <li>Your Alpha Vantage API key, if you choose to enter one.</li>
+  </ul>
+  <p>Clearing your browser's site data removes all of it. If you use the "Copy shareable link" button, your inputs are encoded into the link itself, so anyone you send it to can see those inputs.</p>
 
   <h2>2. Use of Cookies</h2>
   <p>We use cookies for:</p>
@@ -37,11 +46,15 @@
   <p>We use the following third-party services:</p>
   <ul>
     <li><strong>Google AdSense</strong> – to serve ads.<br/>
-      <a href="https://policies.google.com/technologies/partner-sites" target="_blank">
+      <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener">
         Learn more: How Google uses information from sites that use our services
       </a>
     </li>
+    <li><strong>jsDelivr</strong> – content delivery network used to load the charting library. Your IP address is visible to it, as with any web request.</li>
+    <li><strong>U.S. Department of the Treasury</strong> (home.treasury.gov) – requested by your browser only when you press "Fetch risk-free rate", to read the published daily yield curve. No information about you is sent beyond the request itself.</li>
+    <li><strong>Alpha Vantage</strong> (alphavantage.co) – requested by your browser only when you press "Estimate volatility from price history", and only if you supplied your own API key. The key and the ticker you chose are sent directly from your browser to them, never through us.</li>
   </ul>
+  <p>These market-data requests are optional: the calculator works without them.</p>
 
   <h2>4. Data Security</h2>
   <p>We do not collect or store any personal data ourselves. All third-party data processing is governed by their respective privacy policies.</p>
