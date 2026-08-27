@@ -256,6 +256,9 @@ function applyStrategy(name) {
 }
 
 function strikeStep(S) {
+  // A price of zero or a half-typed field would make log10 return -Infinity and
+  // every derived strike NaN, which poisons the whole payoff curve.
+  if (!(S > 0) || !isFinite(S)) return 1;
   const raw = S * 0.05;
   const mag = Math.pow(10, Math.floor(Math.log10(raw)));
   const norm = raw / mag;
