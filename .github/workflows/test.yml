@@ -23,6 +23,6 @@ jobs:
             cat test-output.txt
             # Surface the failure as an annotation so it is readable from the API
             # without downloading the log archive.
-            printf '::error::%s\n' "$(tail -c 3000 test-output.txt | sed -z 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')"
+            printf '::error::%s\n' "$(grep -A 18 '^not ok' test-output.txt | head -c 2800 | sed -z 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')"
             exit 1
           fi
