@@ -153,7 +153,7 @@ function impliedVol(kind, target, S, K, T, r, b) {
 const COMMODITIES = {
   gold: { label: 'Gold (COMEX GC)', size: 100, unit: 'troy oz', quote: 'USD', vol: 15, yield: 0.3, priceSymbol: 'GLD', proxy: 'SPDR Gold Shares - tracks spot gold closely' },
   silver: { label: 'Silver (COMEX SI)', size: 5000, unit: 'troy oz', quote: 'USD', vol: 28, yield: 0.3, priceSymbol: 'SLV', proxy: 'iShares Silver Trust' },
-  copper: { label: 'Copper (COMEX HG)', size: 25000, unit: 'lb', quote: 'cents', vol: 25, yield: 1.5, priceSymbol: 'CPER', proxy: 'US Copper Index Fund' },
+  copper: { label: 'Copper (COMEX HG)', size: 25000, unit: 'lb', quote: 'USD', vol: 25, yield: 1.5, priceSymbol: 'CPER', proxy: 'US Copper Index Fund' },
   wti: { label: 'Crude Oil WTI (NYMEX CL)', size: 1000, unit: 'barrels', quote: 'USD', vol: 35, yield: 4, priceSymbol: 'USO', proxy: 'US Oil Fund - rolls front-month WTI' },
   brent: { label: 'Crude Oil Brent (ICE B)', size: 1000, unit: 'barrels', quote: 'USD', vol: 33, yield: 3.5, priceSymbol: 'BNO', proxy: 'US Brent Oil Fund' },
   natgas: { label: 'Natural Gas (NYMEX NG)', size: 10000, unit: 'MMBtu', quote: 'USD', vol: 60, yield: 5, priceSymbol: 'UNG', proxy: 'US Natural Gas Fund' },
@@ -999,12 +999,23 @@ async function applyFuturesPrice() {
   const q = await proxyGet('quote', state.commodity, 5 * 60e3);
   if (!(q.price > 0)) throw new Error('no price returned');
   state.S = q.price;
+
+  // Yahoo reports USX for cents-quoted contracts. Trust it over our table:
+  // getting this wrong scales the whole position P&L by 100.
+  let unitNote = '';
+  const wanted = q.currency === 'USX' ? 'cents' : q.currency === 'USD' ? 'USD' : null;
+  if (wanted && wanted !== state.quote) {
+    state.quote = wanted;
+    unitNote = `, quoting switched to ${wanted} to match the contract`;
+  }
+
   state.sources.price = {
     live: true,
     text: `${q.name || q.symbol} last ${fmt(q.price, 2)}` +
-      (q.asOf ? `, ${q.asOf.slice(0, 16).replace('T', ' ')} UTC` : '')
+      (q.currency ? ` ${q.currency}` : '') +
+      (q.asOf ? `, ${q.asOf.slice(0, 16).replace('T', ' ')} UTC` : '') + unitNote
   };
-  return `${q.name || q.symbol} at ${fmt(q.price, 2)}`;
+  return `${q.name || q.symbol} at ${fmt(q.price, 2)}${unitNote}`;
 }
 
 /* Realised vol from the real futures series, falling back to Alpha Vantage's

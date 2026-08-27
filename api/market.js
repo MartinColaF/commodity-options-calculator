@@ -61,11 +61,14 @@ async function yahoo(symbol, range, interval) {
   }
 }
 
-/* Listed contracts from this month forward, oldest first. */
+/* Listed contracts, oldest first, starting the month *after* the current one.
+ * The current month is skipped on purpose: for most of these markets it is a
+ * delivery month whose quote is stale and illiquid, which would poison the
+ * carry calculation. */
 function candidates(spec, count) {
   const now = new Date();
   const out = [];
-  for (let i = 0; i < 24 && out.length < count; i++) {
+  for (let i = 1; i < 24 && out.length < count; i++) {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + i, 1));
     const month = d.getUTCMonth() + 1;
     const code = Object.keys(MONTH_CODES).find(k => MONTH_CODES[k] === month);
@@ -143,18 +146,25 @@ module.exports = async function handler(req, res) {
       // that actually return a price.
       const cands = candidates(spec, 5);
       const results = await Promise.all(cands.map(c => yahoo(c.symbol, '5d', '1d')));
+      const staleAfter = 7 * 86400; // seconds; tolerates weekends and holidays
+      const nowSec = Date.now() / 1000;
       const found = [];
       for (let i = 0; i < cands.length && found.length < 2; i++) {
         const r = results[i];
-        if (r && r.meta && r.meta.regularMarketPrice > 0) {
-          found.push({
-            symbol: cands[i].symbol,
-            name: r.meta.shortName || '',
-            price: r.meta.regularMarketPrice,
-            expiry: cands[i].expiry,
-            expiryIsApproximate: true
-          });
-        }
+        if (!r || !r.meta || !(r.meta.regularMarketPrice > 0)) continue;
+        // Drop contracts that have not traded recently: an untraded month
+        // carries a stale price that would distort the implied carry.
+        const t = r.meta.regularMarketTime;
+        if (t && nowSec - t > staleAfter) continue;
+        found.push({
+          symbol: cands[i].symbol,
+          name: r.meta.shortName || '',
+          price: r.meta.regularMarketPrice,
+          currency: r.meta.currency || '',
+          expiry: cands[i].expiry,
+          expiryIsApproximate: true,
+          asOf: t ? new Date(t * 1000).toISOString() : null
+        });
       }
       if (found.length < 2) return fail(res, 502, 'Could not read two contracts for this commodity');
 
