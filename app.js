@@ -162,9 +162,9 @@ const COMMODITIES = {
   soybean: { label: 'Soybeans (CBOT ZS)', size: 5000, unit: 'bushels', quote: 'cents', vol: 25, yield: 2.5, priceSymbol: 'SOYB', proxy: 'Teucrium Soybean Fund' },
   sugar: { label: 'Sugar #11 (ICE SB)', size: 112000, unit: 'lb', quote: 'cents', vol: 40, yield: 2, priceSymbol: 'CANE', proxy: 'Teucrium Sugar Fund' },
   coffee: { label: 'Coffee C (ICE KC)', size: 37500, unit: 'lb', quote: 'cents', vol: 45, yield: 1.5, priceSymbol: 'JO', proxy: 'iPath Coffee ETN - thin, treat vol with care' },
-  cocoa: { label: 'Cocoa (ICE CC)', size: 10, unit: 'metric tons', quote: 'USD', vol: 40, yield: 1, priceSymbol: '', proxy: 'No reliable free proxy - volatility falls back to the preset' },
+  cocoa: { label: 'Cocoa (ICE CC)', size: 10, unit: 'metric tons', quote: 'USD', vol: 40, yield: 1, priceSymbol: '', proxy: 'No ETF proxy - use the futures buttons above' },
   cotton: { label: 'Cotton #2 (ICE CT)', size: 50000, unit: 'lb', quote: 'cents', vol: 25, yield: 1.5, priceSymbol: 'BAL', proxy: 'iPath Cotton ETN - thin' },
-  cattle: { label: 'Live Cattle (CME LE)', size: 40000, unit: 'lb', quote: 'cents', vol: 15, yield: 1, priceSymbol: '', proxy: 'No reliable free proxy - volatility falls back to the preset' },
+  cattle: { label: 'Live Cattle (CME LE)', size: 40000, unit: 'lb', quote: 'cents', vol: 15, yield: 1, priceSymbol: '', proxy: 'No ETF proxy - use the futures buttons above' },
   custom: { label: 'Custom / other', size: 1, unit: 'units', quote: 'USD', vol: 30, yield: 0, priceSymbol: '', proxy: 'Set the contract size and symbol yourself' }
 };
 
@@ -193,7 +193,7 @@ const state = {
   quote: 'USD',
   legs: [],
   chart: { mode: 'payoff', tDays: 0, showLegs: true, range: 40 },
-  sources: { rate: null, vol: null, yield: null }
+  sources: { price: null, rate: null, vol: null, yield: null }
 };
 
 function newLeg(over) {
@@ -565,6 +565,42 @@ function realisedVol(series, window) {
   return { close, ewma, parkinson: park, days: rets.length, last: s[s.length - 1].date };
 }
 
+/* ---- Futures data through our own /api/market function ----
+ * Yahoo sends no CORS headers, so the request goes through the serverless
+ * proxy in api/market.js. It only exists on the deployed site: opening the
+ * page from a file:// path just falls back to the other providers. */
+
+const PROXY = '/api/market';
+const PROXY_COMMODITIES = ['gold', 'silver', 'copper', 'wti', 'brent', 'natgas',
+  'corn', 'wheat', 'soybean', 'sugar', 'coffee', 'cocoa', 'cotton', 'cattle'];
+
+function proxyAvailable(commodity) {
+  return /^https?:$/.test(location.protocol) &&
+    PROXY_COMMODITIES.indexOf(commodity) !== -1;
+}
+
+async function proxyGet(fn, commodity, ttlMs) {
+  if (!proxyAvailable(commodity)) {
+    throw new Error(PROXY_COMMODITIES.indexOf(commodity) === -1
+      ? 'no futures contract mapped for this commodity'
+      : 'the futures proxy only runs on the deployed site');
+  }
+  const ck = 'proxy.' + fn + '.' + commodity;
+  const cached = cacheGet(ck, ttlMs);
+  if (cached) return cached;
+
+  const res = await fetch(PROXY + '?fn=' + fn + '&commodity=' + encodeURIComponent(commodity));
+  let json = null;
+  try { json = await res.json(); } catch (e) { /* an HTML error page, not JSON */ }
+  if (!res.ok) {
+    throw new Error(res.status === 404
+      ? 'the futures proxy is not deployed here'
+      : (json && json.error) || ('proxy returned HTTP ' + res.status));
+  }
+  cacheSet(ck, json);
+  return json;
+}
+
 /* Convenience yield implied by the cost-of-carry relation F = S e^{(r+u-y)T}. */
 function impliedConvenienceYield(spot, futures, days, ratePct) {
   const T = days / 365;
@@ -630,6 +666,7 @@ function renderInputs() {
 
 function renderSources() {
   const rows = [
+    ['Underlying price', state.sources.price],
     ['Risk-free rate', state.sources.rate],
     ['Volatility', state.sources.vol],
     ['Convenience yield', state.sources.yield]
@@ -942,69 +979,147 @@ function setStatus(msg, kind) {
   el.className = 'status ' + (kind || '');
 }
 
-async function actionFetchRate() {
-  setStatus('Fetching the US Treasury par yield curve...', 'busy');
-  try {
-    const curve = await fetchYieldCurve();
-    const years = Math.max(state.days, 1) / 365;
-    const r = rateForTenor(curve, years);
-    state.rate = +r.continuous.toFixed(3);
-    state.sources.rate = {
-      live: true,
-      text: `US Treasury par curve ${curve.date}, interpolated at ${state.days}d = ` +
-        `${r.par.toFixed(2)}% par -> ${r.continuous.toFixed(3)}% continuous`
-    };
-    setStatus('Risk-free rate updated from the Treasury curve of ' + curve.date + '.', 'ok');
-    renderAll();
-  } catch (e) {
-    setStatus('Could not fetch the Treasury curve (' + e.message + '). The manual value is unchanged.', 'err');
-  }
+/* Each apply* function updates one input and returns a short description of
+ * what it did, or throws with a message fit to show the user. */
+
+async function applyRate() {
+  const curve = await fetchYieldCurve();
+  const years = Math.max(state.days, 1) / 365;
+  const r = rateForTenor(curve, years);
+  state.rate = +r.continuous.toFixed(3);
+  state.sources.rate = {
+    live: true,
+    text: `US Treasury par curve ${curve.date}, interpolated at ${state.days}d = ` +
+      `${r.par.toFixed(2)}% par -> ${r.continuous.toFixed(3)}% continuous`
+  };
+  return `risk-free rate ${state.rate}% (Treasury ${curve.date})`;
 }
 
-async function actionFetchVol() {
-  const key = $('avKey').value.trim();
-  const meta = COMMODITIES[state.commodity] || COMMODITIES.custom;
-  const symbol = ($('volSymbol').value.trim() || meta.priceSymbol || '').toUpperCase();
+async function applyFuturesPrice() {
+  const q = await proxyGet('quote', state.commodity, 5 * 60e3);
+  if (!(q.price > 0)) throw new Error('no price returned');
+  state.S = q.price;
+  state.sources.price = {
+    live: true,
+    text: `${q.name || q.symbol} last ${fmt(q.price, 2)}` +
+      (q.asOf ? `, ${q.asOf.slice(0, 16).replace('T', ' ')} UTC` : '')
+  };
+  return `${q.name || q.symbol} at ${fmt(q.price, 2)}`;
+}
 
-  if (!symbol) {
-    setStatus('No price proxy for this commodity. Enter a ticker, or keep the preset volatility.', 'err');
-    return;
-  }
-  if (!key) {
-    setStatus('An Alpha Vantage API key is needed for price history. Get a free one and paste it above.', 'err');
-    return;
-  }
-  localStorage.setItem(KEY_STORE, key);
-
-  setStatus('Downloading ' + symbol + ' daily prices...', 'busy');
+/* Realised vol from the real futures series, falling back to Alpha Vantage's
+ * ETF proxy when the futures proxy is not reachable. */
+async function applyVol() {
+  const win = +$('volWindow').value;
+  const est = $('volEstimator').value;
   try {
-    const series = await fetchDailySeries(symbol, key);
-    const win = +$('volWindow').value;
-    const rv = realisedVol(series, win);
+    const h = await proxyGet('history', state.commodity, 60 * 60e3);
+    const rv = realisedVol(h.series || [], win);
     if (!rv) throw new Error('not enough history');
-
-    const est = $('volEstimator').value;
     const chosen = rv[est];
     if (!(chosen > 0)) throw new Error('estimator unavailable for this series');
-
-    // Only describe the built-in proxy when that is actually the symbol used.
-    const isDefaultProxy = symbol === (meta.priceSymbol || '').toUpperCase();
-    const proxyText = isDefaultProxy && meta.proxy ? meta.proxy : 'symbol entered by you';
 
     state.vol = +chosen.toFixed(2);
     state.sources.vol = {
       live: true,
-      text: `${est} realised vol, ${rv.days}d window on ${symbol} (${proxyText}), ` +
-        `last close ${rv.last}. close-to-close ${rv.close.toFixed(1)}% / EWMA ${rv.ewma.toFixed(1)}%` +
+      text: `${est} realised vol, ${rv.days}d window on ${h.symbol} ` +
+        `(front-month futures; roll gaps can inflate it slightly), last close ${rv.last}. ` +
+        `close-to-close ${rv.close.toFixed(1)}% / EWMA ${rv.ewma.toFixed(1)}%` +
         (rv.parkinson ? ` / Parkinson ${rv.parkinson.toFixed(1)}%` : '')
     };
-    setStatus(`Realised volatility from ${symbol}: close-to-close ${rv.close.toFixed(1)}%, ` +
-      `EWMA ${rv.ewma.toFixed(1)}%${rv.parkinson ? ', Parkinson ' + rv.parkinson.toFixed(1) + '%' : ''}. ` +
-      `This is historical, not implied.`, 'ok');
-    renderAll();
-  } catch (e) {
-    setStatus('Volatility fetch failed: ' + e.message, 'err');
+    return `volatility ${state.vol}% from ${h.symbol}`;
+  } catch (proxyErr) {
+    const key = $('avKey').value.trim();
+    if (!key) throw proxyErr;
+    return applyVolFromAlphaVantage(key, win, est);
   }
+}
+
+async function applyVolFromAlphaVantage(key, win, est) {
+  const meta = COMMODITIES[state.commodity] || COMMODITIES.custom;
+  const symbol = ($('volSymbol').value.trim() || meta.priceSymbol || '').toUpperCase();
+  if (!symbol) throw new Error('no ticker to read prices from');
+  localStorage.setItem(KEY_STORE, key);
+
+  const series = await fetchDailySeries(symbol, key);
+  const rv = realisedVol(series, win);
+  if (!rv) throw new Error('not enough history');
+  const chosen = rv[est];
+  if (!(chosen > 0)) throw new Error('estimator unavailable for this series');
+
+  // Only describe the built-in proxy when that is actually the symbol used.
+  const isDefaultProxy = symbol === (meta.priceSymbol || '').toUpperCase();
+  const proxyText = isDefaultProxy && meta.proxy ? meta.proxy : 'symbol entered by you';
+
+  state.vol = +chosen.toFixed(2);
+  state.sources.vol = {
+    live: true,
+    text: `${est} realised vol, ${rv.days}d window on ${symbol} (${proxyText}), ` +
+      `last close ${rv.last}. close-to-close ${rv.close.toFixed(1)}% / EWMA ${rv.ewma.toFixed(1)}%` +
+      (rv.parkinson ? ` / Parkinson ${rv.parkinson.toFixed(1)}%` : '')
+  };
+  return `volatility ${state.vol}% from ${symbol} (ETF proxy)`;
+}
+
+/* Convenience yield from the real futures curve: two listed contracts give
+ * y = r - ln(F2/F1)/(T2-T1). */
+async function applyCurveYield() {
+  const c = await proxyGet('curve', state.commodity, 60 * 60e3);
+  const near = c.contracts[0], far = c.contracts[1];
+  const days = Math.round((new Date(far.expiry) - new Date(near.expiry)) / 86400e3);
+  const dt = days / 365;
+  if (!(dt > 0) || !(near.price > 0) || !(far.price > 0)) {
+    throw new Error('the two contracts did not give a usable spread');
+  }
+  const y = (state.rate / 100 - Math.log(far.price / near.price) / dt) * 100;
+  state.yield = +y.toFixed(3);
+  state.sources.yield = {
+    live: true,
+    text: `implied by the futures curve: ${near.name || near.symbol} ${fmt(near.price, 2)} vs ` +
+      `${far.name || far.symbol} ${fmt(far.price, 2)}, ${days}d apart (expiries approximated to ` +
+      `mid-month), r=${state.rate}% -> y=${y.toFixed(3)}%`
+  };
+  // Show the working in the manual boxes so the number is auditable.
+  $('carryS').value = near.price;
+  $('carryF').value = far.price;
+  $('carryDays').value = days;
+  return `convenience yield ${state.yield}% from the curve`;
+}
+
+/* One button that fills everything it can, reporting each field separately. */
+async function actionAutoFill() {
+  setStatus('Fetching market data...', 'busy');
+  const steps = [
+    ['risk-free rate', applyRate],
+    ['futures price', applyFuturesPrice],
+    ['volatility', applyVol],
+    ['convenience yield', applyCurveYield]   // uses the rate fetched above
+  ];
+  const done = [], failed = [];
+  for (const [name, step] of steps) {
+    try { done.push(await step()); }
+    catch (e) { failed.push(`${name} (${e.message})`); }
+  }
+  renderAll();
+
+  const parts = [];
+  if (done.length) parts.push('Updated ' + done.join('; ') + '.');
+  if (failed.length) parts.push('Left unchanged: ' + failed.join('; ') + '.');
+  setStatus(parts.join(' '), failed.length ? (done.length ? '' : 'err') : 'ok');
+}
+
+/* Thin wrapper so every single-field button behaves the same way. */
+function runAction(label, step) {
+  return async () => {
+    setStatus(label + '...', 'busy');
+    try {
+      const msg = await step();
+      renderAll();
+      setStatus('Updated ' + msg + '.', 'ok');
+    } catch (e) {
+      setStatus(label + ' failed: ' + e.message + '. The current value is unchanged.', 'err');
+    }
+  };
 }
 
 function actionImplyYield() {
@@ -1033,6 +1148,7 @@ function actionApplyPreset() {
   state.quote = meta.quote;
   state.sources.vol = { live: false, text: 'preset long-run average (' + meta.vol + '%) - not market data' };
   state.sources.yield = { live: false, text: 'preset (' + meta.yield + '%) - not market data' };
+  state.sources.price = null;
   $('volSymbol').value = meta.priceSymbol || '';
   $('proxyNote').textContent = meta.proxy || '';
   renderAll();
@@ -1122,8 +1238,11 @@ function bindInputs() {
     renderAll();
   });
 
-  $('fetchRate').addEventListener('click', actionFetchRate);
-  $('fetchVol').addEventListener('click', actionFetchVol);
+  $('autoFill').addEventListener('click', actionAutoFill);
+  $('fetchPrice').addEventListener('click', runAction('Futures price', applyFuturesPrice));
+  $('fetchRate').addEventListener('click', runAction('Risk-free rate', applyRate));
+  $('fetchVol').addEventListener('click', runAction('Volatility', applyVol));
+  $('fetchCurve').addEventListener('click', runAction('Convenience yield', applyCurveYield));
   $('implyYield').addEventListener('click', actionImplyYield);
   $('usePreset').addEventListener('click', actionApplyPreset);
 

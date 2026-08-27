@@ -24,31 +24,53 @@ open `index.html` or serve the folder.
 
 ## Market data
 
+One button fills all four inputs for the selected commodity; each field reports its
+own source and anything that fails is left untouched.
+
 | Input | Source | Key needed |
 |---|---|---|
+| Futures price | Front-month contract (`GC=F`, `CL=F`, `ZC=F`…) via `/api/market` | no |
 | Risk-free rate | US Treasury daily par yield curve, interpolated to your expiry and converted to a continuously compounded rate | no |
-| Volatility | Realised volatility (close-to-close, EWMA, Parkinson) from Alpha Vantage daily prices | free key |
-| Convenience yield | Implied from the spot/futures basis by inverting `F = S·e^(r−y)T` | no |
+| Volatility | Realised volatility (close-to-close, EWMA, Parkinson) on the futures series itself | no |
+| Convenience yield | Implied by the real curve from two listed contracts: `y = r − ln(F2/F1)/(T2−T1)` | no |
+| *Fallback* | Alpha Vantage ETF proxies, for custom tickers or if the function is down | free key |
+
+### The `/api/market` function
+
+Yahoo Finance sends no CORS headers, so the browser cannot read it directly. The
+serverless function in [`api/market.js`](api/market.js) makes that request instead.
+
+- The client sends a **commodity key, never a raw symbol**; every symbol is built
+  from a table inside the function. That keeps it from being usable as an open proxy.
+- Responses are cached at Vercel's edge (`s-maxage`: quotes 5 min, history and curve
+  1 h) and again in the browser, so upstream sees very little traffic.
+- It only exists on the deployed site. Opening the page locally, the buttons say so
+  and fall back to Alpha Vantage or your manual values.
+- Contract months per commodity are listed in `CONTRACTS`; the curve endpoint probes
+  the next listed contracts and keeps the first two that quote.
 
 Notes and limitations, stated plainly in the UI as well:
 
-- Realised volatility is **historical, not implied**. It is a starting point, not the
-  market's vol.
-- The volatility proxies are ETFs (GLD, USO, CORN…). Only their **returns** are used;
-  their price level is not the futures price, and roll effects mean they are proxies.
-- Cocoa and live cattle have no reliable free proxy and fall back to preset values.
+- Realised volatility is **historical, not implied**. Yahoo's options chains need a
+  cookie/crumb handshake and return 401 without it, so real implied vol is not
+  available here.
+- Volatility is measured on the front-month continuous series, where **roll gaps can
+  inflate the estimate** slightly.
+- Contract expiries in the curve endpoint are approximated to mid-month. Both
+  contracts use the same convention, so the *gap* driving the carry stays accurate.
 - Presets are long-run typical values, flagged in the UI as "not market data".
 - Models assume European exercise; most commodity futures options are American, so
   early exercise value is not captured.
-
-Responses are cached in local storage (Treasury 6 h, Alpha Vantage 12 h) — the free
-Alpha Vantage tier allows 25 requests a day.
+- Yahoo's quote endpoint is undocumented: it can change without notice, and their
+  terms do not grant redistribution rights. If it breaks, the app degrades to the
+  Alpha Vantage path and manual entry.
 
 ## Files
 
 - `index.html` — markup
 - `styles.css` — styling, light and dark
 - `app.js` — pricing engine, strategy analytics, data providers, rendering
+- `api/market.js` — serverless futures data proxy (Vercel)
 - `privacy.html` — privacy policy
 
 ## Development

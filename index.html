@@ -72,19 +72,19 @@
       <div class="card">
         <h2>Market data</h2>
 
-        <button id="fetchRate">Fetch risk-free rate (US Treasury)</button>
-        <p class="note">Daily par yield curve from home.treasury.gov, interpolated to your expiry and converted to a continuously compounded rate. No API key needed.</p>
-
-        <h3>Realised volatility</h3>
-        <label for="avKey">Alpha Vantage API key <span class="muted">(free, stored only in this browser)</span></label>
-        <input type="password" id="avKey" placeholder="paste your key" autocomplete="off">
-        <p class="note"><a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">Get a free key</a> - 25 requests/day. Responses are cached for 12 hours.</p>
+        <button id="autoFill">Auto-fill from market data</button>
+        <p class="note">Fills the futures price, risk-free rate, volatility and convenience yield for the selected commodity in one go. Each field reports its own source below, and anything that fails is left untouched.</p>
 
         <div class="row tight">
-          <div>
-            <label for="volSymbol">Price proxy</label>
-            <input type="text" id="volSymbol" placeholder="e.g. GLD">
-          </div>
+          <button id="fetchPrice" class="ghost">Price</button>
+          <button id="fetchRate" class="ghost">Rate</button>
+          <button id="fetchVol" class="ghost">Volatility</button>
+          <button id="fetchCurve" class="ghost">Yield</button>
+        </div>
+        <p class="note">Futures prices come from the front-month contract; the convenience yield is implied by two listed contracts on the real curve. The rate is the US Treasury daily par yield curve, interpolated to your expiry.</p>
+
+        <h3>Volatility settings</h3>
+        <div class="row tight">
           <div>
             <label for="volWindow">Window</label>
             <select id="volWindow">
@@ -103,17 +103,25 @@
             </select>
           </div>
         </div>
-        <button id="fetchVol" style="margin-top:8px">Estimate volatility from price history</button>
-        <p class="note">Historical (realised) volatility, not implied. The proxy ETF is used for its <em>returns</em> only - its price level is not the futures price.</p>
+        <p class="note">Historical (realised) volatility, not implied. Measured on the front-month futures itself, so roll gaps can inflate it slightly.</p>
 
-        <h3>Convenience yield from the basis</h3>
+        <h3>Carry, checked by hand</h3>
         <div class="row tight">
-          <div><label for="carryS">Spot</label><input type="number" id="carryS" step="any" placeholder="S"></div>
-          <div><label for="carryF">Futures</label><input type="number" id="carryF" step="any" placeholder="F"></div>
+          <div><label for="carryS">Near</label><input type="number" id="carryS" step="any" placeholder="F1"></div>
+          <div><label for="carryF">Far</label><input type="number" id="carryF" step="any" placeholder="F2"></div>
           <div><label for="carryDays">Days</label><input type="number" id="carryDays" step="1" placeholder="90"></div>
         </div>
-        <button id="implyYield" style="margin-top:8px">Imply convenience yield</button>
-        <p class="note">Inverts F = S&middot;e<sup>(r&minus;y)T</sup>. The result is net of storage costs.</p>
+        <button id="implyYield" class="ghost" style="margin-top:8px">Imply convenience yield from these</button>
+        <p class="note">Inverts F = S&middot;e<sup>(r&minus;y)T</sup>, net of storage costs. The Yield button above fills these boxes with the two contracts it used, so you can check its work or override it.</p>
+
+        <details style="margin-top:14px">
+          <summary class="muted small">Fallback: Alpha Vantage (for custom tickers, or if the futures proxy is down)</summary>
+          <label for="avKey">API key <span class="muted">(free, stored only in this browser)</span></label>
+          <input type="password" id="avKey" placeholder="paste your key" autocomplete="off">
+          <label for="volSymbol">Ticker to measure</label>
+          <input type="text" id="volSymbol" placeholder="e.g. GLD">
+          <p class="note"><a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">Get a free key</a> - 25 requests/day, cached 12 h. This path uses ETF proxies for their <em>returns</em> only: their price level is not the futures price.</p>
+        </details>
 
         <button id="usePreset" class="ghost" style="margin-top:12px">Reset to commodity presets</button>
 

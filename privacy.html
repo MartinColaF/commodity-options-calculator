@@ -18,7 +18,7 @@
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p><strong>Effective Date:</strong> [Insert date]</p>
+  <p><strong>Effective Date:</strong> August 27, 2026</p>
 
   <p>Thank you for visiting <em>Commodity Options Calculator</em>. This website provides an educational tool for simulating options pricing for agricultural commodities.</p>
 
@@ -51,8 +51,9 @@
       </a>
     </li>
     <li><strong>jsDelivr</strong> – content delivery network used to load the charting library. Your IP address is visible to it, as with any web request.</li>
-    <li><strong>U.S. Department of the Treasury</strong> (home.treasury.gov) – requested by your browser only when you press "Fetch risk-free rate", to read the published daily yield curve. No information about you is sent beyond the request itself.</li>
-    <li><strong>Alpha Vantage</strong> (alphavantage.co) – requested by your browser only when you press "Estimate volatility from price history", and only if you supplied your own API key. The key and the ticker you chose are sent directly from your browser to them, never through us.</li>
+    <li><strong>U.S. Department of the Treasury</strong> (home.treasury.gov) – requested by your browser only when you ask for the risk-free rate, to read the published daily yield curve. No information about you is sent beyond the request itself.</li>
+    <li><strong>Our own market data function</strong> (<code>/api/market</code>, hosted on Vercel) – when you ask for a futures price, volatility or convenience yield, your browser calls this site, and this site then reads public futures quotes from Yahoo Finance. Your browser never contacts Yahoo, and we send them nothing about you. The request is logged by our host (Vercel) the same way any page request is, and responses are cached so repeated requests do not leave this site.</li>
+    <li><strong>Alpha Vantage</strong> (alphavantage.co) – an optional fallback, requested by your browser only if you supplied your own API key and the function above is unavailable. The key and the ticker you chose are sent directly from your browser to them, never through us.</li>
   </ul>
   <p>These market-data requests are optional: the calculator works without them.</p>
 
@@ -72,6 +73,6 @@
 
   <h2>6. Contact</h2>
   <p>For questions about this privacy policy, you may contact:</p>
-  <p>📧 [Insert your email address or contact form link]</p>
+  <p>📧 <a href="mailto:martinprojects1@gmail.com">martinprojects1@gmail.com</a></p>
 </body>
 </html>
