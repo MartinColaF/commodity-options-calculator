@@ -154,6 +154,22 @@ test('degenerate inputs do not break the analysis', () => {
   }
 });
 
+test('inherited property names cannot pose as commodities or strategies', () => {
+  // State can arrive from a shared link, so these names are reachable input.
+  for (const name of ['__proto__', 'constructor', 'toString', 'hasOwnProperty']) {
+    resetState(app, { commodity: name });
+    const c = currentCommodity();
+    assert.ok(Number.isFinite(dollarMultiplier(c)),
+      `${name} as a commodity still yields a usable multiplier`);
+
+    resetState(app);
+    const before = state.legs.length;
+    applyStrategy(name);
+    assert.strictEqual(state.legs.length, before,
+      `${name} as a strategy name is ignored rather than throwing`);
+  }
+});
+
 test('an inactive leg is excluded from the position', () => {
   resetState(app);
   state.legs = [

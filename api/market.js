@@ -113,7 +113,10 @@ module.exports = async function handler(req, res) {
 
   const fn = String(req.query.fn || 'quote');
   const key = String(req.query.commodity || '');
-  const spec = CONTRACTS[key];
+  // hasOwnProperty, not a plain lookup: keys such as "__proto__" or
+  // "constructor" resolve to inherited objects and would pass a truthiness
+  // check, slipping past the whitelist.
+  const spec = Object.prototype.hasOwnProperty.call(CONTRACTS, key) ? CONTRACTS[key] : null;
   if (!spec) {
     return fail(res, 400, 'Unknown commodity. Supported: ' + Object.keys(CONTRACTS).join(', '));
   }

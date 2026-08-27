@@ -172,6 +172,14 @@ function dollarMultiplier(c) {
   return c.size * (c.quote === 'cents' ? 0.01 : 1);
 }
 
+/* Own-property lookup on purpose: state can come from a shared link, and keys
+ * such as "__proto__" or "constructor" would otherwise resolve to inherited
+ * objects and pass a plain truthiness check. */
+function commodityMeta(key) {
+  return Object.prototype.hasOwnProperty.call(COMMODITIES, key)
+    ? COMMODITIES[key] : COMMODITIES.custom;
+}
+
 /* ============================================================
  * 3. State
  * ========================================================== */
@@ -247,8 +255,8 @@ const STRATEGIES = {
 };
 
 function applyStrategy(name) {
-  const def = STRATEGIES[name];
-  if (!def) return;
+  const def = Object.prototype.hasOwnProperty.call(STRATEGIES, name) ? STRATEGIES[name] : null;
+  if (!def || typeof def.legs !== 'function') return;
   const step = strikeStep(state.S);
   const k = Math.round(state.S / step) * step;
   state.legs = def.legs(k, step, state.days).map(l => newLeg(Object.assign({ days: state.days }, l)));
@@ -618,7 +626,7 @@ function impliedConvenienceYield(spot, futures, days, ratePct) {
 const $ = id => document.getElementById(id);
 
 function currentCommodity() {
-  const c = Object.assign({}, COMMODITIES[state.commodity] || COMMODITIES.custom);
+  const c = Object.assign({}, commodityMeta(state.commodity));
   c.size = state.size;
   c.quote = state.quote;
   return c;
@@ -1050,7 +1058,7 @@ async function applyVol() {
 }
 
 async function applyVolFromAlphaVantage(key, win, est) {
-  const meta = COMMODITIES[state.commodity] || COMMODITIES.custom;
+  const meta = commodityMeta(state.commodity);
   const symbol = ($('volSymbol').value.trim() || meta.priceSymbol || '').toUpperCase();
   if (!symbol) throw new Error('no ticker to read prices from');
   localStorage.setItem(KEY_STORE, key);
@@ -1155,7 +1163,7 @@ function actionImplyYield() {
 }
 
 function actionApplyPreset() {
-  const meta = COMMODITIES[state.commodity] || COMMODITIES.custom;
+  const meta = commodityMeta(state.commodity);
   state.vol = meta.vol;
   state.yield = meta.yield;
   state.size = meta.size;
@@ -1363,7 +1371,7 @@ function init() {
     state.legs = [newLeg({ strike: 4200, days: state.days })];
   }
 
-  const meta = COMMODITIES[state.commodity] || COMMODITIES.custom;
+  const meta = commodityMeta(state.commodity);
   $('volSymbol').value = meta.priceSymbol || '';
   $('proxyNote').textContent = meta.proxy || '';
   $('avKey').value = localStorage.getItem(KEY_STORE) || '';
