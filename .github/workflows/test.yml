@@ -15,4 +15,14 @@ jobs:
         with:
           node-version: '20'
       # The project has no dependencies on purpose, so there is nothing to install.
-      - run: npm test
+      - name: Run tests
+        run: |
+          if npm test > test-output.txt 2>&1; then
+            cat test-output.txt
+          else
+            cat test-output.txt
+            # Surface the failure as an annotation so it is readable from the API
+            # without downloading the log archive.
+            printf '::error::%s\n' "$(tail -c 3000 test-output.txt | sed -z 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')"
+            exit 1
+          fi
