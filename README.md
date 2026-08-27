@@ -75,10 +75,42 @@ Notes and limitations, stated plainly in the UI as well:
 
 ## Development
 
-There is nothing to install. To run it locally with the market-data buttons working,
-serve the folder over HTTP (opening the file directly also works, but some browsers
-restrict cross-origin requests from `file://`):
+No dependencies, nothing to install. Node 18+ is the only requirement.
 
 ```bash
-npx serve .
+npm run dev     # static server on http://localhost:3000 (UI only)
+npx vercel dev  # also runs the /api functions locally
+npm test        # the full test suite
 ```
+
+Opening `index.html` directly works too, but the `/api` buttons need a server, and
+some browsers restrict cross-origin requests from `file://`.
+
+### Tests
+
+`node --test`, no framework:
+
+- `test/pricing.test.js` — put-call parity in both models, a textbook reference
+  value, all five greeks against finite differences, implied-volatility round trips,
+  the volatility estimators against a series of known volatility, curve
+  interpolation and the carry inversion.
+- `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
+  butterflies; bounded put payoffs; contract multipliers including cents-quoted
+  markets; every preset and every commodity.
+- `test/api.test.js` — the serverless function with a mocked upstream: rejected
+  commodities, method and action validation, series parsing, and the two curve rules
+  (skip the delivery month, skip contracts that have not traded recently).
+
+`app.js` has no module system on purpose, so the page still runs from a `file://`
+path. The tests load it into a VM with a small DOM stub — see
+`test/helpers/load-app.js`.
+
+CI runs the suite on every push (`.github/workflows/test.yml`).
+
+### Working on this in the cloud
+
+The repo is self-contained and dependency-free, so any cloud dev environment works
+with no setup step: point it at the GitHub repo and `npm test` runs immediately.
+This matters because the serverless function cannot be exercised without a Node
+toolchain — locally that meant deploying to find out, which is what the test suite
+now replaces.

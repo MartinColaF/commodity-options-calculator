@@ -1,0 +1,14 @@
+{
+  "name": "commodity-options-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Options calculator for commodity futures",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node scripts/serve.js",
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
