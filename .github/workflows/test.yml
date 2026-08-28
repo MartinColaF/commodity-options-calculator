@@ -9,11 +9,18 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The runner's file discovery has changed between releases, so pin both
+        # the oldest supported line and a current one to catch it drifting again.
+        node-version: ['20', '22']
+    name: test (node ${{ matrix.node-version }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
       # The project has no dependencies on purpose, so there is nothing to install.
       - name: Run tests
         run: |
