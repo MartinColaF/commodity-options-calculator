@@ -19,7 +19,8 @@ const EPILOGUE = `
   normPdf, normCdf, gbs, impliedVol,
   americanPrice, americanGreeks, americanCritical, priceOption,
   dollarMultiplier, newLeg, applyStrategy, strikeStep, carry, carryTracksRate,
-  legValue, legGreeks, activeLegs, legEntry, strategyPnl,
+  legValue, legGreeks, activeLegs, legEntry, strategyPnl, pnlEvaluator,
+  legUnder, legRatio, legScenario, strikeOnAxis, displayGrid, statsGrid,
   netCost, netGreeks, horizonDays, analyse, snapshot, restore,
   rateForTenor, realisedVol, impliedConvenienceYield, proxyAvailable,
   currentCommodity

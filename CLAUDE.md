@@ -60,6 +60,24 @@ highest strike. Max profit, max loss and breakevens are computed on the
 **stats** grid, because a long put's profit is capped at a price of zero and
 that point is usually off the chart. Only the upside counts as unbounded.
 
+### Legs may price off their own delivery month
+
+`leg.under` is that leg's own contract price; `null` means the panel price.
+The chart sweeps **one** axis, so `legScenario()` moves each month in
+proportion and `strikeOnAxis()` converts a strike into a point on that shared
+axis. Anything that reasons about strikes against the price axis — grid kinks,
+the stats range, the chart's strike marks — must use `strikeOnAxis()`, not
+`leg.strike`. Getting this wrong puts the payoff kink in the wrong place and
+lets `statsGrid()` miss a bound.
+
+### The legs table commits on blur, not per keystroke
+
+`legsBody` listens for `change`, not `input`, while the left-hand panel
+listens for `input`. That is deliberate: `renderLegs()` rebuilds the whole
+tbody, so updating per keystroke fights with typing. A test that types into a
+leg field and reads the result without blurring will see a stale value — that
+is the design, not a bug.
+
 ### A price of zero must not reach `Math.log10`
 
 `strikeStep()` guards it. A half-typed price field used to make every derived

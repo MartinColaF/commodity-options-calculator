@@ -409,6 +409,7 @@ function newLeg(over) {
     strike: 4200,
     days: 30,         // own expiry, enables calendars
     vol: null,        // null -> use the global vol
+    under: null,      // null -> use the global price; set it for a real curve
     entry: null       // null -> use the theoretical price as the entry cost
   }, over || {});
 }
@@ -485,24 +486,48 @@ function carryTracksRate() {
   return state.model !== 'b76';
 }
 
-/* Value of one unit of a leg at underlying price P, tDays after today. */
+/* Today's underlying price for one leg. In a real commodity calendar each
+ * delivery month trades at its own price, so a leg may carry its own; null
+ * means "the contract in the Contract panel". */
+function legUnder(leg) {
+  return leg.under == null || !(leg.under > 0) ? state.S : leg.under;
+}
+
+/* How a leg's own contract moves when the reference contract moves. The chart
+ * sweeps one price axis, so the curve is shifted in proportion - a parallel
+ * move in logs. That keeps every month's basis to the reference constant,
+ * which is the standard first-order assumption and is exact when all the legs
+ * share one contract. */
+function legRatio(leg) {
+  return state.S > 0 ? legUnder(leg) / state.S : 1;
+}
+
+/* A leg's own underlying price when the reference contract is at P. */
+function legScenario(leg, P) {
+  return P * legRatio(leg);
+}
+
+/* Value of one unit of a leg when the reference contract is at P, tDays after
+ * today. */
 function legValue(leg, P, tDays) {
-  if (leg.kind === 'underlying') return P;
+  const price = legScenario(leg, P);
+  if (leg.kind === 'underlying') return price;
   const tau = Math.max(leg.days - tDays, 0) / 365;
   const sigma = (leg.vol == null ? state.vol : leg.vol) / 100;
   const r = state.rate / 100;
   return state.style === 'american'
-    ? americanPrice(leg.kind, P, leg.strike, tau, r, carry(), sigma)
-    : gbs(leg.kind, P, leg.strike, tau, r, carry(), sigma).price;
+    ? americanPrice(leg.kind, price, leg.strike, tau, r, carry(), sigma)
+    : gbs(leg.kind, price, leg.strike, tau, r, carry(), sigma).price;
 }
 
-/* Greeks of one unit of a leg today. */
+/* Greeks of one unit of a leg today. Delta and gamma are quoted against the
+ * leg's own contract, which is what a desk hedges with. */
 function legGreeks(leg) {
   if (leg.kind === 'underlying') {
-    return { price: state.S, delta: 1, gamma: 0, vega: 0, theta: 0, rho: 0 };
+    return { price: legUnder(leg), delta: 1, gamma: 0, vega: 0, theta: 0, rho: 0 };
   }
   const sigma = (leg.vol == null ? state.vol : leg.vol) / 100;
-  return priceOption(leg.kind, state.S, leg.strike, leg.days / 365,
+  return priceOption(leg.kind, legUnder(leg), leg.strike, leg.days / 365,
     state.rate / 100, carry(), sigma, state.style, carryTracksRate());
 }
 
@@ -512,7 +537,7 @@ function activeLegs() {
 
 function legEntry(leg) {
   if (leg.entry != null) return leg.entry;
-  return leg.kind === 'underlying' ? state.S : legGreeks(leg).price;
+  return leg.kind === 'underlying' ? legUnder(leg) : legGreeks(leg).price;
 }
 
 /* Prepared P&L function. The entry cost, the multiplier and the set of active
@@ -577,14 +602,24 @@ function horizonDays() {
   return Math.min.apply(null, opts.map(l => l.days));
 }
 
+/* Where a leg's strike falls on the reference price axis. A leg on its own
+ * delivery month kinks when *its* contract reaches the strike, which happens
+ * at a different point on the shared axis. */
+function strikeOnAxis(leg) {
+  const ratio = legRatio(leg);
+  return ratio > 0 ? leg.strike / ratio : leg.strike;
+}
+
 /* Grid builder. Strikes are inserted exactly so the payoff kinks stay sharp. */
 function gridBetween(lo, hi, n) {
   const out = [];
   for (let i = 0; i < n; i++) out.push(lo + (hi - lo) * i / (n - 1));
   for (const leg of activeLegs()) {
-    if (leg.kind !== 'underlying' && leg.strike > lo && leg.strike < hi) {
+    if (leg.kind === 'underlying') continue;
+    const k = strikeOnAxis(leg);
+    if (k > lo && k < hi) {
       const eps = (hi - lo) * 1e-7;
-      out.push(leg.strike - eps, leg.strike, leg.strike + eps);
+      out.push(k - eps, k, k + eps);
     }
   }
   return out.sort((a, b) => a - b);
@@ -601,7 +636,8 @@ function displayGrid() {
  * profit and a short put's capped loss are found even when they sit outside
  * the zoom level of the chart. */
 function statsGrid() {
-  const strikes = activeLegs().filter(l => l.kind !== 'underlying').map(l => l.strike);
+  const strikes = activeLegs()
+    .filter(l => l.kind !== 'underlying').map(strikeOnAxis);
   const hi = Math.max(state.S * 4, ...strikes.map(k => k * 2.5));
   return gridBetween(state.S * 1e-6, hi, 1200);
 }
@@ -939,6 +975,7 @@ function renderLegs() {
       <td><input type="number" data-f="strike" value="${isU ? '' : leg.strike}" ${isU ? 'disabled' : ''} step="any"></td>
       <td><input type="number" data-f="days" value="${isU ? '' : leg.days}" ${isU ? 'disabled' : ''} min="0" step="1"></td>
       <td><input type="number" data-f="vol" value="${leg.vol == null ? '' : leg.vol}" placeholder="${state.vol}" ${isU ? 'disabled' : ''} step="any"></td>
+      <td><input type="number" data-f="under" value="${leg.under == null ? '' : leg.under}" placeholder="${fmt(state.S, 2)}" step="any" title="This leg's own contract price today. Blank uses the contract in the left panel."></td>
       <td><input type="number" data-f="entry" value="${leg.entry == null ? '' : leg.entry}" placeholder="${fmt(isU ? state.S : g.price, 2)}" step="any"></td>
       <td class="num">${isU ? '-' : fmt(g.price, 2)}</td>
       <td class="num">${fmt(g.delta * leg.side * leg.qty, 3)}</td>
@@ -955,7 +992,7 @@ function renderLegs() {
     ? { id: ae.closest('tr').dataset.id, f: ae.dataset.f, start: ae.selectionStart, end: ae.selectionEnd }
     : null;
 
-  $('legsBody').innerHTML = body || '<tr><td colspan="12" class="muted">No legs. Add one or pick a strategy.</td></tr>';
+  $('legsBody').innerHTML = body || '<tr><td colspan="13" class="muted">No legs. Add one or pick a strategy.</td></tr>';
 
   if (focus) {
     const el = $('legsBody').querySelector(
@@ -1092,8 +1129,8 @@ function renderChart(a) {
         if (leg.kind === 'underlying') { if (which === 'delta') v += w; continue; }
         const tau = Math.max(leg.days - tOff, 0) / 365;
         const sigma = (leg.vol == null ? state.vol : leg.vol) / 100;
-        const g = priceOption(leg.kind, x, leg.strike, tau, state.rate / 100,
-          carry(), sigma, state.style, carryTracksRate());
+        const g = priceOption(leg.kind, legScenario(leg, x), leg.strike, tau,
+          state.rate / 100, carry(), sigma, state.style, carryTracksRate());
         v += w * g[which];
       }
       return { x, y: v * mult };
@@ -1103,9 +1140,11 @@ function renderChart(a) {
     });
   }
 
+  // Marks sit where the leg's payoff actually kinks on the shared axis, which
+  // is not the strike itself once a leg trades on its own delivery month.
   const lines = activeLegs()
     .filter(l => l.kind !== 'underlying')
-    .map(l => ({ value: l.strike, color: col.strike, label: 'K ' + fmt(l.strike, 0) }));
+    .map(l => ({ value: strikeOnAxis(l), color: col.strike, label: 'K ' + fmt(l.strike, 0) }));
   lines.push({ value: state.S, color: col.spot, label: 'Now', dash: [2, 2] });
 
   const cfg = {
@@ -1173,7 +1212,7 @@ function snapshot() {
     quote: state.quote, chart: state.chart,
     legs: state.legs.map(l => ({
       on: l.on, side: l.side, kind: l.kind, qty: l.qty,
-      strike: l.strike, days: l.days, vol: l.vol, entry: l.entry
+      strike: l.strike, days: l.days, vol: l.vol, under: l.under, entry: l.entry
     }))
   };
 }
@@ -1336,6 +1375,43 @@ async function applyCurveYield() {
   return `convenience yield ${state.yield}% from the curve`;
 }
 
+/* Price every leg at its own delivery month, from the listed curve.
+ *
+ * Two contracts give the curve's log slope; each leg's expiry is then priced
+ * along it. That is an extrapolation of a single observed slope, not a fitted
+ * term structure - honest for the two- or three-month span a calendar spread
+ * usually covers, and increasingly rough beyond the far contract. */
+async function applyLegPrices() {
+  const opts = state.legs.filter(l => l.kind !== 'underlying');
+  if (!opts.length) throw new Error('add an option leg first');
+
+  const c = await proxyGet('curve', state.commodity, 60 * 60e3);
+  const near = c.contracts[0], far = c.contracts[1];
+  const gapDays = Math.round((new Date(far.expiry) - new Date(near.expiry)) / 86400e3);
+  if (!(gapDays > 0) || !(near.price > 0) || !(far.price > 0)) {
+    throw new Error('the two contracts did not give a usable spread');
+  }
+  const slope = Math.log(far.price / near.price) / (gapDays / 365);
+
+  let furthest = 0;
+  for (const leg of opts) {
+    leg.under = +(state.S * Math.exp(slope * leg.days / 365)).toFixed(4);
+    if (leg.days > furthest) furthest = leg.days;
+  }
+
+  const pct = (slope * 100).toFixed(2);
+  const beyond = furthest > gapDays
+    ? `, extrapolated past the ${gapDays}d observed span for the ${furthest}d leg`
+    : '';
+  state.sources.price = {
+    live: true,
+    text: `${fmt(state.S, 2)} front month; legs priced along the curve at ` +
+      `${pct}%/yr from ${near.name || near.symbol} ${fmt(near.price, 2)} vs ` +
+      `${far.name || far.symbol} ${fmt(far.price, 2)}${beyond}`
+  };
+  return `leg prices from a ${pct}%/yr curve`;
+}
+
 /* One button that fills everything it can, reporting each field separately. */
 async function actionAutoFill() {
   setStatus('Fetching market data...', 'busy');
@@ -1494,6 +1570,7 @@ function bindInputs() {
   $('fetchRate').addEventListener('click', runAction('Risk-free rate', applyRate));
   $('fetchVol').addEventListener('click', runAction('Volatility', applyVol));
   $('fetchCurve').addEventListener('click', runAction('Convenience yield', applyCurveYield));
+  $('fillLegPrices').addEventListener('click', runAction('Leg prices', applyLegPrices));
   $('implyYield').addEventListener('click', actionImplyYield);
   $('usePreset').addEventListener('click', actionApplyPreset);
 
@@ -1579,6 +1656,7 @@ function onLegEvent(e) {
     case 'strike': leg.strike = num(el, leg.strike); break;
     case 'days': leg.days = Math.max(0, num(el, leg.days)); break;
     case 'vol': leg.vol = el.value.trim() === '' ? null : num(el, null); break;
+    case 'under': leg.under = el.value.trim() === '' ? null : num(el, null); break;
     case 'entry': leg.entry = el.value.trim() === '' ? null : num(el, null); break;
   }
   renderAll();

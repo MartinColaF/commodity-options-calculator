@@ -15,7 +15,9 @@ open `index.html` or serve the folder.
   position (contract size and cents-vs-dollars quoting are handled).
 - **Multi-leg strategies** — any mix of calls, puts and the underlying. 16 presets
   (spreads, straddles, butterflies, iron condor, collar, calendar, ratio).
-  Per-leg volatility (skew) and per-leg expiry (calendars) are supported.
+  Per-leg volatility (skew), per-leg expiry (calendars) and **per-leg underlying
+  price** are supported: in a real commodity calendar each delivery month trades
+  at its own price, and one button fills each leg from the listed futures curve.
 - **Payoff chart** — P&L at the nearest expiry plus a mark-to-market curve for any
   date in between, individual leg overlays, strike and spot markers. The same chart
   also plots delta / gamma / vega / theta profiles across underlying prices.
@@ -62,6 +64,12 @@ Notes and limitations, stated plainly in the UI as well:
 - Contract expiries in the curve endpoint are approximated to mid-month. Both
   contracts use the same convention, so the *gap* driving the carry stays accurate.
 - Presets are long-run typical values, flagged in the UI as "not market data".
+- Per-leg prices come from the slope between two listed contracts, extrapolated
+  to each leg's expiry — one observed slope, not a fitted term structure. It is
+  reasonable across the span a calendar usually covers and gets rough past the
+  far contract; the source line says when it extrapolated. The payoff chart then
+  shifts every month in proportion, so each month's basis to the reference
+  stays fixed as the price moves.
 - American prices are a closed-form approximation, not an exact lattice. Measured
   against a 3000-step binomial tree over 300 contracts (both types, one month to
   two years, strikes 0.8–1.25 of spot, vol 15–60%, rates 2–8%), the error is a
@@ -104,6 +112,9 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
   butterflies; bounded put payoffs; contract multipliers including cents-quoted
   markets; every preset and every commodity.
+- `test/curve.test.js` — per-leg underlying prices: a flat curve reproducing the
+  shared-price behaviour exactly, the payoff kink landing on the shared axis,
+  contango raising a calendar spread, and the zero-price guards.
 - `test/american.test.js` — an independent CRR binomial tree, and the
   Barone-Adesi-Whaley pricer checked against it: the approximation envelope, the
   no-arbitrage bounds, the early-exercise premium on both sides of a futures

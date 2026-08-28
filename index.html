@@ -154,14 +154,16 @@
             <thead>
               <tr>
                 <th></th><th>Side</th><th>Type</th><th>Qty</th><th>Strike</th>
-                <th>Days</th><th>Vol %</th><th>Entry</th>
+                <th>Days</th><th>Vol %</th><th>Under</th><th>Entry</th>
                 <th class="num">Theo.</th><th class="num">Delta</th><th class="num">Cost $</th><th></th>
               </tr>
             </thead>
             <tbody id="legsBody"></tbody>
           </table>
         </div>
-        <p class="note">Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Entry</strong> overrides the theoretical premium with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
+        <p class="note">Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Under</strong> is that leg's own delivery month price &mdash; blank uses the contract on the left, and the <em>Leg prices</em> button below fills it from the real curve. <strong>Entry</strong> overrides the theoretical premium with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
+        <button id="fillLegPrices" class="ghost">Fill leg prices from the futures curve</button>
+        <p class="note">In a real commodity calendar each month trades at its own price. This reads the listed curve, measures its slope, and prices every leg at its own expiry. The payoff chart then moves all months together, in proportion.</p>
       </div>
 
       <div class="card">
