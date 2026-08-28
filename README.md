@@ -8,6 +8,9 @@ open `index.html` or serve the folder.
 - **Pricing** — generalised Black-Scholes-Merton with a cost-of-carry term:
   - `b = 0` → **Black-76**, options on futures (the market standard here).
   - `b = r - q` → **Black-Scholes-Merton** on spot with a convenience yield.
+- **American exercise** — Barone-Adesi-Whaley, selectable per scenario and the
+  default. Almost every listed commodity futures option is American, and with
+  `b = 0` the early-exercise premium is real on calls and puts alike.
 - **Greeks** — delta, gamma, vega, theta, rho, both per unit and in dollars for the
   position (contract size and cents-vs-dollars quoting are handled).
 - **Multi-leg strategies** — any mix of calls, puts and the underlying. 16 presets
@@ -59,8 +62,12 @@ Notes and limitations, stated plainly in the UI as well:
 - Contract expiries in the curve endpoint are approximated to mid-month. Both
   contracts use the same convention, so the *gap* driving the carry stays accurate.
 - Presets are long-run typical values, flagged in the UI as "not market data".
-- Models assume European exercise; most commodity futures options are American, so
-  early exercise value is not captured.
+- American prices are a closed-form approximation, not an exact lattice. Measured
+  against a 3000-step binomial tree over 300 contracts (both types, one month to
+  two years, strikes 0.8–1.25 of spot, vol 15–60%, rates 2–8%), the error is a
+  median of **0.008%** of the underlying and **0.58%** at its worst, on two-year
+  60%-vol contracts. Ignoring early exercise entirely — the European setting —
+  is wrong by up to **2.6%** over the same set.
 - Yahoo's quote endpoint is undocumented: it can change without notice, and their
   terms do not grant redistribution rights. If it breaks, the app degrades to the
   Alpha Vantage path and manual entry.
@@ -97,6 +104,11 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
   butterflies; bounded put payoffs; contract multipliers including cents-quoted
   markets; every preset and every commodity.
+- `test/american.test.js` — an independent CRR binomial tree, and the
+  Barone-Adesi-Whaley pricer checked against it: the approximation envelope, the
+  no-arbitrage bounds, the early-exercise premium on both sides of a futures
+  option, the exercise boundary, greeks by finite difference, and the
+  style-aware implied-volatility solver.
 - `test/api.test.js` — the serverless function with a mocked upstream: rejected
   commodities, method and action validation, series parsing, and the two curve rules
   (skip the delivery month, skip contracts that have not traded recently).

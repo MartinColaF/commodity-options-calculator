@@ -190,3 +190,33 @@ test('quantity scales the position linearly', () => {
   near(netCost(), one * 3, 1e-6, 'cost scales with quantity');
   near(netGreeks().money.delta, greekOne * 3, 1e-9, 'delta scales with quantity');
 });
+
+test('the prepared P&L evaluator matches the one-shot function', () => {
+  // analyse() hoists the entry cost out of the grid sweep. If the prepared
+  // form ever drifts from strategyPnl the payoff curve would silently shift,
+  // so pin them together in both exercise styles.
+  for (const style of ['european', 'american']) {
+    resetState(app, { style, S: 100, vol: 30, rate: 8, days: 180 });
+    state.legs = [
+      newLeg({ kind: 'put', side: 1, strike: 95, days: 180 }),
+      newLeg({ kind: 'call', side: -1, strike: 110, days: 180 }),
+      newLeg({ kind: 'underlying', side: 1 })
+    ];
+    const a = analyse();
+    for (let i = 0; i < a.xs.length; i += 37) {
+      near(a.ys[i], app.strategyPnl(a.xs[i], a.t), 1e-9,
+        `${style}: prepared curve at ${a.xs[i]}`);
+    }
+  }
+});
+
+test('an explicit entry price is used instead of the theoretical one', () => {
+  // The hoist must not lose the per-leg entry override.
+  resetState(app, { S: 100, vol: 30, rate: 8, days: 180 });
+  state.legs = [newLeg({ kind: 'call', side: 1, strike: 100, days: 180, entry: 2 })];
+  const mult = dollarMultiplier(currentCommodity());
+  near(netCost(), 2 * mult, 1e-9, 'net cost follows the entry override');
+  // At expiry, at the strike, the option expires worthless and the loss is the
+  // premium actually paid.
+  near(app.strategyPnl(100, 180), -2 * mult, 1e-6, 'P&L is measured from the entry');
+});

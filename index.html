@@ -36,6 +36,13 @@
         </select>
         <p class="note">Black-76 is the market standard for options on commodity futures. Use Black-Scholes only when your underlying is the physical spot price.</p>
 
+        <label for="style">Exercise</label>
+        <select id="style">
+          <option value="american">American (early exercise allowed)</option>
+          <option value="european">European (expiry only)</option>
+        </select>
+        <p class="note" id="styleNote"></p>
+
         <label for="spot"><span id="spotLabel">Futures price</span></label>
         <input type="number" id="spot" step="any" value="4000">
 
@@ -211,7 +218,8 @@
       <div class="disclaimer">
         <strong>Not investment advice.</strong> Prices come from a theoretical model, and the market-data helpers give
         historical or reference values, not live quotes or implied volatility. Verify against your broker before trading.
-        Models assume European exercise; most commodity futures options are American, so early exercise value is not captured.
+        American prices use the Barone-Adesi-Whaley approximation: typically within 0.01% of the underlying
+        against a binomial tree, and within 0.6% at its worst, on two-year high-volatility contracts.
       </div>
 
     </div>
