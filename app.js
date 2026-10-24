@@ -395,6 +395,8 @@ const state = {
   size: 100,
   quote: 'USD',
   legs: [],
+  skew: { on: false, rr: 0, bf: 0 },
+  scenario: { volShift: 5, pricePct: 20 },
   chart: { mode: 'payoff', tDays: 0, showLegs: true, range: 40 },
   sources: { price: null, rate: null, vol: null, yield: null }
 };
@@ -507,17 +509,79 @@ function legScenario(leg, P) {
   return P * legRatio(leg);
 }
 
-/* Value of one unit of a leg when the reference contract is at P, tDays after
- * today. */
-function legValue(leg, P, tDays) {
-  const price = legScenario(leg, P);
+/* ------------------------------------------------------------
+ * Parametric skew (Malz 1997)
+ *
+ * Desks quote a surface as three numbers per expiry: at-the-money
+ * volatility, the 25-delta risk reversal (the call's vol minus the
+ * put's) and the 25-delta butterfly (how far the wings sit above the
+ * middle). This interpolates them into a volatility per strike:
+ *
+ *   sigma(d) = atm - 2*rr*(d - 0.5) + 16*bf*(d - 0.5)^2
+ *
+ * where d is the call's forward delta. The coefficients are what make
+ * it reproduce the quotes exactly: at d = 0.25 it returns
+ * atm + rr/2 + bf, and at d = 0.75, atm - rr/2 + bf - which are the
+ * 25-delta call and put vols those quotes define.
+ * ---------------------------------------------------------- */
+
+/* Forward delta of a call, N(d1). Undiscounted on purpose: skew is quoted
+ * against this, and it stays inside (0, 1) for every input. */
+function forwardDelta(S, K, T, b, sigma) {
+  if (!(T > 0) || !(sigma > 0) || !(S > 0) || !(K > 0)) {
+    return S * Math.exp(b * Math.max(T, 0)) > K ? 1 : 0;
+  }
+  const vt = sigma * Math.sqrt(T);
+  return normCdf((Math.log(S / K) + (b + sigma * sigma / 2) * T) / vt);
+}
+
+/* Volatility for one strike off the skew curve. The delta that selects the
+ * point depends on the volatility being solved for, so iterate: starting from
+ * the at-the-money level this settles in a handful of passes. */
+function skewVol(S, K, T, b, atm, rr, bf) {
+  if (!(atm > 0)) return atm;
+  let sigma = atm;
+  for (let i = 0; i < 40; i++) {
+    const d = forwardDelta(S, K, T, b, sigma) - 0.5;
+    let next = atm - 2 * rr * d + 16 * bf * d * d;
+    // A wide risk reversal can push the far wing negative; clamp rather than
+    // hand a non-positive volatility to the pricer.
+    if (!(next > 1e-4)) next = 1e-4;
+    if (Math.abs(next - sigma) < 1e-10) return next;
+    sigma = next;
+  }
+  return sigma;
+}
+
+/* The volatility one leg prices at, in percent.
+ *
+ * An explicit per-leg volatility always wins. Otherwise, with the skew on,
+ * the leg takes the curve's value for its own strike and expiry; with it off,
+ * the single global number. The surface is read once, at today's price and
+ * the leg's full tenor - sticky strike, so a leg keeps its volatility as the
+ * scenario price moves rather than sliding along the curve. */
+function legVolPct(leg) {
+  if (leg.vol != null) return leg.vol;
+  if (!state.skew.on) return state.vol;
+  return skewVol(legUnder(leg), leg.strike, leg.days / 365, carry(),
+    state.vol / 100, state.skew.rr / 100, state.skew.bf / 100) * 100;
+}
+
+/* Value of one unit of a leg, with the volatility already resolved. */
+function legValueAt(leg, price, tau, sigma) {
   if (leg.kind === 'underlying') return price;
-  const tau = Math.max(leg.days - tDays, 0) / 365;
-  const sigma = (leg.vol == null ? state.vol : leg.vol) / 100;
   const r = state.rate / 100;
   return state.style === 'american'
     ? americanPrice(leg.kind, price, leg.strike, tau, r, carry(), sigma)
     : gbs(leg.kind, price, leg.strike, tau, r, carry(), sigma).price;
+}
+
+/* Value of one unit of a leg when the reference contract is at P, tDays after
+ * today. volShift moves the whole surface, in vol points. */
+function legValue(leg, P, tDays, volShift) {
+  const tau = Math.max(leg.days - tDays, 0) / 365;
+  const sigma = Math.max(legVolPct(leg) + (volShift || 0), 0) / 100;
+  return legValueAt(leg, legScenario(leg, P), tau, sigma);
 }
 
 /* Greeks of one unit of a leg today. Delta and gamma are quoted against the
@@ -526,7 +590,7 @@ function legGreeks(leg) {
   if (leg.kind === 'underlying') {
     return { price: legUnder(leg), delta: 1, gamma: 0, vega: 0, theta: 0, rho: 0 };
   }
-  const sigma = (leg.vol == null ? state.vol : leg.vol) / 100;
+  const sigma = legVolPct(leg) / 100;
   return priceOption(leg.kind, legUnder(leg), leg.strike, leg.days / 365,
     state.rate / 100, carry(), sigma, state.style, carryTracksRate());
 }
@@ -540,19 +604,31 @@ function legEntry(leg) {
   return leg.kind === 'underlying' ? legUnder(leg) : legGreeks(leg).price;
 }
 
-/* Prepared P&L function. The entry cost, the multiplier and the set of active
- * legs are all fixed while a curve is swept, but legEntry() prices an option
- * to get the theoretical entry - under American exercise that is eleven
- * valuations - so recomputing it per grid point dominated every redraw.
- * Hoist it once, then evaluate the curve. */
-function pnlEvaluator() {
+/* Prepared P&L function. The entry cost, the multiplier, the set of active
+ * legs and each leg's volatility are all fixed while a curve is swept, but
+ * legEntry() prices an option to get the theoretical entry - under American
+ * exercise that is eleven valuations - and the skew curve needs an iterative
+ * solve per strike. Recomputing either per grid point dominated every redraw,
+ * so resolve them once and then evaluate the curve.
+ *
+ * volShift moves the whole surface, in vol points, for the scenario table. */
+function pnlEvaluator(volShift) {
   const mult = dollarMultiplier(currentCommodity());
+  const shift = volShift || 0;
   const prepared = activeLegs().map(leg => ({
-    leg, weight: leg.side * leg.qty * mult, entry: legEntry(leg)
+    leg,
+    weight: leg.side * leg.qty * mult,
+    entry: legEntry(leg),
+    ratio: legRatio(leg),
+    sigma: Math.max(legVolPct(leg) + shift, 0) / 100
   }));
   return function (P, tDays) {
     let pnl = 0;
-    for (const p of prepared) pnl += p.weight * (legValue(p.leg, P, tDays) - p.entry);
+    for (const p of prepared) {
+      const tau = Math.max(p.leg.days - tDays, 0) / 365;
+      const v = legValueAt(p.leg, P * p.ratio, tau, p.sigma);
+      pnl += p.weight * (v - p.entry);
+    }
     return pnl;
   };
 }
@@ -640,6 +716,57 @@ function statsGrid() {
     .filter(l => l.kind !== 'underlying').map(strikeOnAxis);
   const hi = Math.max(state.S * 4, ...strikes.map(k => k * 2.5));
   return gridBetween(state.S * 1e-6, hi, 1200);
+}
+
+/* Scenario table: position P&L across price, volatility and elapsed time.
+ *
+ * This is the grid a trader reads before putting a position on, so the three
+ * axes are the three things that actually move: where the underlying goes,
+ * what happens to volatility, and how much time passes. Rows are prices,
+ * columns are dates between today and the horizon, and the whole grid is
+ * repeated once per volatility shift.
+ *
+ * One prepared evaluator per volatility shift, because the shift is the only
+ * thing that changes each leg's volatility and therefore its cached exercise
+ * boundary. */
+function scenarioTable() {
+  const t = horizonDays();
+  const pct = Math.max(state.scenario.pricePct, 0) / 100;
+  const shift = Math.abs(state.scenario.volShift);
+
+  const prices = [];
+  for (let i = -3; i <= 3; i++) {
+    prices.push(Math.max(state.S * (1 + pct * i / 3), 0));
+  }
+
+  const days = [];
+  for (let i = 0; i < 5; i++) days.push(Math.round(t * i / 4));
+
+  // Deduplicate: a zero shift, or a horizon of zero days, would otherwise
+  // repeat identical panels and columns.
+  const shifts = shift > 0 ? [-shift, 0, shift] : [0];
+  const cols = days.filter((d, i) => days.indexOf(d) === i);
+
+  const panels = shifts.map(vs => {
+    const pnl = pnlEvaluator(vs);
+    return {
+      volShift: vs,
+      rows: prices.map(p => ({
+        price: p,
+        pct: state.S > 0 ? p / state.S - 1 : 0,
+        cells: cols.map(d => pnl(p, d))
+      }))
+    };
+  });
+
+  let worst = 0;
+  for (const panel of panels) {
+    for (const row of panel.rows) {
+      for (const c of row.cells) if (Math.abs(c) > worst) worst = Math.abs(c);
+    }
+  }
+
+  return { horizon: t, days: cols, panels, worst };
 }
 
 function analyse() {
@@ -915,6 +1042,21 @@ function renderInputs() {
   setField('days', state.days);
   setField('size', state.size);
   setField('quote', state.quote);
+  setField('skewRr', state.skew.rr);
+  setField('skewBf', state.skew.bf);
+  setField('scenPct', state.scenario.pricePct);
+  setField('scenVol', state.scenario.volShift);
+  if ($('skewOn') !== document.activeElement) $('skewOn').checked = state.skew.on;
+
+  $('skewRr').disabled = !state.skew.on;
+  $('skewBf').disabled = !state.skew.on;
+  $('skewNote').textContent = state.skew.on
+    ? 'Malz interpolation: legs with a blank Vol take the curve for their own strike, ' +
+      'read at today\'s price and held as the scenario moves (sticky strike). ' +
+      'Risk reversal is the 25-delta call\'s volatility minus the put\'s; butterfly is ' +
+      'how far both wings sit above the at-the-money level, which is the Volatility field.'
+    : 'Off: every leg with a blank Vol uses the single Volatility number above. Turn it on ' +
+      'to quote a surface as three points instead of typing a volatility per leg.';
 
   const isB76 = state.model === 'b76';
   $('yield').disabled = isB76;
@@ -974,7 +1116,7 @@ function renderLegs() {
       <td><input type="number" data-f="qty" value="${leg.qty}" min="0" step="1"></td>
       <td><input type="number" data-f="strike" value="${isU ? '' : leg.strike}" ${isU ? 'disabled' : ''} step="any"></td>
       <td><input type="number" data-f="days" value="${isU ? '' : leg.days}" ${isU ? 'disabled' : ''} min="0" step="1"></td>
-      <td><input type="number" data-f="vol" value="${leg.vol == null ? '' : leg.vol}" placeholder="${state.vol}" ${isU ? 'disabled' : ''} step="any"></td>
+      <td><input type="number" data-f="vol" value="${leg.vol == null ? '' : leg.vol}" placeholder="${fmt(legVolPct(leg), 1)}" ${isU ? 'disabled' : ''} step="any"></td>
       <td><input type="number" data-f="under" value="${leg.under == null ? '' : leg.under}" placeholder="${fmt(state.S, 2)}" step="any" title="This leg's own contract price today. Blank uses the contract in the left panel."></td>
       <td><input type="number" data-f="entry" value="${leg.entry == null ? '' : leg.entry}" placeholder="${fmt(isU ? state.S : g.price, 2)}" step="any"></td>
       <td class="num">${isU ? '-' : fmt(g.price, 2)}</td>
@@ -1128,7 +1270,7 @@ function renderChart(a) {
         const w = leg.side * leg.qty;
         if (leg.kind === 'underlying') { if (which === 'delta') v += w; continue; }
         const tau = Math.max(leg.days - tOff, 0) / 365;
-        const sigma = (leg.vol == null ? state.vol : leg.vol) / 100;
+        const sigma = legVolPct(leg) / 100;
         const g = priceOption(leg.kind, legScenario(leg, x), leg.strike, tau,
           state.rate / 100, carry(), sigma, state.style, carryTracksRate());
         v += w * g[which];
@@ -1187,11 +1329,78 @@ function renderChart(a) {
   chart = new Chart($('payoffChart').getContext('2d'), cfg);
 }
 
+/* Scenario grid. Cells are shaded by size relative to the biggest absolute
+ * number in the whole table, so the eye finds the cliff without reading every
+ * figure. */
+function renderScenarios() {
+  const s = scenarioTable();
+  const legs = activeLegs().filter(l => l.kind !== 'underlying');
+  if (!activeLegs().length) {
+    $('scenarios').innerHTML = '<p class="note">Add a leg to see the scenario grid.</p>';
+    return;
+  }
+
+  const shade = v => {
+    if (!isFinite(v) || !s.worst) return '';
+    const a = (Math.abs(v) / s.worst * 0.5).toFixed(3);
+    return ' style="background:rgba(' + (v >= 0 ? '32,140,96' : '190,60,48') + ',' + a + ')"';
+  };
+
+  const panels = s.panels.map(panel => {
+    const head = s.days.map(d =>
+      '<th class="num">' + (d === 0 ? 'Today' : d + 'd') + '</th>').join('');
+    const rows = panel.rows.slice().reverse().map(r => {
+      const label = fmt(r.price, 2) +
+        ' <span class="muted">(' + (r.pct >= 0 ? '+' : '') + fmt(r.pct * 100, 0) + '%)</span>';
+      const cells = r.cells.map(c =>
+        '<td class="num"' + shade(c) + '>' + money(c) + '</td>').join('');
+      return '<tr><th class="rowhead">' + label + '</th>' + cells + '</tr>';
+    }).join('');
+
+    const title = panel.volShift === 0
+      ? 'Volatility unchanged'
+      : 'Volatility ' + (panel.volShift > 0 ? '+' : '') + panel.volShift + ' points';
+    return '<div class="scenario-panel"><h3>' + title + '</h3>' +
+      '<div class="table-scroll"><table class="scenario"><thead><tr>' +
+      '<th>Underlying</th>' + head + '</tr></thead><tbody>' + rows +
+      '</tbody></table></div></div>';
+  }).join('');
+
+  const note = legs.length
+    ? 'P&L at each date assumes the volatility shift happens immediately and holds. ' +
+      'The last column is the nearest expiry among your legs (' + s.horizon + ' days).'
+    : 'Only the underlying is in the position, so volatility and time do nothing.';
+
+  $('scenarios').innerHTML = panels + '<p class="note">' + escapeHtml(note) + '</p>';
+}
+
+/* Chart.js is the one thing on the page loaded from a CDN. An ad blocker or a
+ * CDN outage must not take the rest of the page down with it: the results, the
+ * scenario grid and the saved state all live after the chart in the render
+ * order and are worth more than the picture. */
+let chartBroken = false;
+
+function renderChartSafely(a) {
+  if (chartBroken) return;
+  try {
+    renderChart(a);
+  } catch (e) {
+    chartBroken = true;
+    const box = $('payoffChart') && $('payoffChart').closest('.chart-box');
+    if (box) {
+      box.innerHTML = '<p class="note">The chart library could not be loaded, so the ' +
+        'payoff graph is unavailable. Everything else on this page still works - the ' +
+        'numbers below and the scenario grid are computed locally.</p>';
+    }
+  }
+}
+
 function renderAll() {
   renderInputs();
   renderLegs();
   const a = renderResults();
-  renderChart(a);
+  renderChartSafely(a);
+  renderScenarios();
   renderSources();
   persist();
 }
@@ -1210,6 +1419,8 @@ function snapshot() {
     S: state.S, vol: state.vol,
     rate: state.rate, yield: state.yield, days: state.days, size: state.size,
     quote: state.quote, chart: state.chart,
+    skew: { on: state.skew.on, rr: state.skew.rr, bf: state.skew.bf },
+    scenario: { volShift: state.scenario.volShift, pricePct: state.scenario.pricePct },
     legs: state.legs.map(l => ({
       on: l.on, side: l.side, kind: l.kind, qty: l.qty,
       strike: l.strike, days: l.days, vol: l.vol, under: l.under, entry: l.entry
@@ -1226,6 +1437,18 @@ function restore(o) {
   // so restore them that way rather than silently repricing someone's numbers.
   state.style = o.style === 'american' || o.style === 'european' ? o.style : 'european';
   if (o.chart) Object.assign(state.chart, o.chart);
+  // Like the exercise style: a scenario saved before the surface existed was
+  // priced on one flat volatility, so restore it that way instead of applying
+  // a skew it never had.
+  state.skew.on = !!(o.skew && o.skew.on === true);
+  if (o.skew) {
+    if (isFinite(o.skew.rr)) state.skew.rr = o.skew.rr;
+    if (isFinite(o.skew.bf)) state.skew.bf = o.skew.bf;
+  }
+  if (o.scenario) {
+    if (isFinite(o.scenario.volShift)) state.scenario.volShift = o.scenario.volShift;
+    if (isFinite(o.scenario.pricePct)) state.scenario.pricePct = o.scenario.pricePct;
+  }
   if (Array.isArray(o.legs)) state.legs = o.legs.map(l => newLeg(l));
   return true;
 }
@@ -1504,6 +1727,10 @@ function bindInputs() {
     vol: el => { state.vol = num(el, state.vol); },
     rate: el => { state.rate = num(el, state.rate); },
     yield: el => { state.yield = num(el, state.yield); },
+    skewRr: el => { state.skew.rr = num(el, state.skew.rr); },
+    skewBf: el => { state.skew.bf = num(el, state.skew.bf); },
+    scenPct: el => { state.scenario.pricePct = num(el, state.scenario.pricePct); },
+    scenVol: el => { state.scenario.volShift = num(el, state.scenario.volShift); },
     days: el => {
       const old = state.days;
       state.days = Math.max(0, num(el, state.days));
@@ -1571,6 +1798,10 @@ function bindInputs() {
   $('fetchVol').addEventListener('click', runAction('Volatility', applyVol));
   $('fetchCurve').addEventListener('click', runAction('Convenience yield', applyCurveYield));
   $('fillLegPrices').addEventListener('click', runAction('Leg prices', applyLegPrices));
+  $('skewOn').addEventListener('change', e => {
+    state.skew.on = e.target.checked;
+    renderAll();
+  });
   $('implyYield').addEventListener('click', actionImplyYield);
   $('usePreset').addEventListener('click', actionApplyPreset);
 

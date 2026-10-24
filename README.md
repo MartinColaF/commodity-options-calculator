@@ -23,6 +23,12 @@ open `index.html` or serve the folder.
   also plots delta / gamma / vega / theta profiles across underlying prices.
 - **Analytics** — net debit or credit, max profit, max loss, all breakevens, and the
   risk-neutral probability of profit.
+- **Scenario grid** — position P&L across underlying price, volatility shift and
+  elapsed time: the grid a trader reads before putting a position on. Cells are
+  shaded by size so the cliff is visible without reading every figure.
+- **Parametric skew** — quote a surface as three numbers per expiry (at-the-money
+  volatility, 25-delta risk reversal, 25-delta butterfly) and legs with a blank
+  volatility take the curve for their own strike, instead of typing one per leg.
 - **Implied volatility** — type the premium you paid in the Entry column, press `IV`.
 - **Share and save** — inputs persist in local storage, plus a shareable URL and
   JSON export/import.
@@ -63,6 +69,10 @@ Notes and limitations, stated plainly in the UI as well:
   inflate the estimate** slightly.
 - Contract expiries in the curve endpoint are approximated to mid-month. Both
   contracts use the same convention, so the *gap* driving the carry stays accurate.
+- The skew is read once per leg, at today's price and the leg's full tenor, and held
+  as the scenario price moves — sticky strike, not sticky delta. Real surfaces shift
+  with spot; that is not modelled. The risk reversal and butterfly are inputs you
+  supply, not market data: the tool cannot see a real option chain.
 - Presets are long-run typical values, flagged in the UI as "not market data".
 - Per-leg prices come from the slope between two listed contracts, extrapolated
   to each leg's expiry — one observed slope, not a fitted term structure. It is
@@ -112,6 +122,9 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
   butterflies; bounded put payoffs; contract multipliers including cents-quoted
   markets; every preset and every commodity.
+- `test/skew.test.js` — the skew curve reproducing the 25-delta quotes it was built
+  from, the wings under a butterfly, the clamp on an extreme risk reversal, and the
+  scenario grid's shape, ordering and response to volatility and time.
 - `test/curve.test.js` — per-leg underlying prices: a flat curve reproducing the
   shared-price behaviour exactly, the payoff kink landing on the shared axis,
   contango raising a calendar spread, and the zero-price guards.

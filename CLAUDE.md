@@ -66,6 +66,11 @@ long-dated high-volatility contracts; the measured envelope is in that file.
 `carryTracksRate()` exists because `b = 0` is both "Black-76" and a legitimate carry
 value, and the rho bump has to tell them apart.
 
+`legVolPct()` is the single place that decides what volatility a leg prices at: an
+explicit per-leg number, else the skew curve, else the global figure. Anything that
+needs a leg's volatility goes through it — the greek-profile chart drifted off it
+once and silently ignored the skew.
+
 **Dollar multiplier = `size × (quote === 'cents' ? 0.01 : 1)`.** Getting the quoting
 convention wrong rescales the whole position P&L by 100. Grains and softs quote in
 cents; **copper quotes in USD per pound**, which is a trap because CME describes it in
@@ -94,6 +99,18 @@ American exercise that is eleven valuations. Calling it inside a 1200-point swee
 made a redraw ~8× slower than it needed to be. Use `pnlEvaluator()`, which prepares the
 legs once and returns the curve function. `strategyPnl()` is the un-prepared
 convenience wrapper — fine for a single point, wrong inside a loop.
+
+**`.grid` is the page layout class, not a table class.** `index.html` wraps the two
+columns in `<div class="grid">` and `styles.css` gives it `display: grid` with fixed
+template columns. Giving a table `class="grid"` makes it inherit that and splits
+`thead` from `tbody` into separate blocks. The scenario table uses
+`class="scenario"`. Check `styles.css` before reusing a short class name.
+
+**Chart.js is the only CDN dependency and the only thing that can fail at load.**
+`renderChartSafely()` isolates it: an ad blocker or CDN outage used to take out
+everything after `renderChart()` in the render order — the scenario grid, the source
+list and `persist()`, so the user also silently lost their saved state. Keep the chart
+last-but-one and keep it wrapped.
 
 **Table lookups from user-controlled keys must use `hasOwnProperty`.** State can arrive
 from a shared link, and `CONTRACTS['__proto__']` resolves to `Object.prototype`, which
@@ -135,6 +152,10 @@ will not match.
 
 In a cloud environment with node, none of that applies — just run `npm test`.
 
+**The tests run `app.js` in a `vm`, so its arrays are cross-realm.** They carry the
+VM's `Array.prototype`, and `assert.deepStrictEqual` compares prototypes, so a
+returned array never equals a literal. Wrap it: `Array.from(x)`.
+
 **Fetch before trusting a local ref.** A cloud session's clone can be behind `origin`,
 and `git log` then shows a stale head while `git cat-file` reports a perfectly real
 commit as "not a valid object name". Run `git fetch --all` before concluding that
@@ -168,8 +189,12 @@ something is missing from the repo.
 - **The curve moves in parallel.** Each leg can hold its own price, but the payoff
   chart shifts every month in proportion, so each month's basis to the reference stays
   fixed as the price moves. Real curves also change shape; that is not modelled.
-- Volatility is a single number per leg, so there is no smile — a 25-delta risk
-  reversal and butterfly would have to be interpolated per strike.
+- Volatility is a single number per leg unless the skew is on, in which case legs
+  with a blank Vol take `skewVol()` — Malz's quadratic in the call's forward delta,
+  fixed by the at-the-money level, the 25-delta risk reversal and the 25-delta
+  butterfly. The curve is read **once**, at today's price and the leg's full tenor,
+  and held as the scenario moves: sticky strike, not sticky delta. Real surfaces also
+  move with spot; that is not modelled.
 - Contract expiries in the curve endpoint are approximated to mid-month. Both
   contracts use the same convention, so the gap driving the carry stays accurate.
 
