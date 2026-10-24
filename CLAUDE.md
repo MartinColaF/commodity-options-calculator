@@ -1,157 +1,182 @@
 # Commodity Options Calculator
 
-A static site plus one serverless function. It prices options on commodity
-futures, builds multi-leg strategies and pulls real market data. **There is no
-build step, and adding one would change how the site deploys.**
+Static, dependency-free options calculator for commodity futures, plus one Vercel
+serverless function for market data. No build step. `README.md` documents the tool
+for users; this file covers what is easy to get wrong when changing it.
 
 ## Layout
 
-| Path | What it is |
-| --- | --- |
-| `index.html` | The whole UI. Every input has a stable `id` that `app.js` binds by hand. |
-| `app.js` | Pricing engine, strategies, market-data providers, rendering. One file, no modules. |
-| `api/market.js` | Vercel function proxying Yahoo futures data. No dependencies. |
-| `styles.css` | Responsive, with a dark-mode block. |
-| `test/` | `node --test`, no framework. `test/helpers/load-app.js` runs `app.js` in a VM. |
-
-## Traps
-
-These have all bitten before. They are not hypothetical.
-
-### `app.js` has no module system, on purpose
-
-It is a plain browser script so the page still works from a `file://` path.
-Do not add `import`/`export`, and do not wrap it in an IIFE — the test helper
-reaches in through a VM epilogue that captures top-level `const` bindings by
-name. **If you add a function the tests need, add it to the `EPILOGUE` list in
-`test/helpers/load-app.js`,** or it will be invisible to the suite.
-
-### Cents-quoted contracts
-
-Corn, wheat, soybeans, sugar, coffee and cotton quote in **cents**, not
-dollars. `dollarMultiplier()` applies the `0.01`. Copper quotes in USD per
-pound despite the folklore — getting this wrong moved P&L by 100×, and it
-shipped that way once. When adding a commodity, check the exchange's contract
-spec for the quote unit, not just the contract size.
-
-### `npm test` must not name a directory
-
-`node --test test/` breaks on Node 22: the runner resolves `test/` as a module
-and aborts before running anything. The script is bare `node --test`, which
-uses the runner's own discovery. CI runs Node 20 and 22 for exactly this
-reason.
-
-### Do not add a `build` script to `package.json`
-
-The absence of dependencies and of a build is what keeps Vercel treating this
-as a static site with functions. Adding a `build` changes the deploy.
-
-### The whitelist is checked with `hasOwnProperty`
-
-State arrives from shared links, so keys like `__proto__` and `constructor`
-would otherwise resolve to inherited objects and pass a truthiness check. See
-`commodityMeta()` and the `STRATEGIES` lookup. The serverless function does
-the same for its commodity table. Keep it that way.
-
-### The stats grid is not the chart grid
-
-`displayGrid()` is what you see; `statsGrid()` spans from ~0 to well past the
-highest strike. Max profit, max loss and breakevens are computed on the
-**stats** grid, because a long put's profit is capped at a price of zero and
-that point is usually off the chart. Only the upside counts as unbounded.
-
-### Legs may price off their own delivery month
-
-`leg.under` is that leg's own contract price; `null` means the panel price.
-The chart sweeps **one** axis, so `legScenario()` moves each month in
-proportion and `strikeOnAxis()` converts a strike into a point on that shared
-axis. Anything that reasons about strikes against the price axis — grid kinks,
-the stats range, the chart's strike marks — must use `strikeOnAxis()`, not
-`leg.strike`. Getting this wrong puts the payoff kink in the wrong place and
-lets `statsGrid()` miss a bound.
-
-### The legs table commits on blur, not per keystroke
-
-`legsBody` listens for `change`, not `input`, while the left-hand panel
-listens for `input`. That is deliberate: `renderLegs()` rebuilds the whole
-tbody, so updating per keystroke fights with typing. A test that types into a
-leg field and reads the result without blurring will see a stale value — that
-is the design, not a bug.
-
-### A price of zero must not reach `Math.log10`
-
-`strikeStep()` guards it. A half-typed price field used to make every derived
-strike `NaN` and poison the whole curve.
-
-### Never overwrite the field being typed in
-
-`setField()` skips `document.activeElement`. Without it, typing `4000.` ate the
-decimal point and moved the caret. `renderLegs()` rebuilds the table body, so
-it saves and restores focus and selection by leg id and field name.
-
-### Hoist per-leg work out of grid sweeps
-
-`legEntry()` prices an option, and under American exercise that is eleven
-valuations. Calling it inside a 1200-point sweep once made a redraw ~8× slower
-than it needed to be. Use `pnlEvaluator()`, which prepares the legs once and
-returns the curve function. `strategyPnl()` is the un-prepared convenience
-wrapper — fine for a single point, wrong inside a loop.
-
-## Pricing
-
-One generalised Black-Scholes-Merton pricer, parameterised by cost of carry:
-
-- `b = 0` → Black-76 on a futures price (the default, and the market standard)
-- `b = r − q` → Black-Scholes-Merton on spot with a convenience yield
-
-American exercise uses **Barone-Adesi-Whaley**, not a lattice, because the
-payoff curve prices ~1200 grid points per leg. The exercise boundary and the
-premium coefficient do not depend on the underlying, so `americanBoundary()`
-caches them per `(kind, K, T, r, b, sigma)` and the grid sweep reuses them.
-
-BAW is an approximation. `test/american.test.js` carries an independent CRR
-binomial tree and checks the two agree; that tree is the reference to reach for
-when a price looks wrong. Accuracy degrades for long-dated near-the-money
-options — see the tolerance and the comment in that file.
-
-`carryTracksRate()` exists because `b = 0` is both "Black-76" and a legitimate
-carry value, and the rho bump needs to tell them apart.
-
-## Market data
-
-- **Rate**: US Treasury daily par yield curve, interpolated to the expiry. No key.
-- **Price / history / curve**: `/api/market`, which proxies Yahoo. The client
-  sends a **commodity key, never a free-form symbol** — the function maps keys
-  to symbols itself.
-- **Volatility**: realised (historical), measured on the front-month futures.
-  It is **not implied volatility**; Yahoo's option chains need a cookie/crumb
-  handshake and return 401. Do not label it implied.
-- **Convenience yield**: implied from two real contracts on the curve.
-
-Realised volatility is measured on a continuous series, so **rollover gaps can
-inflate it**. Before "fixing" a surprising number, check whether dropping the
-single largest move collapses the estimate — that distinguishes a roll artefact
-from a real move.
-
-Yahoo is an undocumented endpoint. It can break without notice, and its terms
-do not permit redistribution. The app degrades to Alpha Vantage or manual
-entry; keep that fallback path alive.
+| File | Role |
+|---|---|
+| `index.html` | markup only; every input has a stable `id` that `app.js` binds by hand |
+| `styles.css` | light/dark theming via CSS variables |
+| `app.js` | pricing engine, strategy analytics, data providers, rendering |
+| `api/market.js` | serverless futures-data proxy (Vercel) |
+| `test/` | `node --test` suite, no framework |
+| `scripts/serve.js` | dependency-free dev server |
 
 ## Commands
 
 ```bash
-npm test        # the full suite
-npm run dev     # static server on :3000, UI only
-npx vercel dev  # also serves /api
+npm test        # full suite
+npm run dev     # static server on :3000 (UI only, no /api)
+npx vercel dev  # also serves the /api functions
 ```
 
-## Conventions
+**`npm test` must not name a directory.** `node --test test/` breaks on Node 22:
+the runner resolves `test/` as a module and aborts before running anything. The
+script is bare `node --test`, which uses the runner's own discovery. CI runs
+Node 20 and 22 for exactly this reason.
 
-- Greeks are returned in "natural" units: vega per 1 vol point, theta per
-  calendar day, rho per 1 rate point. Keep any new pricer consistent with that.
-- Saved scenarios and share links go through `snapshot()` / `restore()`. When
-  adding a state field, add it to **both**, and decide explicitly what an old
-  saved scenario without the field should mean — `restore()` defaults the
-  exercise style to European for exactly that reason.
-- User-visible text says what a number actually is. The privacy policy and the
-  disclaimer are load-bearing, not decoration.
+## Deployment
+
+Vercel is wired to this GitHub repo through its dashboard — there is no `vercel.json`
+and no `.vercel/` in the tree. **A push to `main` deploys production** in under a
+minute, at https://commodity-options-calculator.vercel.app.
+
+`package.json` deliberately has **no dependencies and no build script**: that is what
+keeps Vercel treating this as a static site with functions. Adding a `build` script
+changes how Vercel deploys it, so do not add one casually.
+
+No server-side environment variables are needed. The optional Alpha Vantage key is
+the user's own and lives only in their browser's local storage — never commit a key.
+
+## Things that are easy to break
+
+**`app.js` has no module system on purpose** so the page still works from a `file://`
+path. Do not convert it to ESM or CommonJS, and do not wrap it in an IIFE. The tests
+load it into a `vm` with a DOM stub and capture its `const` bindings through an
+appended epilogue; if you add a top-level binding the tests need, add it to the
+epilogue in `test/helpers/load-app.js`, or it will be invisible to the suite.
+
+**One pricer, parameterised by cost of carry.** `gbs(kind, S, K, T, r, b, sigma)` is
+generalised Black-Scholes-Merton: `b = 0` gives Black-76 on a futures price, `b = r - q`
+gives BSM on spot. There is no separate Black-76 code path — an earlier version had
+one and it was mispriced. Greek units are deliberate: vega per 1 vol point, theta per
+calendar day, rho per 1 rate point. Keep any new pricer consistent with that.
+
+**American exercise goes through Barone-Adesi-Whaley, not a lattice**, because the
+payoff curve prices ~1200 grid points per leg. The exercise boundary and the premium
+coefficient do not depend on the underlying, so `americanBoundary()` caches them per
+`(kind, K, T, r, b, sigma)` and the grid sweep reuses them. BAW is an approximation:
+`test/american.test.js` carries an independent CRR binomial tree and pins the two
+together — reach for that tree when a price looks wrong. Accuracy is worst for
+long-dated high-volatility contracts; the measured envelope is in that file.
+
+`carryTracksRate()` exists because `b = 0` is both "Black-76" and a legitimate carry
+value, and the rho bump has to tell them apart.
+
+**Dollar multiplier = `size × (quote === 'cents' ? 0.01 : 1)`.** Getting the quoting
+convention wrong rescales the whole position P&L by 100. Grains and softs quote in
+cents; **copper quotes in USD per pound**, which is a trap because CME describes it in
+cents. Yahoo reports `USX` for cents-quoted contracts and the client trusts that over
+the local table.
+
+**Strategy statistics use an economic price grid, not the chart window.** `analyse()`
+scans from a price near zero to well past the highest strike. That is why a long put
+reports a bounded maximum profit and a short put a bounded loss: the underlying cannot
+go below zero. Only the upside is ever "unlimited". Reusing the chart's zoom range
+here silently produces wrong maxima.
+
+**The horizon is the nearest expiry among active legs**, which is what makes calendar
+spreads read correctly — the far leg still holds time value there.
+
+**Legs may price off their own delivery month.** `leg.under` is that leg's own contract
+price; `null` means the panel price. The chart sweeps **one** axis, so `legScenario()`
+moves each month in proportion and `strikeOnAxis()` converts a strike into a point on
+that shared axis. Anything that reasons about strikes against the price axis — grid
+kinks, the stats range, the chart's strike marks — must use `strikeOnAxis()`, not
+`leg.strike`. Getting this wrong puts the payoff kink in the wrong place and lets
+`statsGrid()` miss a bound.
+
+**Hoist per-leg work out of grid sweeps.** `legEntry()` prices an option, and under
+American exercise that is eleven valuations. Calling it inside a 1200-point sweep once
+made a redraw ~8× slower than it needed to be. Use `pnlEvaluator()`, which prepares the
+legs once and returns the curve function. `strategyPnl()` is the un-prepared
+convenience wrapper — fine for a single point, wrong inside a loop.
+
+**Table lookups from user-controlled keys must use `hasOwnProperty`.** State can arrive
+from a shared link, and `CONTRACTS['__proto__']` resolves to `Object.prototype`, which
+is truthy and slipped past the commodity whitelist once already.
+
+**The API function takes a commodity key, never a raw symbol.** Symbols are built from
+the `CONTRACTS` table inside the function. Keep it that way or the endpoint becomes an
+open proxy. The curve endpoint also skips the current (delivery) month and any contract
+that has not traded in seven days — both were real bugs that poisoned the implied carry.
+
+**A price of zero must not reach `Math.log10`.** `strikeStep()` guards it. A half-typed
+price field used to make every derived strike `NaN` and poison the whole curve.
+
+**Never overwrite the field being typed in.** `setField()` skips
+`document.activeElement`; without it, typing `4000.` ate the decimal point and moved
+the caret. `renderLegs()` rebuilds the table body, so it saves and restores focus and
+selection by leg id and field name.
+
+**The legs table commits on blur, not per keystroke.** `legsBody` listens for `change`,
+while the left-hand panel listens for `input`. That is deliberate: `renderLegs()`
+rebuilds the whole tbody, so updating per keystroke fights with typing. A test that
+types into a leg field and reads the result without blurring sees a stale value — that
+is the design, not a bug.
+
+**Saved scenarios and share links go through `snapshot()` / `restore()`.** When adding
+a state field, add it to **both**, and decide explicitly what an old saved scenario
+without the field should mean — `restore()` defaults the exercise style to European for
+exactly that reason, so nobody's recorded numbers move under them.
+
+## Verifying without a local toolchain
+
+The owner's Windows machine has no working node, npx or python, so `npm test` cannot
+run there. CI (`.github/workflows/test.yml`) runs the suite on every push. The repo is
+public, so the Actions API is readable unauthenticated, but **log downloads require
+admin rights (403)** — the workflow therefore re-emits failures as `::error::`
+annotations, readable at `/repos/{owner}/{repo}/check-runs/{job_id}/annotations`.
+Note the API returns pretty-printed JSON: patterns without spaces (`"status":"x"`)
+will not match.
+
+In a cloud environment with node, none of that applies — just run `npm test`.
+
+**Fetch before trusting a local ref.** A cloud session's clone can be behind `origin`,
+and `git log` then shows a stale head while `git cat-file` reports a perfectly real
+commit as "not a valid object name". Run `git fetch --all` before concluding that
+something is missing from the repo.
+
+## Data sources and their limits
+
+- **Risk-free rate**: US Treasury daily par yield curve, CORS-enabled, no key.
+- **Futures prices and history**: Yahoo via `api/market.js`. Undocumented endpoint;
+  its terms do not grant redistribution rights. If it breaks, the app degrades to
+  Alpha Vantage and manual entry — keep that fallback working.
+- **Implied volatility is not available**: Yahoo's option chains need a cookie/crumb
+  handshake and return 401. Everything labelled volatility here is realised
+  (historical) volatility, and the UI says so. Do not present it as implied.
+- Realised vol is measured on the front-month continuous series, so roll gaps can
+  inflate it. Check whether a surprising number is a roll artefact or a real move
+  before "fixing" it — dropping the single largest move and seeing how far the
+  estimate falls distinguishes the two.
+- **Per-leg prices** come from the log slope between two listed contracts,
+  extrapolated to each leg's expiry. That is one observed slope, not a fitted term
+  structure: reasonable across the span a calendar covers, rough past the far
+  contract. The source line says when it extrapolated.
+
+## Known modelling limitations
+
+- **American exercise is approximate.** BAW is a closed form, not an exact lattice.
+  Measured against a 3000-step CRR tree over 300 contracts, the error is a median
+  0.008% of the underlying and 0.58% at its worst, on two-year 60%-vol contracts.
+  Switching to European prices early exercise at zero, which is wrong by up to 2.6%
+  over the same set.
+- **The curve moves in parallel.** Each leg can hold its own price, but the payoff
+  chart shifts every month in proportion, so each month's basis to the reference stays
+  fixed as the price moves. Real curves also change shape; that is not modelled.
+- Volatility is a single number per leg, so there is no smile — a 25-delta risk
+  reversal and butterfly would have to be interpolated per strike.
+- Contract expiries in the curve endpoint are approximated to mid-month. Both
+  contracts use the same convention, so the gap driving the carry stays accurate.
+
+## Tone of the UI
+
+Every market-data value shows its source and as-of date, and preset values are
+labelled "not market data". Keep that honesty when adding inputs: this is a public
+tool that people may price real positions against, and it carries a not-investment-
+advice disclaimer. Say what a number actually is — the privacy policy and the
+disclaimer are load-bearing, not decoration.
