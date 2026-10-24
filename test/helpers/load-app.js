@@ -17,9 +17,12 @@ const EPILOGUE = `
 ;globalThis.__app = {
   state, COMMODITIES, STRATEGIES, PROXY_COMMODITIES,
   normPdf, normCdf, gbs, impliedVol,
-  dollarMultiplier, newLeg, applyStrategy, strikeStep, carry,
-  legValue, legGreeks, activeLegs, legEntry, strategyPnl,
-  netCost, netGreeks, horizonDays, analyse,
+  americanPrice, americanGreeks, americanCritical, priceOption,
+  dollarMultiplier, newLeg, applyStrategy, strikeStep, carry, carryTracksRate,
+  legValue, legGreeks, activeLegs, legEntry, strategyPnl, pnlEvaluator,
+  legUnder, legRatio, legScenario, strikeOnAxis, displayGrid, statsGrid,
+  netCost, netGreeks, horizonDays, analyse, snapshot, restore,
+  forwardDelta, skewVol, legVolPct, scenarioTable,
   rateForTenor, realisedVol, impliedConvenienceYield, proxyAvailable,
   currentCommodity
 };
@@ -49,9 +52,16 @@ function loadApp() {
 /* Reset the shared state object to a known contract before each test. */
 function resetState(app, over) {
   Object.assign(app.state, {
-    commodity: 'gold', model: 'b76', S: 4000, vol: 15, rate: 4, yield: 0.3,
+    commodity: 'gold', model: 'b76', style: 'european',
+    S: 4000, vol: 15, rate: 4, yield: 0.3,
     days: 30, size: 100, quote: 'USD', legs: []
   }, over || {});
+  // Nested state is shared across tests, so reset it rather than letting one
+  // test's skew or scenario settings leak into the next.
+  app.state.skew = { on: false, rr: 0, bf: 0 };
+  app.state.scenario = { volShift: 5, pricePct: 20 };
+  if (over && over.skew) Object.assign(app.state.skew, over.skew);
+  if (over && over.scenario) Object.assign(app.state.scenario, over.scenario);
   return app.state;
 }
 

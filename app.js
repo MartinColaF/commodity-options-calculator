@@ -111,33 +111,227 @@ function gbs(kind, S, K, T, r, b, sigma) {
   return { price, delta, gamma, vega, theta, rho, d1, d2 };
 }
 
-/* Implied volatility: Newton with vega, bisection fallback. */
-function impliedVol(kind, target, S, K, T, r, b) {
-  if (!(target > 0) || !(T > 0)) return NaN;
-  const intrinsic = gbs(kind, S, K, T, r, b, 1e-8).price;
-  if (target < intrinsic - 1e-8) return NaN;
+/* ------------------------------------------------------------
+ * American exercise: Barone-Adesi & Whaley (1987) quadratic
+ * approximation, in the generalised cost-of-carry form.
+ *
+ * Almost every listed commodity futures option is American, and with
+ * b = 0 the early-exercise premium is real on both sides: the futures
+ * margin account earns nothing, so deep in-the-money options are worth
+ * exercising to free the cash. BAW is used rather than a lattice
+ * because the payoff curve prices ~1200 grid points per leg, and the
+ * critical price - the only expensive part - does not depend on the
+ * underlying, so it is solved once and reused across the whole grid.
+ * ---------------------------------------------------------- */
 
-  let sigma = 0.3;
-  for (let i = 0; i < 60; i++) {
-    const o = gbs(kind, S, K, T, r, b, sigma);
-    const diff = o.price - target;
-    if (Math.abs(diff) < 1e-8) return sigma;
-    const vega = o.vega * 100; // per 1.00 of vol
-    if (!(vega > 1e-10)) break;
-    const step = diff / vega;
-    sigma -= Math.max(-0.5, Math.min(0.5, step));
-    if (!(sigma > 0)) { sigma = 1e-4; }
-    if (sigma > 10) { sigma = 10; break; }
+/* Cache the whole exercise boundary per (kind, K, T, r, b, sigma). The payoff
+ * grid sweeps S with everything else fixed, and neither the critical price nor
+ * the BAW coefficient depends on S, so the entire expensive half of the
+ * formula is solved once and reused across the grid. Leaving the coefficient
+ * out of the cache costs an extra closed-form evaluation per grid point, which
+ * is most of the run time of a redraw. */
+const critCache = new Map();
+const CRIT_CACHE_MAX = 512;
+
+/* One-slot memo in front of the Map. A grid sweep varies only S, so this hits
+ * on nearly every call and skips building a string key out of six floats -
+ * which, once the boundary itself was cached, was the dominant cost. */
+const critLast = { kind: null, K: 0, T: 0, r: 0, b: 0, sigma: 0, val: null };
+
+function bawRoots(T, r, b, sigma) {
+  const v2 = sigma * sigma;
+  const M = 2 * r / v2;
+  const N = 2 * b / v2;
+  // 4M/K with K = 1 - e^(-rT). Both go to zero as r -> 0, so use the limit
+  // 8/(sigma^2 T) there instead of dividing 0 by 0.
+  const MK = Math.abs(r) < 1e-10
+    ? 8 / (v2 * T)
+    : 4 * M / (1 - Math.exp(-r * T));
+  const nm1 = N - 1;
+  const disc = Math.sqrt(nm1 * nm1 + MK);
+  const discInf = Math.sqrt(nm1 * nm1 + 4 * M);
+  return {
+    q1: (-nm1 - disc) / 2,
+    q2: (-nm1 + disc) / 2,
+    q1inf: (-nm1 - discInf) / 2,
+    q2inf: (-nm1 + discInf) / 2
+  };
+}
+
+/* Exercise boundary: the underlying price at which early exercise becomes
+ * optimal, plus the power and coefficient of the BAW premium term. Newton on
+ * the value-matching condition, seeded the way Haug recommends. */
+function americanBoundary(kind, K, T, r, b, sigma) {
+  if (critLast.kind === kind && critLast.K === K && critLast.T === T
+    && critLast.r === r && critLast.b === b && critLast.sigma === sigma) {
+    return critLast.val;
   }
-  // Bisection fallback
+  const remember = v => {
+    critLast.kind = kind; critLast.K = K; critLast.T = T;
+    critLast.r = r; critLast.b = b; critLast.sigma = sigma; critLast.val = v;
+    return v;
+  };
+
+  const ck = kind + '|' + K + '|' + T + '|' + r + '|' + b + '|' + sigma;
+  const hit = critCache.get(ck);
+  if (hit !== undefined) return remember(hit);
+
+  const { q1, q2, q1inf, q2inf } = bawRoots(T, r, b, sigma);
+  const sqT = Math.sqrt(T);
+  const eb = Math.exp((b - r) * T);
+  const isCall = kind === 'call';
+  const q = isCall ? q2 : q1;
+  const qInf = isCall ? q2inf : q1inf;
+
+  let Si;
+  if (!isFinite(qInf) || Math.abs(qInf - 1) < 1e-12) {
+    Si = K;
+  } else {
+    const Su = K / (1 - 1 / qInf);
+    if (isCall) {
+      const h = -(b * T + 2 * sigma * sqT) * (K / (Su - K));
+      Si = K + (Su - K) * (1 - Math.exp(h));
+    } else {
+      const h = (b * T - 2 * sigma * sqT) * (K / (K - Su));
+      Si = Su + (K - Su) * Math.exp(h);
+    }
+  }
+  if (!(Si > 0) || !isFinite(Si)) Si = K;
+
+  for (let i = 0; i < 100; i++) {
+    const g = gbs(kind, Si, K, T, r, b, sigma);
+    const nd = normCdf(isCall ? g.d1 : -g.d1);
+    const pdf = normPdf(g.d1);
+    const lhs = isCall ? Si - K : K - Si;
+    const rhs = isCall
+      ? g.price + (1 - eb * nd) * Si / q
+      : g.price - (1 - eb * nd) * Si / q;
+    if (Math.abs(lhs - rhs) / K < 1e-9) break;
+    const bi = isCall
+      ? eb * nd * (1 - 1 / q) + (1 - eb * pdf / (sigma * sqT)) / q
+      : -eb * nd * (1 - 1 / q) - (1 + eb * pdf / (sigma * sqT)) / q;
+    const next = isCall
+      ? (K + rhs - bi * Si) / (1 - bi)
+      : (K - rhs + bi * Si) / (1 + bi);
+    if (!isFinite(next) || next <= 0) break;
+    if (Math.abs(next - Si) < 1e-10 * K) { Si = next; break; }
+    Si = next;
+  }
+
+  // Coefficient of the (S/Si)^q premium term, evaluated at the boundary.
+  const gb = gbs(kind, Si, K, T, r, b, sigma);
+  const A = (isCall ? 1 : -1) * (Si / q) * (1 - eb * normCdf(isCall ? gb.d1 : -gb.d1));
+
+  const out = { Si, q, A };
+  if (critCache.size >= CRIT_CACHE_MAX) critCache.clear();
+  critCache.set(ck, out);
+  return remember(out);
+}
+
+/* The exercise boundary alone. */
+function americanCritical(kind, K, T, r, b, sigma) {
+  return americanBoundary(kind, K, T, r, b, sigma).Si;
+}
+
+/* American price. Falls back to the European value whenever early exercise
+ * cannot be worth anything, and is floored at intrinsic and at the European
+ * price so a non-converged solve can never produce an arbitrageable number. */
+function americanPrice(kind, S, K, T, r, b, sigma) {
+  const isCall = kind === 'call';
+  const intrinsic = Math.max(isCall ? S - K : K - S, 0);
+  if (!(T > 0) || !(sigma > 0) || !(S > 0) || !(K > 0)) return intrinsic;
+
+  const euro = gbs(kind, S, K, T, r, b, sigma).price;
+  // A call is never exercised early when carry pays at least the rate, which
+  // covers Black-Scholes with a convenience yield below the risk-free rate.
+  if (isCall && b >= r) return Math.max(euro, intrinsic);
+
+  const { Si, q, A } = americanBoundary(kind, K, T, r, b, sigma);
+  if (!(Si > 0) || !isFinite(Si)) return Math.max(euro, intrinsic);
+  if (isCall ? S >= Si : S <= Si) return intrinsic;
+
+  const price = euro + A * Math.pow(S / Si, q);
+  return isFinite(price) ? Math.max(price, euro, intrinsic) : Math.max(euro, intrinsic);
+}
+
+/* Greeks of an American option by central differences on the BAW price.
+ * There is no closed form, and the bumps are cheap because the critical
+ * price for each bumped parameter set is cached. Units match gbs(). */
+function americanGreeks(kind, S, K, T, r, b, sigma, bTracksRate) {
+  const P = (s, t, rr, bb, sig) => americanPrice(kind, s, K, t, rr, bb, sig);
+  const price = P(S, T, r, b, sigma);
+  if (!(T > 0) || !(sigma > 0) || !(S > 0) || !(K > 0)) {
+    const euro = gbs(kind, S, K, T, r, b, sigma);
+    return { price, delta: euro.delta, gamma: 0, vega: 0, theta: 0, rho: 0, d1: NaN, d2: NaN };
+  }
+
+  const hS = Math.max(S * 1e-4, 1e-8);
+  const up = P(S + hS, T, r, b, sigma);
+  const dn = P(S - hS, T, r, b, sigma);
+
+  const hV = 5e-4;
+  const hT = Math.min(T / 2, 1 / 365);
+  const hR = 1e-5;
+
+  // Under Black-76 the carry is 0 by construction and a rate bump must not
+  // move it; under cost-of-carry b = r - q, so it moves with the rate. The
+  // caller states which, because b = 0 is also a legitimate carry value.
+  const carries = bTracksRate === true;
+
+  return {
+    price,
+    delta: (up - dn) / (2 * hS),
+    gamma: (up - 2 * price + dn) / (hS * hS),
+    vega: (P(S, T, r, b, sigma + hV) - P(S, T, r, b, sigma - hV)) / (2 * hV) / 100,
+    theta: (P(S, T - hT, r, b, sigma) - P(S, T + hT, r, b, sigma)) / (2 * hT) / 365,
+    rho: (P(S, T, r + hR, carries ? b + hR : b, sigma)
+      - P(S, T, r - hR, carries ? b - hR : b, sigma)) / (2 * hR) / 100,
+    d1: NaN, d2: NaN
+  };
+}
+
+/* Single entry point for both exercise styles. */
+function priceOption(kind, S, K, T, r, b, sigma, style, bTracksRate) {
+  return style === 'american'
+    ? americanGreeks(kind, S, K, T, r, b, sigma, bTracksRate)
+    : gbs(kind, S, K, T, r, b, sigma);
+}
+
+/* Implied volatility: Newton with vega, bisection fallback. Inverts whichever
+ * exercise style priced the option, so an American entry price does not come
+ * back as an inflated European volatility. */
+function impliedVol(kind, target, S, K, T, r, b, style) {
+  if (!(target > 0) || !(T > 0)) return NaN;
+  const px = sigma => style === 'american'
+    ? americanPrice(kind, S, K, T, r, b, sigma)
+    : gbs(kind, S, K, T, r, b, sigma).price;
+
+  if (target < px(1e-8) - 1e-8) return NaN;
+
+  if (style !== 'american') {
+    let sigma = 0.3;
+    for (let i = 0; i < 60; i++) {
+      const o = gbs(kind, S, K, T, r, b, sigma);
+      const diff = o.price - target;
+      if (Math.abs(diff) < 1e-8) return sigma;
+      const vega = o.vega * 100; // per 1.00 of vol
+      if (!(vega > 1e-10)) break;
+      const step = diff / vega;
+      sigma -= Math.max(-0.5, Math.min(0.5, step));
+      if (!(sigma > 0)) { sigma = 1e-4; }
+      if (sigma > 10) { sigma = 10; break; }
+    }
+  }
+  // Bisection fallback, and the only path for American: the BAW price has no
+  // closed-form vega, so a bracketed search is both simpler and safer.
   let lo = 1e-4, hi = 10;
-  if (gbs(kind, S, K, T, r, b, hi).price < target) return NaN;
+  if (px(hi) < target) return NaN;
   for (let i = 0; i < 200; i++) {
     const mid = (lo + hi) / 2;
-    if (gbs(kind, S, K, T, r, b, mid).price < target) lo = mid; else hi = mid;
+    if (px(mid) < target) lo = mid; else hi = mid;
   }
   const out = (lo + hi) / 2;
-  return Math.abs(gbs(kind, S, K, T, r, b, out).price - target) < 1e-4 ? out : NaN;
+  return Math.abs(px(out) - target) < 1e-4 ? out : NaN;
 }
 
 /* ============================================================
@@ -192,6 +386,7 @@ let nextLegId = 1;
 const state = {
   commodity: 'gold',
   model: 'b76',
+  style: 'american',
   S: 4000,
   vol: 15,
   rate: 4.0,
@@ -200,6 +395,8 @@ const state = {
   size: 100,
   quote: 'USD',
   legs: [],
+  skew: { on: false, rr: 0, bf: 0 },
+  scenario: { volShift: 5, pricePct: 20 },
   chart: { mode: 'payoff', tDays: 0, showLegs: true, range: 40 },
   sources: { price: null, rate: null, vol: null, yield: null }
 };
@@ -214,6 +411,7 @@ function newLeg(over) {
     strike: 4200,
     days: 30,         // own expiry, enables calendars
     vol: null,        // null -> use the global vol
+    under: null,      // null -> use the global price; set it for a real curve
     entry: null       // null -> use the theoretical price as the entry cost
   }, over || {});
 }
@@ -284,22 +482,117 @@ function carry() {
   return state.model === 'b76' ? 0 : r - q;
 }
 
-/* Value of one unit of a leg at underlying price P, tDays after today. */
-function legValue(leg, P, tDays) {
-  if (leg.kind === 'underlying') return P;
-  const tau = Math.max(leg.days - tDays, 0) / 365;
-  const sigma = (leg.vol == null ? state.vol : leg.vol) / 100;
-  return gbs(leg.kind, P, leg.strike, tau, state.rate / 100, carry(), sigma).price;
+/* Only the cost-of-carry model ties b to the rate; under Black-76 b is pinned
+ * at 0. The rho bump needs to know which, since b = 0 is a valid carry too. */
+function carryTracksRate() {
+  return state.model !== 'b76';
 }
 
-/* Greeks of one unit of a leg today. */
+/* Today's underlying price for one leg. In a real commodity calendar each
+ * delivery month trades at its own price, so a leg may carry its own; null
+ * means "the contract in the Contract panel". */
+function legUnder(leg) {
+  return leg.under == null || !(leg.under > 0) ? state.S : leg.under;
+}
+
+/* How a leg's own contract moves when the reference contract moves. The chart
+ * sweeps one price axis, so the curve is shifted in proportion - a parallel
+ * move in logs. That keeps every month's basis to the reference constant,
+ * which is the standard first-order assumption and is exact when all the legs
+ * share one contract. */
+function legRatio(leg) {
+  return state.S > 0 ? legUnder(leg) / state.S : 1;
+}
+
+/* A leg's own underlying price when the reference contract is at P. */
+function legScenario(leg, P) {
+  return P * legRatio(leg);
+}
+
+/* ------------------------------------------------------------
+ * Parametric skew (Malz 1997)
+ *
+ * Desks quote a surface as three numbers per expiry: at-the-money
+ * volatility, the 25-delta risk reversal (the call's vol minus the
+ * put's) and the 25-delta butterfly (how far the wings sit above the
+ * middle). This interpolates them into a volatility per strike:
+ *
+ *   sigma(d) = atm - 2*rr*(d - 0.5) + 16*bf*(d - 0.5)^2
+ *
+ * where d is the call's forward delta. The coefficients are what make
+ * it reproduce the quotes exactly: at d = 0.25 it returns
+ * atm + rr/2 + bf, and at d = 0.75, atm - rr/2 + bf - which are the
+ * 25-delta call and put vols those quotes define.
+ * ---------------------------------------------------------- */
+
+/* Forward delta of a call, N(d1). Undiscounted on purpose: skew is quoted
+ * against this, and it stays inside (0, 1) for every input. */
+function forwardDelta(S, K, T, b, sigma) {
+  if (!(T > 0) || !(sigma > 0) || !(S > 0) || !(K > 0)) {
+    return S * Math.exp(b * Math.max(T, 0)) > K ? 1 : 0;
+  }
+  const vt = sigma * Math.sqrt(T);
+  return normCdf((Math.log(S / K) + (b + sigma * sigma / 2) * T) / vt);
+}
+
+/* Volatility for one strike off the skew curve. The delta that selects the
+ * point depends on the volatility being solved for, so iterate: starting from
+ * the at-the-money level this settles in a handful of passes. */
+function skewVol(S, K, T, b, atm, rr, bf) {
+  if (!(atm > 0)) return atm;
+  let sigma = atm;
+  for (let i = 0; i < 40; i++) {
+    const d = forwardDelta(S, K, T, b, sigma) - 0.5;
+    let next = atm - 2 * rr * d + 16 * bf * d * d;
+    // A wide risk reversal can push the far wing negative; clamp rather than
+    // hand a non-positive volatility to the pricer.
+    if (!(next > 1e-4)) next = 1e-4;
+    if (Math.abs(next - sigma) < 1e-10) return next;
+    sigma = next;
+  }
+  return sigma;
+}
+
+/* The volatility one leg prices at, in percent.
+ *
+ * An explicit per-leg volatility always wins. Otherwise, with the skew on,
+ * the leg takes the curve's value for its own strike and expiry; with it off,
+ * the single global number. The surface is read once, at today's price and
+ * the leg's full tenor - sticky strike, so a leg keeps its volatility as the
+ * scenario price moves rather than sliding along the curve. */
+function legVolPct(leg) {
+  if (leg.vol != null) return leg.vol;
+  if (!state.skew.on) return state.vol;
+  return skewVol(legUnder(leg), leg.strike, leg.days / 365, carry(),
+    state.vol / 100, state.skew.rr / 100, state.skew.bf / 100) * 100;
+}
+
+/* Value of one unit of a leg, with the volatility already resolved. */
+function legValueAt(leg, price, tau, sigma) {
+  if (leg.kind === 'underlying') return price;
+  const r = state.rate / 100;
+  return state.style === 'american'
+    ? americanPrice(leg.kind, price, leg.strike, tau, r, carry(), sigma)
+    : gbs(leg.kind, price, leg.strike, tau, r, carry(), sigma).price;
+}
+
+/* Value of one unit of a leg when the reference contract is at P, tDays after
+ * today. volShift moves the whole surface, in vol points. */
+function legValue(leg, P, tDays, volShift) {
+  const tau = Math.max(leg.days - tDays, 0) / 365;
+  const sigma = Math.max(legVolPct(leg) + (volShift || 0), 0) / 100;
+  return legValueAt(leg, legScenario(leg, P), tau, sigma);
+}
+
+/* Greeks of one unit of a leg today. Delta and gamma are quoted against the
+ * leg's own contract, which is what a desk hedges with. */
 function legGreeks(leg) {
   if (leg.kind === 'underlying') {
-    return { price: state.S, delta: 1, gamma: 0, vega: 0, theta: 0, rho: 0 };
+    return { price: legUnder(leg), delta: 1, gamma: 0, vega: 0, theta: 0, rho: 0 };
   }
-  const sigma = (leg.vol == null ? state.vol : leg.vol) / 100;
-  return gbs(leg.kind, state.S, leg.strike, leg.days / 365,
-    state.rate / 100, carry(), sigma);
+  const sigma = legVolPct(leg) / 100;
+  return priceOption(leg.kind, legUnder(leg), leg.strike, leg.days / 365,
+    state.rate / 100, carry(), sigma, state.style, carryTracksRate());
 }
 
 function activeLegs() {
@@ -308,17 +601,41 @@ function activeLegs() {
 
 function legEntry(leg) {
   if (leg.entry != null) return leg.entry;
-  return leg.kind === 'underlying' ? state.S : legGreeks(leg).price;
+  return leg.kind === 'underlying' ? legUnder(leg) : legGreeks(leg).price;
+}
+
+/* Prepared P&L function. The entry cost, the multiplier, the set of active
+ * legs and each leg's volatility are all fixed while a curve is swept, but
+ * legEntry() prices an option to get the theoretical entry - under American
+ * exercise that is eleven valuations - and the skew curve needs an iterative
+ * solve per strike. Recomputing either per grid point dominated every redraw,
+ * so resolve them once and then evaluate the curve.
+ *
+ * volShift moves the whole surface, in vol points, for the scenario table. */
+function pnlEvaluator(volShift) {
+  const mult = dollarMultiplier(currentCommodity());
+  const shift = volShift || 0;
+  const prepared = activeLegs().map(leg => ({
+    leg,
+    weight: leg.side * leg.qty * mult,
+    entry: legEntry(leg),
+    ratio: legRatio(leg),
+    sigma: Math.max(legVolPct(leg) + shift, 0) / 100
+  }));
+  return function (P, tDays) {
+    let pnl = 0;
+    for (const p of prepared) {
+      const tau = Math.max(p.leg.days - tDays, 0) / 365;
+      const v = legValueAt(p.leg, P * p.ratio, tau, p.sigma);
+      pnl += p.weight * (v - p.entry);
+    }
+    return pnl;
+  };
 }
 
 /* Net P&L in currency at underlying price P, tDays from today. */
 function strategyPnl(P, tDays) {
-  const mult = dollarMultiplier(currentCommodity());
-  let pnl = 0;
-  for (const leg of activeLegs()) {
-    pnl += leg.side * leg.qty * mult * (legValue(leg, P, tDays) - legEntry(leg));
-  }
-  return pnl;
+  return pnlEvaluator()(P, tDays);
 }
 
 /* Net cost today: positive = debit paid, negative = credit received. */
@@ -361,14 +678,24 @@ function horizonDays() {
   return Math.min.apply(null, opts.map(l => l.days));
 }
 
+/* Where a leg's strike falls on the reference price axis. A leg on its own
+ * delivery month kinks when *its* contract reaches the strike, which happens
+ * at a different point on the shared axis. */
+function strikeOnAxis(leg) {
+  const ratio = legRatio(leg);
+  return ratio > 0 ? leg.strike / ratio : leg.strike;
+}
+
 /* Grid builder. Strikes are inserted exactly so the payoff kinks stay sharp. */
 function gridBetween(lo, hi, n) {
   const out = [];
   for (let i = 0; i < n; i++) out.push(lo + (hi - lo) * i / (n - 1));
   for (const leg of activeLegs()) {
-    if (leg.kind !== 'underlying' && leg.strike > lo && leg.strike < hi) {
+    if (leg.kind === 'underlying') continue;
+    const k = strikeOnAxis(leg);
+    if (k > lo && k < hi) {
       const eps = (hi - lo) * 1e-7;
-      out.push(leg.strike - eps, leg.strike, leg.strike + eps);
+      out.push(k - eps, k, k + eps);
     }
   }
   return out.sort((a, b) => a - b);
@@ -385,18 +712,71 @@ function displayGrid() {
  * profit and a short put's capped loss are found even when they sit outside
  * the zoom level of the chart. */
 function statsGrid() {
-  const strikes = activeLegs().filter(l => l.kind !== 'underlying').map(l => l.strike);
+  const strikes = activeLegs()
+    .filter(l => l.kind !== 'underlying').map(strikeOnAxis);
   const hi = Math.max(state.S * 4, ...strikes.map(k => k * 2.5));
   return gridBetween(state.S * 1e-6, hi, 1200);
 }
 
+/* Scenario table: position P&L across price, volatility and elapsed time.
+ *
+ * This is the grid a trader reads before putting a position on, so the three
+ * axes are the three things that actually move: where the underlying goes,
+ * what happens to volatility, and how much time passes. Rows are prices,
+ * columns are dates between today and the horizon, and the whole grid is
+ * repeated once per volatility shift.
+ *
+ * One prepared evaluator per volatility shift, because the shift is the only
+ * thing that changes each leg's volatility and therefore its cached exercise
+ * boundary. */
+function scenarioTable() {
+  const t = horizonDays();
+  const pct = Math.max(state.scenario.pricePct, 0) / 100;
+  const shift = Math.abs(state.scenario.volShift);
+
+  const prices = [];
+  for (let i = -3; i <= 3; i++) {
+    prices.push(Math.max(state.S * (1 + pct * i / 3), 0));
+  }
+
+  const days = [];
+  for (let i = 0; i < 5; i++) days.push(Math.round(t * i / 4));
+
+  // Deduplicate: a zero shift, or a horizon of zero days, would otherwise
+  // repeat identical panels and columns.
+  const shifts = shift > 0 ? [-shift, 0, shift] : [0];
+  const cols = days.filter((d, i) => days.indexOf(d) === i);
+
+  const panels = shifts.map(vs => {
+    const pnl = pnlEvaluator(vs);
+    return {
+      volShift: vs,
+      rows: prices.map(p => ({
+        price: p,
+        pct: state.S > 0 ? p / state.S - 1 : 0,
+        cells: cols.map(d => pnl(p, d))
+      }))
+    };
+  });
+
+  let worst = 0;
+  for (const panel of panels) {
+    for (const row of panel.rows) {
+      for (const c of row.cells) if (Math.abs(c) > worst) worst = Math.abs(c);
+    }
+  }
+
+  return { horizon: t, days: cols, panels, worst };
+}
+
 function analyse() {
   const t = horizonDays();
+  const pnl = pnlEvaluator();
   const xs = displayGrid();
-  const ys = xs.map(p => strategyPnl(p, t));
+  const ys = xs.map(p => pnl(p, t));
 
   const wx = statsGrid();
-  const wy = wx.map(p => strategyPnl(p, t));
+  const wy = wx.map(p => pnl(p, t));
   const n = wy.length;
 
   let maxP = -Infinity, minP = Infinity;
@@ -654,6 +1034,7 @@ function setField(id, value) {
 function renderInputs() {
   setField('commodity', state.commodity);
   setField('model', state.model);
+  setField('style', state.style);
   setField('spot', state.S);
   setField('vol', state.vol);
   setField('rate', state.rate);
@@ -661,12 +1042,31 @@ function renderInputs() {
   setField('days', state.days);
   setField('size', state.size);
   setField('quote', state.quote);
+  setField('skewRr', state.skew.rr);
+  setField('skewBf', state.skew.bf);
+  setField('scenPct', state.scenario.pricePct);
+  setField('scenVol', state.scenario.volShift);
+  if ($('skewOn') !== document.activeElement) $('skewOn').checked = state.skew.on;
+
+  $('skewRr').disabled = !state.skew.on;
+  $('skewBf').disabled = !state.skew.on;
+  $('skewNote').textContent = state.skew.on
+    ? 'Malz interpolation: legs with a blank Vol take the curve for their own strike, ' +
+      'read at today\'s price and held as the scenario moves (sticky strike). ' +
+      'Risk reversal is the 25-delta call\'s volatility minus the put\'s; butterfly is ' +
+      'how far both wings sit above the at-the-money level, which is the Volatility field.'
+    : 'Off: every leg with a blank Vol uses the single Volatility number above. Turn it on ' +
+      'to quote a surface as three points instead of typing a volatility per leg.';
 
   const isB76 = state.model === 'b76';
   $('yield').disabled = isB76;
   $('yieldNote').textContent = isB76
     ? 'Not used in Black-76: the futures price already embeds carry and convenience yield.'
     : 'Net convenience yield (benefit of holding the physical, minus storage).';
+
+  $('styleNote').textContent = state.style === 'american'
+    ? 'Barone-Adesi-Whaley approximation. Most listed commodity futures options are American, and on futures the early-exercise premium shows up on calls and puts alike.'
+    : 'Closed-form Black-76 / Black-Scholes-Merton. Exact for European exercise, but it prices the right to exercise early at zero - worth up to ~2.6% of the underlying on a deep in-the-money contract.';
 
   const c = currentCommodity();
   $('spotLabel').textContent = isB76 ? 'Futures price' : 'Spot price';
@@ -716,7 +1116,8 @@ function renderLegs() {
       <td><input type="number" data-f="qty" value="${leg.qty}" min="0" step="1"></td>
       <td><input type="number" data-f="strike" value="${isU ? '' : leg.strike}" ${isU ? 'disabled' : ''} step="any"></td>
       <td><input type="number" data-f="days" value="${isU ? '' : leg.days}" ${isU ? 'disabled' : ''} min="0" step="1"></td>
-      <td><input type="number" data-f="vol" value="${leg.vol == null ? '' : leg.vol}" placeholder="${state.vol}" ${isU ? 'disabled' : ''} step="any"></td>
+      <td><input type="number" data-f="vol" value="${leg.vol == null ? '' : leg.vol}" placeholder="${fmt(legVolPct(leg), 1)}" ${isU ? 'disabled' : ''} step="any"></td>
+      <td><input type="number" data-f="under" value="${leg.under == null ? '' : leg.under}" placeholder="${fmt(state.S, 2)}" step="any" title="This leg's own contract price today. Blank uses the contract in the left panel."></td>
       <td><input type="number" data-f="entry" value="${leg.entry == null ? '' : leg.entry}" placeholder="${fmt(isU ? state.S : g.price, 2)}" step="any"></td>
       <td class="num">${isU ? '-' : fmt(g.price, 2)}</td>
       <td class="num">${fmt(g.delta * leg.side * leg.qty, 3)}</td>
@@ -733,7 +1134,7 @@ function renderLegs() {
     ? { id: ae.closest('tr').dataset.id, f: ae.dataset.f, start: ae.selectionStart, end: ae.selectionEnd }
     : null;
 
-  $('legsBody').innerHTML = body || '<tr><td colspan="12" class="muted">No legs. Add one or pick a strategy.</td></tr>';
+  $('legsBody').innerHTML = body || '<tr><td colspan="13" class="muted">No legs. Add one or pick a strategy.</td></tr>';
 
   if (focus) {
     const el = $('legsBody').querySelector(
@@ -838,9 +1239,10 @@ function renderChart(a) {
       borderColor: col.net, borderWidth: 2, pointRadius: 0, tension: 0
     });
     if (state.chart.tDays < a.t) {
+      const mtm = pnlEvaluator();
       datasets.push({
         label: state.chart.tDays === 0 ? 'Today (mark to market)' : 'In ' + state.chart.tDays + 'd',
-        data: a.xs.map(x => ({ x, y: strategyPnl(x, state.chart.tDays) })),
+        data: a.xs.map(x => ({ x, y: mtm(x, state.chart.tDays) })),
         borderColor: col.now, borderWidth: 2, borderDash: [6, 4], pointRadius: 0, tension: 0
       });
     }
@@ -868,8 +1270,9 @@ function renderChart(a) {
         const w = leg.side * leg.qty;
         if (leg.kind === 'underlying') { if (which === 'delta') v += w; continue; }
         const tau = Math.max(leg.days - tOff, 0) / 365;
-        const sigma = (leg.vol == null ? state.vol : leg.vol) / 100;
-        const g = gbs(leg.kind, x, leg.strike, tau, state.rate / 100, carry(), sigma);
+        const sigma = legVolPct(leg) / 100;
+        const g = priceOption(leg.kind, legScenario(leg, x), leg.strike, tau,
+          state.rate / 100, carry(), sigma, state.style, carryTracksRate());
         v += w * g[which];
       }
       return { x, y: v * mult };
@@ -879,9 +1282,11 @@ function renderChart(a) {
     });
   }
 
+  // Marks sit where the leg's payoff actually kinks on the shared axis, which
+  // is not the strike itself once a leg trades on its own delivery month.
   const lines = activeLegs()
     .filter(l => l.kind !== 'underlying')
-    .map(l => ({ value: l.strike, color: col.strike, label: 'K ' + fmt(l.strike, 0) }));
+    .map(l => ({ value: strikeOnAxis(l), color: col.strike, label: 'K ' + fmt(l.strike, 0) }));
   lines.push({ value: state.S, color: col.spot, label: 'Now', dash: [2, 2] });
 
   const cfg = {
@@ -924,11 +1329,78 @@ function renderChart(a) {
   chart = new Chart($('payoffChart').getContext('2d'), cfg);
 }
 
+/* Scenario grid. Cells are shaded by size relative to the biggest absolute
+ * number in the whole table, so the eye finds the cliff without reading every
+ * figure. */
+function renderScenarios() {
+  const s = scenarioTable();
+  const legs = activeLegs().filter(l => l.kind !== 'underlying');
+  if (!activeLegs().length) {
+    $('scenarios').innerHTML = '<p class="note">Add a leg to see the scenario grid.</p>';
+    return;
+  }
+
+  const shade = v => {
+    if (!isFinite(v) || !s.worst) return '';
+    const a = (Math.abs(v) / s.worst * 0.5).toFixed(3);
+    return ' style="background:rgba(' + (v >= 0 ? '32,140,96' : '190,60,48') + ',' + a + ')"';
+  };
+
+  const panels = s.panels.map(panel => {
+    const head = s.days.map(d =>
+      '<th class="num">' + (d === 0 ? 'Today' : d + 'd') + '</th>').join('');
+    const rows = panel.rows.slice().reverse().map(r => {
+      const label = fmt(r.price, 2) +
+        ' <span class="muted">(' + (r.pct >= 0 ? '+' : '') + fmt(r.pct * 100, 0) + '%)</span>';
+      const cells = r.cells.map(c =>
+        '<td class="num"' + shade(c) + '>' + money(c) + '</td>').join('');
+      return '<tr><th class="rowhead">' + label + '</th>' + cells + '</tr>';
+    }).join('');
+
+    const title = panel.volShift === 0
+      ? 'Volatility unchanged'
+      : 'Volatility ' + (panel.volShift > 0 ? '+' : '') + panel.volShift + ' points';
+    return '<div class="scenario-panel"><h3>' + title + '</h3>' +
+      '<div class="table-scroll"><table class="scenario"><thead><tr>' +
+      '<th>Underlying</th>' + head + '</tr></thead><tbody>' + rows +
+      '</tbody></table></div></div>';
+  }).join('');
+
+  const note = legs.length
+    ? 'P&L at each date assumes the volatility shift happens immediately and holds. ' +
+      'The last column is the nearest expiry among your legs (' + s.horizon + ' days).'
+    : 'Only the underlying is in the position, so volatility and time do nothing.';
+
+  $('scenarios').innerHTML = panels + '<p class="note">' + escapeHtml(note) + '</p>';
+}
+
+/* Chart.js is the one thing on the page loaded from a CDN. An ad blocker or a
+ * CDN outage must not take the rest of the page down with it: the results, the
+ * scenario grid and the saved state all live after the chart in the render
+ * order and are worth more than the picture. */
+let chartBroken = false;
+
+function renderChartSafely(a) {
+  if (chartBroken) return;
+  try {
+    renderChart(a);
+  } catch (e) {
+    chartBroken = true;
+    const box = $('payoffChart') && $('payoffChart').closest('.chart-box');
+    if (box) {
+      box.innerHTML = '<p class="note">The chart library could not be loaded, so the ' +
+        'payoff graph is unavailable. Everything else on this page still works - the ' +
+        'numbers below and the scenario grid are computed locally.</p>';
+    }
+  }
+}
+
 function renderAll() {
   renderInputs();
   renderLegs();
   const a = renderResults();
-  renderChart(a);
+  renderChartSafely(a);
+  renderScenarios();
   renderSources();
   persist();
 }
@@ -943,12 +1415,15 @@ function persist() {
 
 function snapshot() {
   return {
-    commodity: state.commodity, model: state.model, S: state.S, vol: state.vol,
+    commodity: state.commodity, model: state.model, style: state.style,
+    S: state.S, vol: state.vol,
     rate: state.rate, yield: state.yield, days: state.days, size: state.size,
     quote: state.quote, chart: state.chart,
+    skew: { on: state.skew.on, rr: state.skew.rr, bf: state.skew.bf },
+    scenario: { volShift: state.scenario.volShift, pricePct: state.scenario.pricePct },
     legs: state.legs.map(l => ({
       on: l.on, side: l.side, kind: l.kind, qty: l.qty,
-      strike: l.strike, days: l.days, vol: l.vol, entry: l.entry
+      strike: l.strike, days: l.days, vol: l.vol, under: l.under, entry: l.entry
     }))
   };
 }
@@ -958,7 +1433,22 @@ function restore(o) {
   ['commodity', 'model', 'S', 'vol', 'rate', 'yield', 'days', 'size', 'quote'].forEach(k => {
     if (o[k] != null) state[k] = o[k];
   });
+  // Scenarios saved before American exercise existed were priced as European,
+  // so restore them that way rather than silently repricing someone's numbers.
+  state.style = o.style === 'american' || o.style === 'european' ? o.style : 'european';
   if (o.chart) Object.assign(state.chart, o.chart);
+  // Like the exercise style: a scenario saved before the surface existed was
+  // priced on one flat volatility, so restore it that way instead of applying
+  // a skew it never had.
+  state.skew.on = !!(o.skew && o.skew.on === true);
+  if (o.skew) {
+    if (isFinite(o.skew.rr)) state.skew.rr = o.skew.rr;
+    if (isFinite(o.skew.bf)) state.skew.bf = o.skew.bf;
+  }
+  if (o.scenario) {
+    if (isFinite(o.scenario.volShift)) state.scenario.volShift = o.scenario.volShift;
+    if (isFinite(o.scenario.pricePct)) state.scenario.pricePct = o.scenario.pricePct;
+  }
   if (Array.isArray(o.legs)) state.legs = o.legs.map(l => newLeg(l));
   return true;
 }
@@ -1108,6 +1598,43 @@ async function applyCurveYield() {
   return `convenience yield ${state.yield}% from the curve`;
 }
 
+/* Price every leg at its own delivery month, from the listed curve.
+ *
+ * Two contracts give the curve's log slope; each leg's expiry is then priced
+ * along it. That is an extrapolation of a single observed slope, not a fitted
+ * term structure - honest for the two- or three-month span a calendar spread
+ * usually covers, and increasingly rough beyond the far contract. */
+async function applyLegPrices() {
+  const opts = state.legs.filter(l => l.kind !== 'underlying');
+  if (!opts.length) throw new Error('add an option leg first');
+
+  const c = await proxyGet('curve', state.commodity, 60 * 60e3);
+  const near = c.contracts[0], far = c.contracts[1];
+  const gapDays = Math.round((new Date(far.expiry) - new Date(near.expiry)) / 86400e3);
+  if (!(gapDays > 0) || !(near.price > 0) || !(far.price > 0)) {
+    throw new Error('the two contracts did not give a usable spread');
+  }
+  const slope = Math.log(far.price / near.price) / (gapDays / 365);
+
+  let furthest = 0;
+  for (const leg of opts) {
+    leg.under = +(state.S * Math.exp(slope * leg.days / 365)).toFixed(4);
+    if (leg.days > furthest) furthest = leg.days;
+  }
+
+  const pct = (slope * 100).toFixed(2);
+  const beyond = furthest > gapDays
+    ? `, extrapolated past the ${gapDays}d observed span for the ${furthest}d leg`
+    : '';
+  state.sources.price = {
+    live: true,
+    text: `${fmt(state.S, 2)} front month; legs priced along the curve at ` +
+      `${pct}%/yr from ${near.name || near.symbol} ${fmt(near.price, 2)} vs ` +
+      `${far.name || far.symbol} ${fmt(far.price, 2)}${beyond}`
+  };
+  return `leg prices from a ${pct}%/yr curve`;
+}
+
 /* One button that fills everything it can, reporting each field separately. */
 async function actionAutoFill() {
   setStatus('Fetching market data...', 'busy');
@@ -1195,10 +1722,15 @@ function bindInputs() {
    * half-typed, so clearing a field does not zero out the whole model. */
   const simple = {
     model: el => { state.model = el.value; },
+    style: el => { state.style = el.value; },
     spot: el => { state.S = num(el, state.S); },
     vol: el => { state.vol = num(el, state.vol); },
     rate: el => { state.rate = num(el, state.rate); },
     yield: el => { state.yield = num(el, state.yield); },
+    skewRr: el => { state.skew.rr = num(el, state.skew.rr); },
+    skewBf: el => { state.skew.bf = num(el, state.skew.bf); },
+    scenPct: el => { state.scenario.pricePct = num(el, state.scenario.pricePct); },
+    scenVol: el => { state.scenario.volShift = num(el, state.scenario.volShift); },
     days: el => {
       const old = state.days;
       state.days = Math.max(0, num(el, state.days));
@@ -1265,6 +1797,11 @@ function bindInputs() {
   $('fetchRate').addEventListener('click', runAction('Risk-free rate', applyRate));
   $('fetchVol').addEventListener('click', runAction('Volatility', applyVol));
   $('fetchCurve').addEventListener('click', runAction('Convenience yield', applyCurveYield));
+  $('fillLegPrices').addEventListener('click', runAction('Leg prices', applyLegPrices));
+  $('skewOn').addEventListener('change', e => {
+    state.skew.on = e.target.checked;
+    renderAll();
+  });
   $('implyYield').addEventListener('click', actionImplyYield);
   $('usePreset').addEventListener('click', actionApplyPreset);
 
@@ -1330,7 +1867,7 @@ function onLegEvent(e) {
       return;
     }
     const iv = impliedVol(leg.kind, target, state.S, leg.strike, leg.days / 365,
-      state.rate / 100, carry());
+      state.rate / 100, carry(), state.style);
     if (!isFinite(iv)) {
       setStatus('No implied volatility solves that premium (check the price and the strike).', 'err');
       return;
@@ -1350,6 +1887,7 @@ function onLegEvent(e) {
     case 'strike': leg.strike = num(el, leg.strike); break;
     case 'days': leg.days = Math.max(0, num(el, leg.days)); break;
     case 'vol': leg.vol = el.value.trim() === '' ? null : num(el, null); break;
+    case 'under': leg.under = el.value.trim() === '' ? null : num(el, null); break;
     case 'entry': leg.entry = el.value.trim() === '' ? null : num(el, null); break;
   }
   renderAll();
