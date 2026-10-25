@@ -186,6 +186,13 @@ test('an underlying leg is cleared along with the option legs', () => {
  * ---------------------------------------------------------------- */
 const iso = d => new Date(Date.now() + d * 86400e3).toISOString().slice(0, 10);
 
+/* The strip's anchors are read from the clock, and the test reads it a moment
+ * before the code does, so the two disagree by however long passes between
+ * them. On a 100-day segment that drift costs about 1.1e-9 of price per
+ * millisecond: 1e-9 tolerates under a millisecond and did flake, while this
+ * absorbs most of a second and is still a relative error of 1e-8. */
+const STRIP_TOL = 1e-6;
+
 function setStrip(rows) {
   app.__setContractMonths(rows.map(([sym, price, days]) => ({
     symbol: sym, name: sym, price, currency: 'USD', expiry: iso(days)
@@ -199,11 +206,11 @@ test('the strip interpolates log-linearly between two real quotes', () => {
   // point of this test is the interpolation, not that arithmetic.
   const ta = app.daysUntil(iso(100)), tb = app.daysUntil(iso(200));
 
-  near(app.forwardFromStrip(ta), 100, 1e-9, 'left anchor');
-  near(app.forwardFromStrip(tb), 110, 1e-9, 'right anchor');
+  near(app.forwardFromStrip(ta), 100, STRIP_TOL, 'left anchor');
+  near(app.forwardFromStrip(tb), 110, STRIP_TOL, 'right anchor');
   // Half way in time sits at the geometric mean, not the arithmetic one: the
   // curve's shape is a carry rate, so logs are the right space to walk in.
-  near(app.forwardFromStrip((ta + tb) / 2), Math.sqrt(100 * 110), 1e-9,
+  near(app.forwardFromStrip((ta + tb) / 2), Math.sqrt(100 * 110), STRIP_TOL,
     'midpoint is the geometric mean');
 });
 
@@ -220,8 +227,8 @@ test('outside the strip it extends the nearest real segment', () => {
   const span = tb - ta;
   // One more segment-length past the end repeats the same log slope, so the
   // price multiplies by the same factor again.
-  near(app.forwardFromStrip(tb + span), 110 * (110 / 100), 1e-9, 'past the far end');
-  near(app.forwardFromStrip(ta - span), 100 / (110 / 100), 1e-9, 'before the near end');
+  near(app.forwardFromStrip(tb + span), 110 * (110 / 100), STRIP_TOL, 'past the far end');
+  near(app.forwardFromStrip(ta - span), 100 / (110 / 100), STRIP_TOL, 'before the near end');
 });
 
 test('backwardation interpolates downward, contango upward', () => {
@@ -247,6 +254,6 @@ test('a contract with no price is dropped rather than poisoning the curve', () =
     { symbol: 'B', name: 'B', price: 110, expiry: iso(200) }
   ]);
   const ta = app.daysUntil(iso(100)), tb = app.daysUntil(iso(200));
-  near(app.forwardFromStrip((ta + tb) / 2), Math.sqrt(100 * 110), 1e-9,
+  near(app.forwardFromStrip((ta + tb) / 2), Math.sqrt(100 * 110), STRIP_TOL,
     'the zero-priced month must not drag the curve to zero');
 });

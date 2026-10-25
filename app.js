@@ -1689,9 +1689,15 @@ function clearLegPrices() {
   }
 }
 
-/* Days from today to a contract's (mid-month approximated) expiry. */
-function daysUntil(isoDate) {
-  return (new Date(isoDate + 'T00:00:00Z') - Date.now()) / 86400e3;
+/* Days from now to a contract's (mid-month approximated) expiry.
+ *
+ * `nowMs` is explicit so one pass over the strip measures every contract
+ * against the same instant. Letting each call read its own clock put the
+ * anchors microseconds apart, which is harmless in price terms but makes the
+ * curve subtly non-reproducible for the same inputs. */
+function daysUntil(isoDate, nowMs) {
+  const now = nowMs === undefined ? Date.now() : nowMs;
+  return (new Date(isoDate + 'T00:00:00Z') - now) / 86400e3;
 }
 
 /* The forward price `days` out, read off the loaded strip.
@@ -1703,9 +1709,10 @@ function daysUntil(isoDate) {
  * front of the curve. Returns null when the strip is too thin to say
  * anything. */
 function forwardFromStrip(days) {
+  const now = Date.now();
   const pts = contractMonths
     .filter(c => c.price > 0)
-    .map(c => ({ t: daysUntil(c.expiry), p: c.price }))
+    .map(c => ({ t: daysUntil(c.expiry, now), p: c.price }))
     .sort((a, b) => a.t - b.t);
   if (pts.length < 2) return pts.length === 1 ? pts[0].p : null;
 
@@ -1727,7 +1734,8 @@ function forwardFromStrip(days) {
  * the two-contract slope whenever the strip is in hand, because interpolating
  * between real quotes beats extrapolating one slope measured at the front. */
 function fillLegsFromStrip(opts) {
-  const pts = contractMonths.filter(c => c.price > 0).map(c => daysUntil(c.expiry));
+  const now = Date.now();
+  const pts = contractMonths.filter(c => c.price > 0).map(c => daysUntil(c.expiry, now));
   // Expiries are approximated to mid-month, so a leg within a couple of weeks
   // of the last contract is effectively on it. Flagging those as extrapolated
   // would cry wolf on the common case of a leg expiring at the last listed
