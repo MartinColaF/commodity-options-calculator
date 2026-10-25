@@ -18,6 +18,11 @@ open `index.html` or serve the folder.
   Per-leg volatility (skew), per-leg expiry (calendars) and **per-leg underlying
   price** are supported: in a real commodity calendar each delivery month trades
   at its own price, and one button fills each leg from the listed futures curve.
+- **Contract months** — load the listed strip for a commodity and price against one
+  specific delivery month, which is what an option quote on a broker's screen refers
+  to. The continuous front-month series stays the default. With the strip loaded, the
+  per-leg fill interpolates between real quotes instead of extrapolating a single
+  slope measured at the front of the curve.
 - **Payoff chart** — P&L at the nearest expiry plus a mark-to-market curve for any
   date in between, individual leg overlays, strike and spot markers. The same chart
   also plots delta / gamma / vega / theta profiles across underlying prices.
@@ -74,12 +79,12 @@ Notes and limitations, stated plainly in the UI as well:
   with spot; that is not modelled. The risk reversal and butterfly are inputs you
   supply, not market data: the tool cannot see a real option chain.
 - Presets are long-run typical values, flagged in the UI as "not market data".
-- Per-leg prices come from the slope between two listed contracts, extrapolated
-  to each leg's expiry — one observed slope, not a fitted term structure. It is
-  reasonable across the span a calendar usually covers and gets rough past the
-  far contract; the source line says when it extrapolated. The payoff chart then
-  shifts every month in proportion, so each month's basis to the reference
-  stays fixed as the price moves.
+- Per-leg prices interpolate across the listed strip when it has been loaded, and
+  otherwise fall back to the slope between two contracts. Either way the points are
+  real quotes and everything between them is an estimate; past the last listed month
+  it is an extrapolation, and the source line says so. Contract expiries are
+  approximated to mid-month. The payoff chart then shifts every month in proportion,
+  so each month's basis to the reference stays fixed as the price moves.
 - American prices are a closed-form approximation, not an exact lattice. Measured
   against a 3000-step binomial tree over 300 contracts (both types, one month to
   two years, strikes 0.8–1.25 of spot, vol 15–60%, rates 2–8%), the error is a

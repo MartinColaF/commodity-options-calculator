@@ -387,6 +387,7 @@ const state = {
   commodity: 'gold',
   model: 'b76',
   style: 'american',
+  contractMonth: '',   // '' = the continuous front-month series
   S: 4000,
   vol: 15,
   rate: 4.0,
@@ -1139,6 +1140,14 @@ function renderLegs() {
   // Show the way out before it is needed: the button sits there greyed until a
   // leg actually carries its own price, then lights up.
   $('clearLegPrices').disabled = !state.legs.some(l => l.under != null);
+  $('monthNote').textContent = contractMonths.length
+    ? (state.contractMonth
+      ? 'Pricing against one listed contract. "Fill leg prices" now interpolates between these ' +
+        contractMonths.length + ' real quotes instead of extrapolating a single slope.'
+      : 'Listed months loaded. Pick one to price against that specific contract, which is what ' +
+        'an option quote on a broker\'s screen refers to.')
+    : 'The continuous front-month series by default. Load the listed months to price against one ' +
+      'specific delivery month - which is what an option quote on a broker\'s screen refers to.';
 
   if (focus) {
     const el = $('legsBody').querySelector(
@@ -1602,6 +1611,59 @@ async function applyCurveYield() {
   return `convenience yield ${state.yield}% from the curve`;
 }
 
+/* The listed contract strip for the selected commodity, newest fetch wins.
+ * Not persisted: these are live quotes, and a stale strip in a shared link
+ * would be worse than none. Cleared whenever the commodity changes. */
+let contractMonths = [];
+
+function monthLabel(c) {
+  const name = c.name || c.symbol;
+  return name + ' - ' + fmt(c.price, 2);
+}
+
+/* Fill the picker from whatever the strip holds. The empty value is the
+ * continuous front-month series, which stays the default. */
+function renderMonths() {
+  const sel = $('contractMonth');
+  const current = state.contractMonth || '';
+  const opts = ['<option value="">Front month (continuous)</option>'].concat(
+    contractMonths.map(c =>
+      '<option value="' + escapeHtml(c.symbol) + '">' + escapeHtml(monthLabel(c)) + '</option>')
+  );
+  sel.innerHTML = opts.join('');
+  // Keep the selection if the symbol is still in the strip; otherwise fall
+  // back to the continuous series rather than silently picking another month.
+  sel.value = contractMonths.some(c => c.symbol === current) ? current : '';
+  if (sel.value !== current) state.contractMonth = '';
+}
+
+async function loadContractMonths() {
+  const c = await proxyGet('months', state.commodity, 60 * 60e3);
+  if (!c.contracts || !c.contracts.length) throw new Error('no listed contract quoted');
+  contractMonths = c.contracts;
+  renderMonths();
+  return contractMonths.length + ' listed months loaded';
+}
+
+/* Price the panel against one specific delivery month. */
+function useContractMonth(symbol) {
+  state.contractMonth = symbol || '';
+  const hit = contractMonths.find(c => c.symbol === symbol);
+  if (!hit) {
+    // Back to the continuous series: leave the price alone, since we have no
+    // front-month quote in hand, but stop claiming it belongs to a month.
+    state.sources.price = null;
+    return;
+  }
+  state.S = hit.price;
+  state.sources.price = {
+    live: true,
+    text: `${hit.name || hit.symbol} ${fmt(hit.price, 2)} ${hit.currency || ''}`.trim() +
+      (hit.asOf ? `, ${hit.asOf.slice(0, 10)}` : '') +
+      ' - one listed contract, not the continuous series'
+  };
+}
+
 /* Price every leg at its own delivery month, from the listed curve.
  *
  * Two contracts give the curve's log slope; each leg's expiry is then priced
@@ -1627,9 +1689,87 @@ function clearLegPrices() {
   }
 }
 
+/* Days from today to a contract's (mid-month approximated) expiry. */
+function daysUntil(isoDate) {
+  return (new Date(isoDate + 'T00:00:00Z') - Date.now()) / 86400e3;
+}
+
+/* The forward price `days` out, read off the loaded strip.
+ *
+ * Log-linear between the two contracts that bracket the date, which is the
+ * right space for a curve whose shape is a carry rate. Past either end it
+ * extends the nearest segment's slope - still an extrapolation, but anchored
+ * on the two closest real quotes rather than on one slope measured at the
+ * front of the curve. Returns null when the strip is too thin to say
+ * anything. */
+function forwardFromStrip(days) {
+  const pts = contractMonths
+    .filter(c => c.price > 0)
+    .map(c => ({ t: daysUntil(c.expiry), p: c.price }))
+    .sort((a, b) => a.t - b.t);
+  if (pts.length < 2) return pts.length === 1 ? pts[0].p : null;
+
+  // The segment bracketing the date, clamped to the end segments outside the
+  // strip so those extend the nearest real slope.
+  let lo = 0;
+  if (days >= pts[pts.length - 1].t) {
+    lo = pts.length - 2;
+  } else {
+    while (lo < pts.length - 2 && days > pts[lo + 1].t) lo++;
+  }
+  const a = pts[lo], b = pts[lo + 1];
+  if (!(b.t - a.t)) return a.p;
+  const w = (days - a.t) / (b.t - a.t);
+  return Math.exp(Math.log(a.p) + w * (Math.log(b.p) - Math.log(a.p)));
+}
+
+/* Price every leg from the loaded strip of listed contracts. Used in place of
+ * the two-contract slope whenever the strip is in hand, because interpolating
+ * between real quotes beats extrapolating one slope measured at the front. */
+function fillLegsFromStrip(opts) {
+  const pts = contractMonths.filter(c => c.price > 0).map(c => daysUntil(c.expiry));
+  // Expiries are approximated to mid-month, so a leg within a couple of weeks
+  // of the last contract is effectively on it. Flagging those as extrapolated
+  // would cry wolf on the common case of a leg expiring at the last listed
+  // month.
+  const furthestQuote = Math.max.apply(null, pts) + 15;
+  let beyond = 0;
+  for (const leg of opts) {
+    const f = forwardFromStrip(leg.days);
+    if (f == null || !(f > 0)) continue;
+    leg.under = +f.toFixed(4);
+    if (leg.days > furthestQuote && leg.days > beyond) beyond = leg.days;
+  }
+  const first = contractMonths[0], last = contractMonths[contractMonths.length - 1];
+  const tail = beyond
+    ? `, extrapolated past the last listed month for the ${beyond}d leg`
+    : '';
+  return {
+    live: true,
+    text: `legs interpolated across ${contractMonths.length} listed contracts, ` +
+      `${first.name || first.symbol} ${fmt(first.price, 2)} to ` +
+      `${last.name || last.symbol} ${fmt(last.price, 2)}${tail}`
+  };
+}
+
 async function applyLegPrices() {
   const opts = state.legs.filter(l => l.kind !== 'underlying');
   if (!opts.length) throw new Error('add an option leg first');
+
+  // Remember what the price source said before this overwrote it, but only on
+  // the first fill: a second fill must not record its own text as the thing to
+  // restore to.
+  const remember = () => {
+    if (!legPricesFilled) priceSourceBeforeFill = state.sources.price;
+    legPricesFilled = true;
+  };
+
+  // With the listed strip in hand, interpolate between real quotes.
+  if (contractMonths.length >= 2) {
+    remember();
+    state.sources.price = fillLegsFromStrip(opts);
+    return `leg prices from ${contractMonths.length} listed contracts`;
+  }
 
   const c = await proxyGet('curve', state.commodity, 60 * 60e3);
   const near = c.contracts[0], far = c.contracts[1];
@@ -1645,11 +1785,7 @@ async function applyLegPrices() {
     if (leg.days > furthest) furthest = leg.days;
   }
 
-  // Remember what the price source said before this overwrote it, but only on
-  // the first fill: a second fill must not record its own text as the thing to
-  // restore to.
-  if (!legPricesFilled) priceSourceBeforeFill = state.sources.price;
-  legPricesFilled = true;
+  remember();
 
   const pct = (slope * 100).toFixed(2);
   const beyond = furthest > gapDays
@@ -1748,7 +1884,18 @@ function num(el, fallback) {
 function bindInputs() {
   $('commodity').addEventListener('change', e => {
     state.commodity = e.target.value;
+    // The strip belongs to the old commodity; keeping it would offer cocoa
+    // months while pricing gold.
+    contractMonths = [];
+    state.contractMonth = '';
+    renderMonths();
     actionApplyPreset();
+  });
+
+  $('loadMonths').addEventListener('click', runAction('Contract months', loadContractMonths));
+  $('contractMonth').addEventListener('change', e => {
+    useContractMonth(e.target.value);
+    renderAll();
   });
 
   /* Each handler keeps the previous value when the box is momentarily empty or

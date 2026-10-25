@@ -174,10 +174,16 @@ something is missing from the repo.
   inflate it. Check whether a surprising number is a roll artefact or a real move
   before "fixing" it — dropping the single largest move and seeing how far the
   estimate falls distinguishes the two.
-- **Per-leg prices** come from the log slope between two listed contracts,
-  extrapolated to each leg's expiry. That is one observed slope, not a fitted term
-  structure: reasonable across the span a calendar covers, rough past the far
-  contract. The source line says when it extrapolated.
+- **The listed strip** (`fn=months`) is the whole set of contracts that quote,
+  nearest first. It lives in the module-level `contractMonths`, is **not persisted**
+  (a stale strip in a shared link is worse than none), and is dropped whenever the
+  commodity changes — otherwise the picker offers cocoa months while pricing gold.
+- **Per-leg prices** interpolate log-linearly across that strip when it is loaded,
+  and fall back to the two-contract slope (`fn=curve`) when it is not. Logs are the
+  right space: the curve's shape is a carry rate, so the midpoint of a segment is the
+  geometric mean of its ends. Outside the strip the nearest segment's slope is
+  extended, which is still extrapolation but anchored on the two closest real quotes.
+  The source line says which path ran and when it went past the last listed month.
 
 ## Known modelling limitations
 

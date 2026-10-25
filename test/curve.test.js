@@ -177,3 +177,76 @@ test('an underlying leg is cleared along with the option legs', () => {
   assert.ok(state.legs.every(l => l.under === null), 'every leg is back on the panel price');
   assert.strictEqual(app.legUnder(state.legs[1]), 100);
 });
+
+/* ------------------------------------------------------------------
+ * Interpolating across the listed strip.
+ *
+ * These reach the module-level `contractMonths` through the VM's globals,
+ * which is where the loaded strip lives.
+ * ---------------------------------------------------------------- */
+const iso = d => new Date(Date.now() + d * 86400e3).toISOString().slice(0, 10);
+
+function setStrip(rows) {
+  app.__setContractMonths(rows.map(([sym, price, days]) => ({
+    symbol: sym, name: sym, price, currency: 'USD', expiry: iso(days)
+  })));
+}
+
+test('the strip interpolates log-linearly between two real quotes', () => {
+  setStrip([['A', 100, 100], ['B', 110, 200]]);
+  // Ask the code where its own anchors sit: a date string truncates to
+  // midnight, so "100 days out" is not exactly 100.0 days from now, and the
+  // point of this test is the interpolation, not that arithmetic.
+  const ta = app.daysUntil(iso(100)), tb = app.daysUntil(iso(200));
+
+  near(app.forwardFromStrip(ta), 100, 1e-9, 'left anchor');
+  near(app.forwardFromStrip(tb), 110, 1e-9, 'right anchor');
+  // Half way in time sits at the geometric mean, not the arithmetic one: the
+  // curve's shape is a carry rate, so logs are the right space to walk in.
+  near(app.forwardFromStrip((ta + tb) / 2), Math.sqrt(100 * 110), 1e-9,
+    'midpoint is the geometric mean');
+});
+
+test('a date lands on the contract that quotes it', () => {
+  setStrip([['DEC', 5000, 45], ['MAR', 4900, 136], ['JUL', 4800, 258]]);
+  near(app.forwardFromStrip(45), 5000, 1, 'December');
+  near(app.forwardFromStrip(136), 4900, 1, 'March');
+  near(app.forwardFromStrip(258), 4800, 1, 'July');
+});
+
+test('outside the strip it extends the nearest real segment', () => {
+  setStrip([['A', 100, 100], ['B', 110, 200]]);
+  const ta = app.daysUntil(iso(100)), tb = app.daysUntil(iso(200));
+  const span = tb - ta;
+  // One more segment-length past the end repeats the same log slope, so the
+  // price multiplies by the same factor again.
+  near(app.forwardFromStrip(tb + span), 110 * (110 / 100), 1e-9, 'past the far end');
+  near(app.forwardFromStrip(ta - span), 100 / (110 / 100), 1e-9, 'before the near end');
+});
+
+test('backwardation interpolates downward, contango upward', () => {
+  setStrip([['A', 5000, 50], ['B', 4800, 250]]);
+  const mid = app.forwardFromStrip(150);
+  assert.ok(mid < 5000 && mid > 4800, `backwardation midpoint out of range: ${mid}`);
+  setStrip([['A', 5000, 50], ['B', 5200, 250]]);
+  const up = app.forwardFromStrip(150);
+  assert.ok(up > 5000 && up < 5200, `contango midpoint out of range: ${up}`);
+});
+
+test('a strip too thin to interpolate says so instead of guessing', () => {
+  setStrip([]);
+  assert.strictEqual(app.forwardFromStrip(100), null, 'no contracts');
+  setStrip([['ONLY', 4321, 90]]);
+  assert.strictEqual(app.forwardFromStrip(400), 4321, 'one contract is flat');
+});
+
+test('a contract with no price is dropped rather than poisoning the curve', () => {
+  app.__setContractMonths([
+    { symbol: 'A', name: 'A', price: 100, expiry: iso(100) },
+    { symbol: 'DEAD', name: 'DEAD', price: 0, expiry: iso(150) },
+    { symbol: 'B', name: 'B', price: 110, expiry: iso(200) }
+  ]);
+  const ta = app.daysUntil(iso(100)), tb = app.daysUntil(iso(200));
+  near(app.forwardFromStrip((ta + tb) / 2), Math.sqrt(100 * 110), 1e-9,
+    'the zero-priced month must not drag the curve to zero');
+});

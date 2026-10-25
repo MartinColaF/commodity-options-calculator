@@ -21,7 +21,10 @@ const EPILOGUE = `
   dollarMultiplier, newLeg, applyStrategy, strikeStep, carry, carryTracksRate,
   legValue, legGreeks, activeLegs, legEntry, strategyPnl, pnlEvaluator,
   legUnder, legRatio, legScenario, strikeOnAxis, displayGrid, statsGrid,
-  clearLegPrices,
+  clearLegPrices, forwardFromStrip, daysUntil,
+  /* contractMonths is a module-level binding the loader owns, so hand the
+     tests a setter rather than letting them reach for the variable. */
+  __setContractMonths: rows => { contractMonths = rows; },
   netCost, netGreeks, horizonDays, analyse, snapshot, restore,
   forwardDelta, skewVol, legVolPct, scenarioTable,
   rateForTenor, realisedVol, impliedConvenienceYield, proxyAvailable,

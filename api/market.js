@@ -11,6 +11,7 @@
  *   /api/market?fn=quote&commodity=gold      front-month price
  *   /api/market?fn=history&commodity=gold    daily OHLC series for realised vol
  *   /api/market?fn=curve&commodity=gold      two listed contracts, for carry
+ *   /api/market?fn=months&commodity=gold     every listed contract that quotes
  */
 'use strict';
 
@@ -104,6 +105,37 @@ function seriesFrom(result) {
   return out;
 }
 
+/* Probe the next `probe` listed contracts in parallel and return up to `keep`
+ * of them that actually quote, nearest first.
+ *
+ * Contracts that have not traded in seven days are dropped: an untraded month
+ * carries a stale price, which distorts the implied carry and would show a
+ * misleading number next to a month in the picker. Seven days tolerates
+ * weekends and holidays. */
+async function liveContracts(spec, probe, keep) {
+  const cands = candidates(spec, probe);
+  const results = await Promise.all(cands.map(c => yahoo(c.symbol, '5d', '1d')));
+  const staleAfter = 7 * 86400; // seconds
+  const nowSec = Date.now() / 1000;
+  const found = [];
+  for (let i = 0; i < cands.length && found.length < keep; i++) {
+    const r = results[i];
+    if (!r || !r.meta || !(r.meta.regularMarketPrice > 0)) continue;
+    const t = r.meta.regularMarketTime;
+    if (t && nowSec - t > staleAfter) continue;
+    found.push({
+      symbol: cands[i].symbol,
+      name: r.meta.shortName || '',
+      price: r.meta.regularMarketPrice,
+      currency: r.meta.currency || '',
+      expiry: cands[i].expiry,
+      expiryIsApproximate: true,
+      asOf: t ? new Date(t * 1000).toISOString() : null
+    });
+  }
+  return found;
+}
+
 function fail(res, code, message) {
   res.status(code).json({ error: message });
 }
@@ -144,38 +176,24 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(body);
     }
 
-    if (fn === 'curve') {
-      // Probe the next few listed contracts in parallel and keep the first two
-      // that actually return a price.
-      const cands = candidates(spec, 5);
-      const results = await Promise.all(cands.map(c => yahoo(c.symbol, '5d', '1d')));
-      const staleAfter = 7 * 86400; // seconds; tolerates weekends and holidays
-      const nowSec = Date.now() / 1000;
-      const found = [];
-      for (let i = 0; i < cands.length && found.length < 2; i++) {
-        const r = results[i];
-        if (!r || !r.meta || !(r.meta.regularMarketPrice > 0)) continue;
-        // Drop contracts that have not traded recently: an untraded month
-        // carries a stale price that would distort the implied carry.
-        const t = r.meta.regularMarketTime;
-        if (t && nowSec - t > staleAfter) continue;
-        found.push({
-          symbol: cands[i].symbol,
-          name: r.meta.shortName || '',
-          price: r.meta.regularMarketPrice,
-          currency: r.meta.currency || '',
-          expiry: cands[i].expiry,
-          expiryIsApproximate: true,
-          asOf: t ? new Date(t * 1000).toISOString() : null
-        });
+    if (fn === 'curve' || fn === 'months') {
+      // curve needs only the two nearest live contracts to imply the carry.
+      // months wants the whole listed strip, so it probes further out.
+      const wanted = fn === 'curve' ? 2 : 12;
+      const found = await liveContracts(spec, fn === 'curve' ? 5 : 14, wanted);
+
+      if (fn === 'curve' && found.length < 2) {
+        return fail(res, 502, 'Could not read two contracts for this commodity');
       }
-      if (found.length < 2) return fail(res, 502, 'Could not read two contracts for this commodity');
+      if (!found.length) {
+        return fail(res, 502, 'Could not read any listed contract for this commodity');
+      }
 
       res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
       return res.status(200).json({ commodity: key, contracts: found });
     }
 
-    return fail(res, 400, 'Unknown fn. Use quote, history or curve.');
+    return fail(res, 400, 'Unknown fn. Use quote, history, curve or months.');
   } catch (e) {
     return fail(res, 502, 'Market data request failed');
   }
