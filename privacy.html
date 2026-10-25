@@ -14,11 +14,23 @@
     h1 {
       color: #333;
     }
+    #revealContact {
+      font: inherit;
+      font-size: .95rem;
+      padding: 6px 12px;
+      border: 1px solid #999;
+      border-radius: 6px;
+      background: #f4f4f4;
+      cursor: pointer;
+    }
+    #revealContact:hover {
+      background: #e9e9e9;
+    }
   </style>
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p><strong>Effective Date:</strong> August 27, 2026</p>
+  <p><strong>Effective Date:</strong> October 24, 2026</p>
 
   <p>Thank you for visiting <em>Commodity Options Calculator</em>. This website provides an educational tool for simulating options pricing for agricultural commodities.</p>
 
@@ -72,7 +84,52 @@
   </p>
 
   <h2>6. Contact</h2>
-  <p>For questions about this privacy policy, you may contact:</p>
-  <p>📧 <a href="mailto:martinprojects1@gmail.com">martinprojects1@gmail.com</a></p>
+  <p>
+    For questions about this policy, about how the calculator handles data, or about the
+    tool itself, the best route is to open an issue on the project's public repository:
+  </p>
+  <p>
+    <a href="https://github.com/MartinColaF/commodity-options-calculator/issues" target="_blank" rel="noopener">
+      github.com/MartinColaF/commodity-options-calculator/issues
+    </a>
+  </p>
+  <p>
+    Issues are public and need a GitHub account. If your question is a privacy request you
+    would rather not make in public &mdash; asking what is held about you, or asking for it to
+    be deleted &mdash; use the private address below instead. It is revealed on request rather
+    than written into the page, to keep it away from address harvesters.
+  </p>
+  <p>
+    <button type="button" id="revealContact">Show the private contact address</button>
+    <span id="contactAddress" hidden></span>
+  </p>
+  <noscript>
+    <p>
+      JavaScript is turned off, so the address cannot be shown. Please use the issues link
+      above, or enable JavaScript on this page to reveal it.
+    </p>
+  </noscript>
+
+  <!-- The address is assembled at click time from parts that never appear together in the
+       markup, so a crawler reading this page's HTML does not come away with a mailbox.
+       This stops bulk harvesters, not a determined scraper that runs JavaScript. -->
+  <script>
+    (function () {
+      var button = document.getElementById('revealContact');
+      var target = document.getElementById('contactAddress');
+      button.addEventListener('click', function () {
+        var user = ['martin', 'projects', '1'].join('');
+        var host = ['gmail', 'com'].join('.');
+        var link = document.createElement('a');
+        link.href = 'mail' + 'to:' + user + String.fromCharCode(64) + host;
+        link.textContent = user + String.fromCharCode(64) + host;
+        target.textContent = '';
+        target.appendChild(link);
+        target.hidden = false;
+        button.hidden = true;
+        link.focus();
+      });
+    })();
+  </script>
 </body>
 </html>
