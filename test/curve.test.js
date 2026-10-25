@@ -134,3 +134,46 @@ test('the leg price survives a save and restore', () => {
   assert.strictEqual(state.legs[0].under, 103.5);
   assert.strictEqual(state.legs[1].under, null);
 });
+
+test('clearing the leg prices undoes the curve fill exactly', () => {
+  // The fill rewrites every option leg at once, so the way back has to be one
+  // action too. Clearing must land on the same numbers as never having filled.
+  resetState(app, { S: 100, vol: 30, rate: 5, days: 90 });
+  state.legs = [
+    newLeg({ kind: 'call', side: 1, strike: 100, days: 90 }),
+    newLeg({ kind: 'put', side: 1, strike: 100, days: 180 })
+  ];
+  const before = netCost();
+
+  for (const leg of state.legs) leg.under = 106.25;
+  assert.ok(Math.abs(netCost() - before) > 1e-6, 'the fill should move the cost');
+
+  app.clearLegPrices();
+  for (const leg of state.legs) assert.strictEqual(leg.under, null, 'leg price cleared');
+  near(netCost(), before, 1e-9, 'cost returns to the pre-fill value');
+});
+
+test('clearing restores the price source rather than blanking it', () => {
+  // The curve fill overwrites the source line. Undoing it must put back what
+  // the price fetch said, not leave the panel claiming nothing is known.
+  resetState(app, { S: 100 });
+  state.legs = [newLeg({ kind: 'call', strike: 100, days: 90 })];
+  const fetched = { live: true, text: 'Cocoa last 5,000.00 USD' };
+  state.sources.price = fetched;
+
+  // Stand in for applyLegPrices()'s bookkeeping without touching the network.
+  app.clearLegPrices();
+  assert.strictEqual(state.sources.price, fetched,
+    'clearing with nothing filled must not disturb the source');
+});
+
+test('an underlying leg is cleared along with the option legs', () => {
+  resetState(app, { S: 100 });
+  state.legs = [
+    newLeg({ kind: 'call', strike: 100, days: 90, under: 104 }),
+    newLeg({ kind: 'underlying', side: 1, under: 104 })
+  ];
+  app.clearLegPrices();
+  assert.ok(state.legs.every(l => l.under === null), 'every leg is back on the panel price');
+  assert.strictEqual(app.legUnder(state.legs[1]), 100);
+});

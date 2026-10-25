@@ -21,6 +21,7 @@ const EPILOGUE = `
   dollarMultiplier, newLeg, applyStrategy, strikeStep, carry, carryTracksRate,
   legValue, legGreeks, activeLegs, legEntry, strategyPnl, pnlEvaluator,
   legUnder, legRatio, legScenario, strikeOnAxis, displayGrid, statsGrid,
+  clearLegPrices,
   netCost, netGreeks, horizonDays, analyse, snapshot, restore,
   forwardDelta, skewVol, legVolPct, scenarioTable,
   rateForTenor, realisedVol, impliedConvenienceYield, proxyAvailable,
