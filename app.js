@@ -1136,6 +1136,10 @@ function renderLegs() {
 
   $('legsBody').innerHTML = body || '<tr><td colspan="13" class="muted">No legs. Add one or pick a strategy.</td></tr>';
 
+  // Show the way out before it is needed: the button sits there greyed until a
+  // leg actually carries its own price, then lights up.
+  $('clearLegPrices').disabled = !state.legs.some(l => l.under != null);
+
   if (focus) {
     const el = $('legsBody').querySelector(
       'tr[data-id="' + focus.id + '"] [data-f="' + focus.f + '"]');
@@ -1604,6 +1608,25 @@ async function applyCurveYield() {
  * along it. That is an extrapolation of a single observed slope, not a fitted
  * term structure - honest for the two- or three-month span a calendar spread
  * usually covers, and increasingly rough beyond the far contract. */
+/* The price source line as it stood before the curve overwrote it, so clearing
+ * the leg prices can put it back instead of inventing one. Null means either
+ * nothing was overwritten or the fill has already been undone. */
+let priceSourceBeforeFill = null;
+let legPricesFilled = false;
+
+/* Undo for applyLegPrices(). The fill rewrites every option leg at once, so it
+ * needs a matching one-click way back - clearing seven legs by hand is not an
+ * undo. A blank leg price means "use the contract in the panel", which is
+ * exactly the state the fill replaced. */
+function clearLegPrices() {
+  for (const leg of state.legs) leg.under = null;
+  if (legPricesFilled) {
+    state.sources.price = priceSourceBeforeFill;
+    priceSourceBeforeFill = null;
+    legPricesFilled = false;
+  }
+}
+
 async function applyLegPrices() {
   const opts = state.legs.filter(l => l.kind !== 'underlying');
   if (!opts.length) throw new Error('add an option leg first');
@@ -1621,6 +1644,12 @@ async function applyLegPrices() {
     leg.under = +(state.S * Math.exp(slope * leg.days / 365)).toFixed(4);
     if (leg.days > furthest) furthest = leg.days;
   }
+
+  // Remember what the price source said before this overwrote it, but only on
+  // the first fill: a second fill must not record its own text as the thing to
+  // restore to.
+  if (!legPricesFilled) priceSourceBeforeFill = state.sources.price;
+  legPricesFilled = true;
 
   const pct = (slope * 100).toFixed(2);
   const beyond = furthest > gapDays
@@ -1695,6 +1724,10 @@ function actionApplyPreset() {
   state.yield = meta.yield;
   state.size = meta.size;
   state.quote = meta.quote;
+  // Leg prices are market data too. Clearing the price source but leaving the
+  // curve's prices on the legs left the sources panel claiming "not market
+  // data" while every leg still priced off a live curve.
+  clearLegPrices();
   state.sources.vol = { live: false, text: 'preset long-run average (' + meta.vol + '%) - not market data' };
   state.sources.yield = { live: false, text: 'preset (' + meta.yield + '%) - not market data' };
   state.sources.price = null;
@@ -1798,6 +1831,11 @@ function bindInputs() {
   $('fetchVol').addEventListener('click', runAction('Volatility', applyVol));
   $('fetchCurve').addEventListener('click', runAction('Convenience yield', applyCurveYield));
   $('fillLegPrices').addEventListener('click', runAction('Leg prices', applyLegPrices));
+  $('clearLegPrices').addEventListener('click', () => {
+    clearLegPrices();
+    setStatus('Every leg is back on the contract in the left panel.', 'ok');
+    renderAll();
+  });
   $('skewOn').addEventListener('change', e => {
     state.skew.on = e.target.checked;
     renderAll();
