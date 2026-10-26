@@ -14,29 +14,14 @@ const TABLE = path.join(ROOT, 'commodities.js');
  * node we run it inside a VM with a minimal DOM and then hand back its
  * internals.
  *
- * Top-level `const` bindings do not become properties of the VM's global
- * object, so the epilogue captures them explicitly. */
+ * Top-level function declarations become properties of the VM's global
+ * object, so every function the two scripts declare is handed over on its own.
+ * `const` and `let` bindings do not, so the epilogue captures the few the tests
+ * read; a test that needs another one adds it here. This used to list every
+ * function as well, 81 names kept by hand. */
 const EPILOGUE = `
-;globalThis.__app = {
-  state, COMMODITIES, STRATEGIES, PROXY_COMMODITIES,
-  normPdf, normCdf, gbs, impliedVol,
-  americanPrice, americanGreeks, americanCritical, priceOption,
-  dollarMultiplier, newLeg, applyStrategy, strikeStep, carry, carryTracksRate,
-  legValue, legGreeks, activeLegs, legEntry, strategyPnl, pnlEvaluator,
-  legUnder, legRatio, legScenario, strikeOnAxis, displayGrid, statsGrid,
-  clearLegPrices, forwardFromStrip, daysUntil,
-  netCost, netGreeks, horizonDays, normalizeState, analyse, snapshot, restore,
-  sanitizeLeg, legRowHtml, legPricingInputs, legImpliedVol,
-  KEY_STORE, parseTreasuryXml, fetchYieldCurve, applyRate, applyFuturesPrice, applyVol,
-  applyCurveYield, loadContractMonths, useContractMonth, applyLegPrices, autoFill,
-  applyCarryYield, applyPreset, contractGapDays, logSlope,
-  setReferencePrice, typeMarketInput, typeLegPrice,
-  chartConfig, renderChart, renderChartSafely,
-  cacheGet, cacheSet, pruneCache, persist, STORE_KEY, CACHE_MAX_AGE,
-  changeCommodity,
-  forwardDelta, skewVol, legVolPct, scenarioTable,
-  rateForTenor, realisedVol, impliedConvenienceYield, proxyAvailable,
-  currentCommodity
+;globalThis.__bindings = {
+  state, COMMODITIES, STRATEGIES, PROXY_COMMODITIES, KEY_STORE, STORE_KEY, CACHE_MAX_AGE
 };
 `;
 /* No stub for renderAll: nothing outside the wiring calls it, and with no page
@@ -72,12 +57,18 @@ function loadApp(opts) {
   };
   Object.assign(sandbox, o.globals || {});
   vm.createContext(sandbox);
+  const stubs = new Set(Object.keys(sandbox));
   // Two scripts in one context share their top-level bindings, as two
   // <script> tags on one page do, so app.js sees the table's const.
   vm.runInContext(fs.readFileSync(TABLE, 'utf8'), sandbox, { filename: 'commodities.js' });
   vm.runInContext(fs.readFileSync(APP, 'utf8') + EPILOGUE, sandbox, { filename: 'app.js' });
-  sandbox.__app.storage = store;
-  return sandbox.__app;
+  const app = {};
+  for (const k of Object.keys(sandbox)) {
+    if (!stubs.has(k) && typeof sandbox[k] === 'function') app[k] = sandbox[k];
+  }
+  Object.assign(app, sandbox.__bindings);
+  app.storage = store;
+  return app;
 }
 
 /* Reset the shared state object to a known contract before each test. */

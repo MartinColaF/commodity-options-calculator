@@ -183,6 +183,8 @@ some browsers restrict cross-origin requests from `file://`.
   commodities, method and action validation, series parsing, the two rules of the
   contract probe (skip the delivery month, skip contracts that have not traded
   recently), and `curve` being the first two contracts of that same probe.
+- `test/loader.test.js` — the test loader handing over every top-level function in
+  `app.js` without a list to keep, and the `const` bindings the tests read.
 
 `app.js` has no module system on purpose, so the page still runs from a `file://`
 path. The tests load it into a VM with a small DOM stub — see
