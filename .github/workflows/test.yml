@@ -35,3 +35,30 @@ jobs:
             printf '::error::%s\n' "$(grep -A 18 '^not ok' test-output.txt | head -c 2800 | sed -z 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')"
             exit 1
           fi
+
+  lint:
+    runs-on: ubuntu-latest
+    name: lint
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '22'
+      # Installed here, not listed in package.json: the project has no
+      # dependencies on purpose (see CLAUDE.md). Exact versions, so a new
+      # release cannot turn CI red on its own.
+      - name: Install ESLint
+        run: npm install --no-save --no-package-lock --no-audit --no-fund eslint@10.12.0 @eslint/js@10.0.1 globals@17.13.0
+      - name: Lint
+        run: |
+          if npx eslint .; then exit 0; fi
+          # Each finding as an annotation, readable from the API without
+          # downloading the log archive.
+          npx eslint --format json --output-file eslint.json . || true
+          node -e "
+            const path = require('path');
+            for (const f of require('./eslint.json')) for (const m of f.messages) {
+              console.log('::error file=' + path.relative(process.cwd(), f.filePath) + ',line=' + m.line +
+                ',col=' + m.column + '::' + (m.ruleId || 'parse error') + ': ' + m.message.replace(/%/g, '%25').replace(/\r?\n/g, '%0A'));
+            }" || echo '::error::ESLint could not run; see the log'
+          exit 1

@@ -22,7 +22,16 @@ for users; this file covers what is easy to get wrong when changing it.
 npm test        # full suite
 npm run dev     # static server on :3000 (UI only, no /api)
 npx vercel dev  # also serves the /api functions
+
+# lint: the versions CI pins, installed without touching package.json
+npm install --no-save --no-package-lock eslint@10.12.0 @eslint/js@10.0.1 globals@17.13.0
+npx eslint .
 ```
+
+**ESLint runs in CI, not from `package.json`.** The `lint` job installs exact versions
+itself, because the project has no dependencies on purpose (see Deployment). The rules
+are ESLint's recommended set, which looks for mistakes, not style; nothing formats the
+code. `eslint.config.mjs` is kept off the site by `.vercelignore`.
 
 **`npm test` must not name a directory.** `node --test test/` breaks on Node 22:
 the runner resolves `test/` as a module and aborts before running anything. The
@@ -40,7 +49,7 @@ keeps Vercel treating this as a static site with functions. Adding a `build` scr
 changes how Vercel deploys it, so do not add one casually.
 
 `.vercelignore` keeps the notes, tests and tooling (`CLAUDE.md`, `test/`, `scripts/`,
-`.github/`) off the public site, which served all of them. It lists root-anchored paths
+`.github/`, `eslint.config.mjs`) off the public site, which served all of them. It lists root-anchored paths
 only; `test/deploy.test.js` fails if it ever drops a file `index.html` loads or the
 market function needs, so a new top-level file the site uses cannot vanish from
 production unnoticed.
@@ -49,6 +58,12 @@ No server-side environment variables are needed. The optional Alpha Vantage key 
 the user's own and lives only in their browser's local storage — never commit a key.
 
 ## Things that are easy to break
+
+**The page's scripts are ES2017.** `eslint.config.mjs` parses `app.js` and
+`commodities.js` at that level, so newer syntax — `?.`, `??`, `catch` without a binding —
+fails the lint. A script that fails to parse takes the whole calculator down on a
+browser that lacks the syntax, not just one feature. Raising the level is a decision
+about which browsers to drop; make it on purpose, in the config.
 
 **`app.js` has no module system on purpose** so the page still works from a `file://`
 path. Do not convert it to ESM or CommonJS, and do not wrap it in an IIFE. The tests

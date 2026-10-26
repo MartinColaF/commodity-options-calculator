@@ -8,3 +8,4 @@
 /scripts
 /.github
 /.gitattributes
+/eslint.config.mjs

@@ -118,6 +118,10 @@ npx vercel dev  # also runs the /api functions locally
 npm test        # the full test suite
 ```
 
+CI also runs ESLint's recommended rules over the code, at versions it installs itself so
+that `package.json` stays free of dependencies; `CLAUDE.md` has the command to run it
+by hand.
+
 Opening `index.html` directly works too, but the `/api` buttons need a server, and
 some browsers restrict cross-origin requests from `file://`.
 

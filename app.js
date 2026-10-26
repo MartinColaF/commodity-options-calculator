@@ -319,7 +319,7 @@ function impliedVol(kind, target, S, K, T, r, b, style) {
       const step = diff / vega;
       sigma -= Math.max(-0.5, Math.min(0.5, step));
       if (!(sigma > 0)) { sigma = 1e-4; }
-      if (sigma > 10) { sigma = 10; break; }
+      if (sigma > 10) break;
     }
   }
   // Bisection fallback, and the only path for American: the BAW price has no
@@ -409,15 +409,15 @@ function newLeg(over) {
 
 /* k = at-the-money reference, w = strike step */
 const STRATEGIES = {
-  'long-call': { label: 'Long call', legs: (k, w) => [{ side: 1, kind: 'call', strike: k }] },
-  'long-put': { label: 'Long put', legs: (k, w) => [{ side: 1, kind: 'put', strike: k }] },
+  'long-call': { label: 'Long call', legs: k => [{ side: 1, kind: 'call', strike: k }] },
+  'long-put': { label: 'Long put', legs: k => [{ side: 1, kind: 'put', strike: k }] },
   'short-call': { label: 'Short call (naked)', legs: (k, w) => [{ side: -1, kind: 'call', strike: k + w }] },
   'short-put': { label: 'Short put (naked)', legs: (k, w) => [{ side: -1, kind: 'put', strike: k - w }] },
   'covered-call': { label: 'Covered call', legs: (k, w) => [{ side: 1, kind: 'underlying', strike: 0 }, { side: -1, kind: 'call', strike: k + w }] },
   'protective-put': { label: 'Protective put', legs: (k, w) => [{ side: 1, kind: 'underlying', strike: 0 }, { side: 1, kind: 'put', strike: k - w }] },
   'bull-call': { label: 'Bull call spread', legs: (k, w) => [{ side: 1, kind: 'call', strike: k }, { side: -1, kind: 'call', strike: k + 2 * w }] },
   'bear-put': { label: 'Bear put spread', legs: (k, w) => [{ side: 1, kind: 'put', strike: k }, { side: -1, kind: 'put', strike: k - 2 * w }] },
-  'straddle': { label: 'Long straddle', legs: (k, w) => [{ side: 1, kind: 'call', strike: k }, { side: 1, kind: 'put', strike: k }] },
+  'straddle': { label: 'Long straddle', legs: k => [{ side: 1, kind: 'call', strike: k }, { side: 1, kind: 'put', strike: k }] },
   'strangle': { label: 'Long strangle', legs: (k, w) => [{ side: 1, kind: 'call', strike: k + w }, { side: 1, kind: 'put', strike: k - w }] },
   'short-strangle': { label: 'Short strangle', legs: (k, w) => [{ side: -1, kind: 'call', strike: k + w }, { side: -1, kind: 'put', strike: k - w }] },
   'butterfly': { label: 'Call butterfly', legs: (k, w) => [{ side: 1, kind: 'call', strike: k - w }, { side: -1, kind: 'call', strike: k, qty: 2 }, { side: 1, kind: 'call', strike: k + w }] },

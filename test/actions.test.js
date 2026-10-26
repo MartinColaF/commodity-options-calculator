@@ -222,7 +222,7 @@ test('when the function fails, volatility falls back to Alpha Vantage and keeps 
   // A ticker typed by hand is used instead, and not described as the preset.
   fresh({ commodity: 'gold', vol: 15 });
   handler = serve(answers);
-  r = await app.applyVol({ window: 20, estimator: 'close', avKey: 'my-key', symbol: 'iau' });
+  await app.applyVol({ window: 20, estimator: 'close', avKey: 'my-key', symbol: 'iau' });
   assert.match(calls.find(u => u.includes('alphavantage.co')), /symbol=IAU/);
   assert.match(state.sources.vol.text, /IAU \(symbol entered by you\)/);
 });
