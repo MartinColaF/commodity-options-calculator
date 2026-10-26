@@ -4,6 +4,12 @@
   <meta name="google-adsense-account" content="ca-pub-9252193330548483">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Last line of defence against injected markup: no inline script runs, so an
+       onerror= that slipped past escaping would be refused. Update it whenever an
+       external script or origin is added (AdSense, say) or the browser will block
+       it silently. file: keeps the page working when opened from disk, and is
+       inert on https. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: https://cdn.jsdelivr.net; style-src 'self' file: 'unsafe-inline'; connect-src 'self' https://home.treasury.gov https://www.alphavantage.co; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="description" content="Free commodity options calculator: Black-76 and Black-Scholes pricing, greeks, multi-leg strategy payoff charts and live risk-free rates.">
   <title>Commodity Options Calculator</title>
   <link rel="stylesheet" href="styles.css">

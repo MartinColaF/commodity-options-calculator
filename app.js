@@ -1097,13 +1097,17 @@ function escapeHtml(s) {
   }[ch]));
 }
 
-function renderLegs() {
-  const mult = dollarMultiplier(currentCommodity());
-  const body = state.legs.map(leg => {
-    const g = legGreeks(leg);
-    const entry = legEntry(leg);
-    const isU = leg.kind === 'underlying';
-    return `<tr data-id="${leg.id}" class="${leg.on ? '' : 'off'}">
+/* One row of the legs table, as markup. Pure - no DOM - so the escaping can be
+ * tested. Every interpolated value goes through escapeHtml even though
+ * restore() already guarantees numbers: this is where the markup is built,
+ * and it should not depend on every source of a leg getting its types right.
+ * Only literal attribute words (selected, checked, disabled) skip it. */
+function legRowHtml(leg, mult) {
+  const g = legGreeks(leg);
+  const entry = legEntry(leg);
+  const isU = leg.kind === 'underlying';
+  const a = v => escapeHtml(v == null ? '' : v);
+  return `<tr data-id="${a(leg.id)}" class="${leg.on ? '' : 'off'}">
       <td><input type="checkbox" data-f="on" ${leg.on ? 'checked' : ''} title="Include in the strategy"></td>
       <td><select data-f="side">
         <option value="1" ${leg.side === 1 ? 'selected' : ''}>Long</option>
@@ -1114,19 +1118,23 @@ function renderLegs() {
         <option value="put" ${leg.kind === 'put' ? 'selected' : ''}>Put</option>
         <option value="underlying" ${isU ? 'selected' : ''}>Underlying</option>
       </select></td>
-      <td><input type="number" data-f="qty" value="${leg.qty}" min="0" step="1"></td>
-      <td><input type="number" data-f="strike" value="${isU ? '' : leg.strike}" ${isU ? 'disabled' : ''} step="any"></td>
-      <td><input type="number" data-f="days" value="${isU ? '' : leg.days}" ${isU ? 'disabled' : ''} min="0" step="1"></td>
-      <td><input type="number" data-f="vol" value="${leg.vol == null ? '' : leg.vol}" placeholder="${fmt(legVolPct(leg), 1)}" ${isU ? 'disabled' : ''} step="any"></td>
-      <td><input type="number" data-f="under" value="${leg.under == null ? '' : leg.under}" placeholder="${fmt(state.S, 2)}" step="any" title="This leg's own contract price today. Blank uses the contract in the left panel."></td>
-      <td><input type="number" data-f="entry" value="${leg.entry == null ? '' : leg.entry}" placeholder="${fmt(isU ? state.S : g.price, 2)}" step="any"></td>
-      <td class="num">${isU ? '-' : fmt(g.price, 2)}</td>
-      <td class="num">${fmt(g.delta * leg.side * leg.qty, 3)}</td>
-      <td class="num">${fmt(leg.side * leg.qty * mult * (isU ? 0 : entry), 0)}</td>
+      <td><input type="number" data-f="qty" value="${a(leg.qty)}" min="0" step="1"></td>
+      <td><input type="number" data-f="strike" value="${isU ? '' : a(leg.strike)}" ${isU ? 'disabled' : ''} step="any"></td>
+      <td><input type="number" data-f="days" value="${isU ? '' : a(leg.days)}" ${isU ? 'disabled' : ''} min="0" step="1"></td>
+      <td><input type="number" data-f="vol" value="${a(leg.vol)}" placeholder="${a(fmt(legVolPct(leg), 1))}" ${isU ? 'disabled' : ''} step="any"></td>
+      <td><input type="number" data-f="under" value="${a(leg.under)}" placeholder="${a(fmt(state.S, 2))}" step="any" title="This leg's own contract price today. Blank uses the contract in the left panel."></td>
+      <td><input type="number" data-f="entry" value="${a(leg.entry)}" placeholder="${a(fmt(isU ? state.S : g.price, 2))}" step="any"></td>
+      <td class="num">${isU ? '-' : a(fmt(g.price, 2))}</td>
+      <td class="num">${a(fmt(g.delta * leg.side * leg.qty, 3))}</td>
+      <td class="num">${a(fmt(leg.side * leg.qty * mult * (isU ? 0 : entry), 0))}</td>
       <td><button class="icon" data-f="iv" title="Solve implied volatility from the entry price" ${isU ? 'disabled' : ''}>IV</button>
           <button class="icon danger" data-f="del" title="Remove leg">x</button></td>
     </tr>`;
-  }).join('');
+}
+
+function renderLegs() {
+  const mult = dollarMultiplier(currentCommodity());
+  const body = state.legs.map(leg => legRowHtml(leg, mult)).join('');
   // Rebuilding the tbody destroys the element being edited, so remember where
   // the caret was and put it back afterwards.
   const ae = document.activeElement;
@@ -1171,7 +1179,7 @@ function renderResults() {
     <div class="kpi"><span>Max loss</span><strong class="neg">${money(a.maxLoss)}</strong></div>
     <div class="kpi"><span>Breakeven${a.breakevens.length === 1 ? '' : 's'}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmt(b, 2)).join(' / ') : '-'}</strong></div>
     <div class="kpi"><span>Prob. of profit</span><strong>${(a.pop * 100).toFixed(1)}%</strong></div>
-    <div class="kpi"><span>Horizon</span><strong>${a.t} days</strong></div>`;
+    <div class="kpi"><span>Horizon</span><strong>${escapeHtml(a.t)} days</strong></div>`;
 
   const mult = dollarMultiplier(c);
   $('greeks').innerHTML = `
@@ -1441,28 +1449,92 @@ function snapshot() {
   };
 }
 
-function restore(o) {
-  if (!o) return false;
-  ['commodity', 'model', 'S', 'vol', 'rate', 'yield', 'days', 'size', 'quote'].forEach(k => {
-    if (o[k] != null) state[k] = o[k];
+/* ------------------------------------------------------------
+ * Trust boundary.
+ *
+ * restore() takes state from a shared link, from localStorage and from an
+ * imported file - all of which someone other than the user can write. So
+ * nothing is copied across as-is: every field is rebuilt from a whitelist
+ * with its type checked. A crafted link once carried a strike of
+ * '"><img onerror=...>' straight into renderLegs(), where it ran as script
+ * on this origin - the same origin that holds the user's Alpha Vantage key.
+ *
+ * The checks are strict on purpose. snapshot() only ever writes numbers, so
+ * a string in a numeric field cannot come from a genuine saved scenario.
+ * ---------------------------------------------------------- */
+
+const LEG_KINDS = ['call', 'put', 'underlying'];
+const MODELS = ['b76', 'bs'];
+const QUOTES = ['USD', 'cents'];
+const CHART_MODES = ['payoff', 'delta', 'gamma', 'vega', 'theta'];
+
+function isNum(x) {
+  return typeof x === 'number' && isFinite(x);
+}
+
+function pick(x, allowed, fallback) {
+  return allowed.indexOf(x) !== -1 ? x : fallback;
+}
+
+/* One leg from untrusted input, or null when it cannot be a leg. The id is
+ * never taken from the input: newLeg() assigns a fresh one, and an id from a
+ * link would otherwise land in a data attribute. */
+function sanitizeLeg(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const kind = pick(raw.kind, LEG_KINDS, 'call');
+  // An option with no numeric strike is not a leg. Inventing one would put a
+  // position on the screen that nobody chose.
+  if (kind !== 'underlying' && !isNum(raw.strike)) return null;
+  const optional = x => (isNum(x) ? x : null);
+  return newLeg({
+    on: raw.on !== false,
+    side: raw.side === -1 ? -1 : 1,
+    kind: kind,
+    qty: isNum(raw.qty) && raw.qty >= 0 ? raw.qty : 1,
+    strike: isNum(raw.strike) ? raw.strike : 0,
+    days: isNum(raw.days) && raw.days >= 0 ? raw.days : state.days,
+    vol: optional(raw.vol),
+    under: optional(raw.under),
+    entry: optional(raw.entry)
   });
+}
+
+/* A field that is missing or invalid keeps its current value rather than
+ * being reset, so an old saved scenario that predates a field still loads. */
+function restore(o) {
+  if (!o || typeof o !== 'object') return false;
+  if (typeof o.commodity === 'string' &&
+    Object.prototype.hasOwnProperty.call(COMMODITIES, o.commodity)) {
+    state.commodity = o.commodity;
+  }
+  state.model = pick(o.model, MODELS, state.model);
+  state.quote = pick(o.quote, QUOTES, state.quote);
+  ['S', 'vol', 'rate', 'yield', 'size'].forEach(k => {
+    if (isNum(o[k])) state[k] = o[k];
+  });
+  if (isNum(o.days) && o.days >= 0) state.days = o.days;
   // Scenarios saved before American exercise existed were priced as European,
   // so restore them that way rather than silently repricing someone's numbers.
   state.style = o.style === 'american' || o.style === 'european' ? o.style : 'european';
-  if (o.chart) Object.assign(state.chart, o.chart);
+  if (o.chart && typeof o.chart === 'object') {
+    state.chart.mode = pick(o.chart.mode, CHART_MODES, state.chart.mode);
+    if (isNum(o.chart.tDays) && o.chart.tDays >= 0) state.chart.tDays = o.chart.tDays;
+    if (isNum(o.chart.range)) state.chart.range = o.chart.range;
+    if (typeof o.chart.showLegs === 'boolean') state.chart.showLegs = o.chart.showLegs;
+  }
   // Like the exercise style: a scenario saved before the surface existed was
   // priced on one flat volatility, so restore it that way instead of applying
   // a skew it never had.
   state.skew.on = !!(o.skew && o.skew.on === true);
   if (o.skew) {
-    if (isFinite(o.skew.rr)) state.skew.rr = o.skew.rr;
-    if (isFinite(o.skew.bf)) state.skew.bf = o.skew.bf;
+    if (isNum(o.skew.rr)) state.skew.rr = o.skew.rr;
+    if (isNum(o.skew.bf)) state.skew.bf = o.skew.bf;
   }
   if (o.scenario) {
-    if (isFinite(o.scenario.volShift)) state.scenario.volShift = o.scenario.volShift;
-    if (isFinite(o.scenario.pricePct)) state.scenario.pricePct = o.scenario.pricePct;
+    if (isNum(o.scenario.volShift)) state.scenario.volShift = o.scenario.volShift;
+    if (isNum(o.scenario.pricePct)) state.scenario.pricePct = o.scenario.pricePct;
   }
-  if (Array.isArray(o.legs)) state.legs = o.legs.map(l => newLeg(l));
+  if (Array.isArray(o.legs)) state.legs = o.legs.map(sanitizeLeg).filter(Boolean);
   return true;
 }
 
