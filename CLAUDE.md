@@ -191,9 +191,9 @@ or the browser blocks it silently and the feature just doesn't work. `style-src`
 
 **The API function takes a commodity key, never a raw symbol.** Symbols are built from
 each market's `futures` entry in `commodities.js`. Keep it that way or the endpoint
-becomes an open proxy. The curve endpoint also skips the current (delivery) month and
-any contract that has not traded in seven days — both were real bugs that poisoned the
-implied carry.
+becomes an open proxy. The contract probe behind `months` and `curve` also skips the
+current (delivery) month and any contract that has not traded in seven days — both were
+real bugs that poisoned the implied carry.
 
 **`commodities.js` is the only place a market is defined.** It used to be three lists in
 two shapes — the page's table, the page's list of markets the function serves, and the
@@ -312,10 +312,18 @@ something is missing from the repo.
   shared link is worse than none — and `changeCommodity()` drops it, otherwise the
   picker offers cocoa months while pricing gold. Reloading it drops a picked month the
   new strip no longer lists, in `loadContractMonths()`.
+- **One request for the whole curve.** The picker, the Yield button and the
+  two-contract leg fill all read `fn=months`, through `listedContracts()`; the last two
+  take its two nearest contracts from `nearestContracts()`. They share one request, one
+  cache entry and one set of quotes, so the carry is measured on the months the picker
+  lists. Asking for `curve` and `months` separately probed up to 19 overlapping
+  contracts upstream under two cache keys. The function still answers `fn=curve`, as the
+  first two contracts of the same probe, for a page loaded before the change; the page
+  itself never asks for it.
 - **Per-leg prices** interpolate log-linearly across that strip when it is loaded,
-  and fall back to the two-contract slope (`fn=curve`) when it is not. Logs are the
-  right space: the curve's shape is a carry rate, so the midpoint of a segment is the
-  geometric mean of its ends. Outside the strip the nearest segment's slope is
+  and fall back to the slope between its two nearest contracts when it is not. Logs
+  are the right space: the curve's shape is a carry rate, so the midpoint of a segment
+  is the geometric mean of its ends. Outside the strip the nearest segment's slope is
   extended, which is still extrapolation but anchored on the two closest real quotes.
   The "Leg prices" source line says which path ran and when it went past the last
   listed month.
@@ -341,7 +349,7 @@ something is missing from the repo.
   butterfly. The curve is read **once**, at today's price and the leg's full tenor,
   and held as the scenario moves: sticky strike, not sticky delta. Real surfaces also
   move with spot; that is not modelled.
-- Contract expiries in the curve endpoint are approximated to mid-month. Both
+- Contract expiries from the function are approximated to mid-month. Both
   contracts use the same convention, so the gap driving the carry stays accurate.
 
 ## Before switching on ads

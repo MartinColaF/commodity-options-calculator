@@ -1074,6 +1074,24 @@ async function proxyGet(fn, commodity, ttlMs) {
   return json;
 }
 
+/* Every listed contract that quotes, nearest first. This one answer is the whole
+ * curve: the month picker lists it, and the Yield button and the leg fill take
+ * their two contracts off its front, so all three share one request, one cache
+ * entry and one set of quotes. They used to ask for `curve` and `months`
+ * separately - up to 19 overlapping contracts probed upstream, cached under two
+ * keys, and a carry measured on other quotes than the ones the picker showed. */
+async function listedContracts(commodity) {
+  const c = await proxyGet('months', commodity, 60 * 60e3);
+  return (c && c.contracts) || [];
+}
+
+/* The two nearest listed contracts: what the carry is measured on. */
+async function nearestContracts(commodity) {
+  const list = await listedContracts(commodity);
+  if (list.length < 2) throw new Error('fewer than two listed contracts quote for this commodity');
+  return { near: list[0], far: list[1] };
+}
+
 /* The curve between two listed contracts. These are the only copies of the two
  * formulas: the Yield button and the leg fill both read the curve through them,
  * so the carry one reports is the slope the other prices along. */
@@ -1854,8 +1872,7 @@ async function applyVolFromAlphaVantage(opts) {
 /* Convenience yield from the real futures curve: two listed contracts give
  * y = r - ln(F2/F1)/(T2-T1). */
 async function applyCurveYield() {
-  const c = await proxyGet('curve', state.commodity, 60 * 60e3);
-  const near = c.contracts[0], far = c.contracts[1];
+  const { near, far } = await nearestContracts(state.commodity);
   const days = contractGapDays(near, far);
   const y = impliedConvenienceYield(near.price, far.price, days, state.rate);
   if (!isFinite(y)) throw new Error('the two contracts did not give a usable spread');
@@ -1880,13 +1897,13 @@ async function applyCurveYield() {
  * renderMonths(), which changed the state it was drawing. The wiring draws the
  * picker once this resolves. */
 async function loadContractMonths() {
-  const c = await proxyGet('months', state.commodity, 60 * 60e3);
-  if (!c.contracts || !c.contracts.length) throw new Error('no listed contract quoted');
-  state.session.strip = c.contracts;
-  if (state.contractMonth && !c.contracts.some(m => m.symbol === state.contractMonth)) {
+  const contracts = await listedContracts(state.commodity);
+  if (!contracts.length) throw new Error('no listed contract quoted');
+  state.session.strip = contracts;
+  if (state.contractMonth && !contracts.some(m => m.symbol === state.contractMonth)) {
     state.contractMonth = '';
   }
-  return { message: c.contracts.length + ' listed months loaded' };
+  return { message: contracts.length + ' listed months loaded' };
 }
 
 /* Another market: its strip is not this one's, and presets reset the rest -
@@ -2026,8 +2043,7 @@ async function applyLegPrices() {
     return { message: `leg prices from ${state.session.strip.length} listed contracts` };
   }
 
-  const c = await proxyGet('curve', state.commodity, 60 * 60e3);
-  const near = c.contracts[0], far = c.contracts[1];
+  const { near, far } = await nearestContracts(state.commodity);
   const gapDays = contractGapDays(near, far);
   if (!(gapDays > 0) || !(near.price > 0) || !(far.price > 0)) {
     throw new Error('the two contracts did not give a usable spread');
