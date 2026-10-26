@@ -159,6 +159,10 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/page.test.js` — the page's one third-party script: pinned by its hash, an
   exact version of a file the package publishes, and a Content-Security-Policy that
   allows that file and nothing broader.
+- `test/chart.test.js` — what the payoff chart is given in every mode (the horizon,
+  today and each leg; one series per greek profile; strike marks on the shared axis),
+  the chart created once and updated in place, and the page carrying on without
+  Chart.js.
 - `test/privacy.test.js` — the privacy policy promising nothing the site does not do:
   no cookie banner it lacks, no "no cookies" while code sets one, ads described as
   inactive for as long as none load, and every third party the page may contact

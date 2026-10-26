@@ -125,7 +125,19 @@ template columns. Giving a table `class="grid"` makes it inherit that and splits
 `renderChartSafely()` isolates it: an ad blocker or CDN outage used to take out
 everything after `renderChart()` in the render order — the scenario grid, the source
 list and `persist()`, so the user also silently lost their saved state. Keep the chart
-last-but-one and keep it wrapped.
+last-but-one and keep it wrapped — including the theme-change listener, which once called
+`renderChart()` bare and threw on every switch between light and dark.
+
+**The chart is created once and updated in place.** `chartConfig(a)` builds everything
+Chart.js is given and is pure, so `test/chart.test.js` checks the series without a
+canvas. `renderChart()` makes the chart on the first render and afterwards swaps in the
+new datasets and options and calls `update('none')`. Destroying and re-creating it on
+every render cost 75–85% of each render — 25 to 45 ms a keystroke — and replayed the
+entry animation; the in-place update draws pixel-identical charts. Input events
+(typing, the sliders) call `scheduleRender()`, which draws once per animation frame
+however many events arrived; clicks and selects still call `renderAll()` directly. Time
+renders before and after anything that touches this path: the pricing is 1–2 ms of
+it, so a slow redraw is nearly always Chart.js work.
 
 **Chart.js is pinned by Subresource Integrity, and the CSP names that one file.** The
 script runs on the origin that holds the user's Alpha Vantage key, so the browser

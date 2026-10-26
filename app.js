@@ -1324,7 +1324,10 @@ function themeColors() {
   };
 }
 
-function renderChart(a) {
+/* Everything Chart.js is given for the current state: the series, the axes, the
+ * strike and spot marks and the colours. Pure apart from reading the colour
+ * scheme, so what the chart shows can be tested without a canvas. */
+function chartConfig(a) {
   const col = themeColors();
   const mult = dollarMultiplier(currentCommodity());
   const datasets = [];
@@ -1420,9 +1423,23 @@ function renderChart(a) {
     },
     plugins: [markerPlugin]
   };
+  return cfg;
+}
 
-  if (chart) chart.destroy();
-  chart = new Chart($('payoffChart').getContext('2d'), cfg);
+/* The chart is created once and updated in place after that. Destroying and
+ * re-creating it on every render was 75-85% of a render's cost - 25 to 45 ms a
+ * keystroke - and replayed Chart.js's entry animation every time. Replacing
+ * the datasets and the options and updating without animation draws the same
+ * picture. */
+function renderChart(a) {
+  const cfg = chartConfig(a);
+  if (!chart) {
+    chart = new Chart($('payoffChart').getContext('2d'), cfg);
+    return;
+  }
+  chart.data.datasets = cfg.data.datasets;
+  chart.options = cfg.options;
+  chart.update('none');
 }
 
 /* Scenario grid. Cells are shaded by size relative to the biggest absolute
@@ -1490,6 +1507,20 @@ function renderChartSafely(a) {
         'numbers below and the scenario grid are computed locally.</p>';
     }
   }
+}
+
+/* Typing and dragging a slider fire an event for every keystroke or pixel. The
+ * state changes at once; the drawing waits for the next frame and happens once
+ * for however many events arrived in it. */
+let renderQueued = false;
+
+function scheduleRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    renderAll();
+  });
 }
 
 function renderAll() {
@@ -2149,7 +2180,7 @@ function bindInputs() {
   Object.keys(simple).forEach(id => {
     $(id).addEventListener('input', e => {
       simple[id](e.target);
-      renderAll();
+      scheduleRender();
     });
   });
 
@@ -2188,11 +2219,11 @@ function bindInputs() {
   $('range').addEventListener('input', e => {
     state.chart.range = +e.target.value;
     $('rangeLabel').textContent = '+/-' + state.chart.range + '%';
-    renderAll();
+    scheduleRender();
   });
   $('tDays').addEventListener('input', e => {
     state.chart.tDays = +e.target.value;
-    renderAll();
+    scheduleRender();
   });
 
   $('autoFill').addEventListener('click', actionAutoFill);
@@ -2250,8 +2281,10 @@ function bindInputs() {
     e.target.value = '';
   });
 
+  // Through renderChartSafely like every other render: called bare, it threw
+  // on every theme change once Chart.js had failed to load.
   const mq = window.matchMedia('(prefers-color-scheme: dark)');
-  const onScheme = () => renderChart(analyse());
+  const onScheme = () => renderChartSafely(analyse());
   if (mq.addEventListener) mq.addEventListener('change', onScheme);
   else if (mq.addListener) mq.addListener(onScheme); // older Safari
 }

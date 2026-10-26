@@ -34,6 +34,7 @@ const EPILOGUE = `
   applyCurveYield, loadContractMonths, useContractMonth, applyLegPrices, autoFill,
   applyCarryYield, applyPreset, contractGapDays, logSlope,
   setReferencePrice, typeMarketInput, typeLegPrice,
+  chartConfig, renderChart, renderChartSafely,
   __contractMonths: () => contractMonths,
   forwardDelta, skewVol, legVolPct, scenarioTable,
   rateForTenor, realisedVol, impliedConvenienceYield, proxyAvailable,
@@ -45,14 +46,20 @@ renderAll = function () {};   /* these tests exercise logic, not rendering */
 /* There is no page: getElementById finds nothing, so code that reached for the
  * DOM would throw here. `opts.fetch` stands in for the network, which is
  * otherwise refused, and `opts.protocol` for the page's (file: in place of
- * https:). The returned app carries `storage`, the Map behind localStorage. */
+ * https:). `opts.elements` maps ids to stand-in elements and `opts.globals`
+ * adds globals such as a fake Chart. The returned app carries `storage`, the
+ * Map behind localStorage. */
 function loadApp(opts) {
   const o = opts || {};
   const store = new Map();
+  const elements = o.elements || {};
   const sandbox = {
     console,
     setTimeout, clearTimeout,
-    document: { addEventListener() { }, getElementById() { return null; } },
+    document: {
+      addEventListener() { },
+      getElementById: id => (Object.prototype.hasOwnProperty.call(elements, id) ? elements[id] : null)
+    },
     window: {},
     location: { protocol: o.protocol || 'https:', hash: '', origin: 'https://example.test', pathname: '/' },
     localStorage: {
@@ -62,6 +69,7 @@ function loadApp(opts) {
     },
     fetch: o.fetch || (() => Promise.reject(new Error('network is not available in unit tests')))
   };
+  Object.assign(sandbox, o.globals || {});
   vm.createContext(sandbox);
   // Two scripts in one context share their top-level bindings, as two
   // <script> tags on one page do, so app.js sees the table's const.
