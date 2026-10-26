@@ -26,6 +26,7 @@ const EPILOGUE = `
      tests a setter rather than letting them reach for the variable. */
   __setContractMonths: rows => { contractMonths = rows; },
   netCost, netGreeks, horizonDays, analyse, snapshot, restore,
+  sanitizeLeg, legRowHtml,
   forwardDelta, skewVol, legVolPct, scenarioTable,
   rateForTenor, realisedVol, impliedConvenienceYield, proxyAvailable,
   currentCommodity

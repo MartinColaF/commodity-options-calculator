@@ -116,6 +116,27 @@ last-but-one and keep it wrapped.
 from a shared link, and `CONTRACTS['__proto__']` resolves to `Object.prototype`, which
 is truthy and slipped past the commodity whitelist once already.
 
+**`restore()` is the trust boundary.** It takes state from a shared link, from
+`localStorage` and from an imported file, all of which someone other than the user can
+write. Nothing is copied across as-is: every field is rebuilt from a whitelist with its
+type checked (`isNum`, `pick`, `sanitizeLeg`), and a leg's `id` is **never** taken from
+the input. This was a live XSS: a link carried a strike of `"><img onerror=…>` into the
+legs table, on the same origin that holds the user's Alpha Vantage key. The checks are
+strict on purpose — `snapshot()` only ever writes numbers, so a numeric-looking string
+can only come from a tampered link.
+
+**`legRowHtml()` escapes every value it interpolates**, even though `restore()` already
+guarantees numbers: it is where the markup is built, and it should not depend on every
+source of a leg getting its types right. It is a pure function so the escaping is tested.
+Any new `innerHTML` that interpolates state needs the same `escapeHtml` treatment.
+
+**`index.html` carries a Content-Security-Policy.** No inline script runs, so an
+`onerror=` that slipped past escaping is refused. **Update it whenever an external script
+or `fetch` origin is added** — the AdSense script the privacy policy mentions, say —
+or the browser blocks it silently and the feature just doesn't work. `style-src` allows
+`'unsafe-inline'` because the markup and the scenario shading use `style=` attributes.
+`file:` keeps the page working when opened from disk, and is inert on https.
+
 **The API function takes a commodity key, never a raw symbol.** Symbols are built from
 the `CONTRACTS` table inside the function. Keep it that way or the endpoint becomes an
 open proxy. The curve endpoint also skips the current (delivery) month and any contract
@@ -136,9 +157,11 @@ types into a leg field and reads the result without blurring sees a stale value 
 is the design, not a bug.
 
 **Saved scenarios and share links go through `snapshot()` / `restore()`.** When adding
-a state field, add it to **both**, and decide explicitly what an old saved scenario
-without the field should mean — `restore()` defaults the exercise style to European for
-exactly that reason, so nobody's recorded numbers move under them.
+a state field, add it to **both** — in `restore()` with its type checked, never copied
+raw — and decide explicitly what an old saved scenario without the field should mean.
+`restore()` defaults the exercise style to European for exactly that reason, so nobody's
+recorded numbers move under them. `test/restore.test.js` round-trips a full scenario;
+extend it when the field is new.
 
 ## Verifying without a local toolchain
 
