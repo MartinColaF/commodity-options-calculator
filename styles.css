@@ -170,6 +170,7 @@ button.icon.danger { background: var(--neg); color: #fff; }
 }
 .kpi span { display: block; font-size: .74rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .kpi strong { font-size: 1.05rem; font-weight: 650; }
+.kpi small { display: block; font-size: .72rem; color: var(--muted); }
 .pos { color: var(--pos); }
 .neg { color: var(--neg); }
 
