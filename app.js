@@ -1432,8 +1432,9 @@ function renderScenarios() {
   $('scenarios').innerHTML = panels + '<p class="note">' + escapeHtml(note) + '</p>';
 }
 
-/* Chart.js is the one thing on the page loaded from a CDN. An ad blocker or a
- * CDN outage must not take the rest of the page down with it: the results, the
+/* Chart.js is the one thing on the page loaded from a CDN. An ad blocker, a CDN
+ * outage or a file that fails its integrity check leaves `Chart` undefined, and
+ * that must not take the rest of the page down with it: the results, the
  * scenario grid and the saved state all live after the chart in the render
  * order and are worth more than the picture. */
 let chartBroken = false;

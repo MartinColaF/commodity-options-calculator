@@ -8,12 +8,20 @@
        onerror= that slipped past escaping would be refused. Update it whenever an
        external script or origin is added (AdSense, say) or the browser will block
        it silently. file: keeps the page working when opened from disk, and is
-       inert on https. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: https://cdn.jsdelivr.net; style-src 'self' file: 'unsafe-inline'; connect-src 'self' https://home.treasury.gov https://www.alphavantage.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+       inert on https.
+       script-src names the one Chart.js file, not the CDN: jsDelivr serves any
+       package on npm, so allowing the whole host would allow anyone's script. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js; style-src 'self' file: 'unsafe-inline'; connect-src 'self' https://home.treasury.gov https://www.alphavantage.co; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="description" content="Free commodity options calculator: Black-76 and Black-Scholes pricing, greeks, multi-leg strategy payoff charts and live risk-free rates.">
   <title>Commodity Options Calculator</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- The file Chart.js publishes, pinned by its hash: the browser refuses it if the
+       CDN serves anything else. Not chart.umd.min.js - the package does not ship
+       one, so jsDelivr generates it, and a generated file can change under the
+       hash. CLAUDE.md has the upgrade steps. -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"
+          integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG"
+          crossorigin="anonymous"></script>
 </head>
 <body>
 <div class="wrap">
