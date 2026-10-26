@@ -1,0 +1,10 @@
+# Files that are not part of the site. The repository is public, so nothing here
+# is secret, but the site should serve the calculator, not its notes, tests and
+# tooling. Root-anchored paths only: test/deploy.test.js checks that nothing the
+# page or the market function needs is listed here.
+/CLAUDE.md
+/REVISION_1_ARQUITECTURA.md
+/test
+/scripts
+/.github
+/.gitattributes
