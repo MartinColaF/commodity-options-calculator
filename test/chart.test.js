@@ -102,3 +102,35 @@ test('without Chart.js the chart gives way to a note and nothing throws', () => 
   assert.match(noteBox.innerHTML, /could not be loaded/);
   assert.doesNotThrow(() => bare.renderChartSafely(bare.analyse()), 'and again, quietly');
 });
+
+/* ---- colours ---- */
+
+test('the chart takes every colour from the stylesheet, in both schemes', () => {
+  // They used to be written out in app.js as well, where only two of the
+  // sixteen matched the page's palette and nothing kept the rest in step.
+  const light = loadApp({ scheme: 'light' }).themeColors();
+  const dark = loadApp({ scheme: 'dark' }).themeColors();
+  assert.deepStrictEqual(Object.keys(light), ['grid', 'zero', 'text', 'net', 'now', 'leg', 'spot', 'strike']);
+  for (const k of Object.keys(light)) {
+    assert.ok(light[k], `--chart-${k} is set`);
+    assert.ok(dark[k] && dark[k] !== light[k], `--chart-${k} has its own value in the dark block`);
+  }
+  assert.doesNotMatch(app.themeColors.toString(), /#[0-9a-f]{3}|rgba?\(/i, 'and none is left in app.js');
+});
+
+test('the series, the axes and the marks are drawn in those colours', () => {
+  const dark = loadApp({ scheme: 'dark', globals: { Chart: FakeChart } });
+  resetState(dark, { S: 4000, vol: 20, days: 30 });
+  dark.state.chart = { mode: 'payoff', tDays: 0, showLegs: true, range: 40 };
+  dark.applyStrategy('iron-condor');
+  const col = dark.themeColors();
+  const cfg = dark.chartConfig(dark.analyse());
+  assert.deepStrictEqual(Array.from(cfg.data.datasets, d => d.borderColor),
+    [col.net, col.now, col.leg, col.leg, col.leg, col.leg]);
+  assert.strictEqual(cfg.options.scales.x.ticks.color, col.text);
+  assert.strictEqual(cfg.options.scales.x.grid.color, col.grid);
+  assert.strictEqual(cfg.options.scales.y.grid.color({ tick: { value: 0 } }), col.zero);
+  const marks = cfg.options.plugins.markers.lines;
+  assert.strictEqual(marks[marks.length - 1].color, col.spot);
+  assert.ok(marks.slice(0, -1).every(m => m.color === col.strike));
+});

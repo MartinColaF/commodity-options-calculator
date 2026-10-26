@@ -11,6 +11,16 @@
   --neg: #b3261e;
   --warn: #b45309;
   --field: #ffffff;
+  /* The payoff chart's colours. app.js reads them with getComputedStyle, so the
+     chart takes its palette from here, like the rest of the page. */
+  --chart-grid: rgba(0,0,0,.10);
+  --chart-zero: rgba(0,0,0,.45);
+  --chart-text: #333;
+  --chart-net: #0b6ea8;
+  --chart-now: #d97706;
+  --chart-leg: rgba(0,0,0,.25);
+  --chart-spot: #6b7280;
+  --chart-strike: #9ca3af;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -26,6 +36,14 @@
     --neg: #f87171;
     --warn: #fbbf24;
     --field: #131720;
+    --chart-grid: rgba(255,255,255,.12);
+    --chart-zero: rgba(255,255,255,.45);
+    --chart-text: #d9dde3;
+    --chart-net: #7fd1ff;
+    --chart-now: #ffb45c;
+    --chart-leg: rgba(255,255,255,.30);
+    --chart-spot: #9aa4b2;
+    --chart-strike: #8f8f8f;
   }
 }
 
