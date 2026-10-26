@@ -195,6 +195,27 @@ test('upstream failures surface as 502 rather than throwing', async () => {
   } finally { global.fetch = original; }
 });
 
+test('an unexpected failure is logged for the host, and the client gets a generic 502', async () => {
+  const original = global.fetch;
+  const originalError = console.error;
+  const logged = [];
+  console.error = (...args) => logged.push(args);
+  // A payload that passes the first checks and then breaks the handler.
+  mockFetch(() => ({ chart: { result: [{ meta: { get symbol() { throw new Error('malformed upstream'); } } }] } }));
+  try {
+    const out = await call({ fn: 'quote', commodity: 'wti' });
+    assert.strictEqual(out.code, 502);
+    assert.strictEqual(out.body.error, 'Market data request failed');
+    assert.ok(!JSON.stringify(out.body).includes('malformed'), 'no internals reach the client');
+    assert.strictEqual(logged.length, 1, 'one line in the host log');
+    assert.deepStrictEqual(logged[0].slice(0, 3), ['market', 'quote', 'wti']);
+    assert.match(logged[0][3].message, /malformed upstream/);
+  } finally {
+    global.fetch = original;
+    console.error = originalError;
+  }
+});
+
 test('every commodity in the table resolves to a symbol', async () => {
   const original = global.fetch;
   const seen = mockFetch(sym => chartPayload({ symbol: sym, shortName: sym }));

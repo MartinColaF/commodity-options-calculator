@@ -184,6 +184,9 @@ module.exports = async function handler(req, res) {
 
     return fail(res, 400, 'Unknown fn. Use quote, history, curve or months.');
   } catch (e) {
+    // The client gets a generic message; the details go to the host's logs,
+    // which used to get nothing at all.
+    console.error('market', fn, key, e);
     return fail(res, 502, 'Market data request failed');
   }
 };

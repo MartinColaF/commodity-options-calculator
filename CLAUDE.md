@@ -39,6 +39,12 @@ minute, at https://commodity-options-calculator.vercel.app.
 keeps Vercel treating this as a static site with functions. Adding a `build` script
 changes how Vercel deploys it, so do not add one casually.
 
+`.vercelignore` keeps the notes, tests and tooling (`CLAUDE.md`, `test/`, `scripts/`,
+`.github/`) off the public site, which served all of them. It lists root-anchored paths
+only; `test/deploy.test.js` fails if it ever drops a file `index.html` loads or the
+market function needs, so a new top-level file the site uses cannot vanish from
+production unnoticed.
+
 No server-side environment variables are needed. The optional Alpha Vantage key is
 the user's own and lives only in their browser's local storage — never commit a key.
 
@@ -237,6 +243,14 @@ the fill is on the legs, so `clearLegPrices()` has nothing to restore. When one 
 served both, undoing a fill restored whatever the price line said before it, even after
 the price had changed. A leg price typed over a fill marks that line "edited by hand
 since" (`typeLegPrice()`). Any new market input needs the same treatment.
+
+**localStorage holds three things: the saved scenario, the Alpha Vantage key and the
+response cache (`coc.cache.*`).** The cache must not crowd out the scenario: an entry read
+past its TTL is removed, `init()` prunes everything older than `CACHE_MAX_AGE` (keep that
+at least the longest TTL any caller uses), and if `persist()` hits the quota it clears
+the cache and tries again. `pruneCache()` lists the keys before removing any, because in
+Chrome removing an item reorders the rest and an index walk skipped entries.
+`test/storage.test.js` simulates that reordering.
 
 **Saved scenarios and share links go through `snapshot()` / `restore()`.** When adding
 a state field, add it to **both** — in `restore()` with its type checked, never copied

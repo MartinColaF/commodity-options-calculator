@@ -35,6 +35,7 @@ const EPILOGUE = `
   applyCarryYield, applyPreset, contractGapDays, logSlope,
   setReferencePrice, typeMarketInput, typeLegPrice,
   chartConfig, renderChart, renderChartSafely,
+  cacheGet, cacheSet, pruneCache, persist, STORE_KEY, CACHE_MAX_AGE,
   __contractMonths: () => contractMonths,
   forwardDelta, skewVol, legVolPct, scenarioTable,
   rateForTenor, realisedVol, impliedConvenienceYield, proxyAvailable,
@@ -65,7 +66,9 @@ function loadApp(opts) {
     localStorage: {
       getItem: k => (store.has(k) ? store.get(k) : null),
       setItem: (k, v) => store.set(k, String(v)),
-      removeItem: k => store.delete(k)
+      removeItem: k => store.delete(k),
+      key: i => (i < store.size ? Array.from(store.keys())[i] : null),
+      get length() { return store.size; }
     },
     fetch: o.fetch || (() => Promise.reject(new Error('network is not available in unit tests')))
   };

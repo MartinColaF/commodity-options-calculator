@@ -1,7 +1,7 @@
 /* Commodity Options Calculator
  * Generalised Black-Scholes-Merton (cost of carry) pricer, multi-leg strategy
- * builder and market data helpers. No build step: plain script, works on
- * file:// as well as GitHub Pages.
+ * builder and market data helpers. No build step: plain script, works from a
+ * file:// path as well as on its Vercel deployment.
  */
 'use strict';
 
@@ -848,20 +848,49 @@ function analyse() {
  * 6. Market data providers
  * ========================================================== */
 
+/* Market data responses are cached in localStorage under coc.cache.*. An entry
+ * found expired is removed, and init() prunes anything older than the longest
+ * time any caller keeps one. They used to be left to pile up - one per Alpha
+ * Vantage ticker ever typed - and a full storage quota makes persist() fail,
+ * which would silently stop the user's scenario from being saved. */
+const CACHE_PREFIX = 'coc.cache.';
+const CACHE_MAX_AGE = 12 * 3600e3;   // the Alpha Vantage series; nothing is kept longer
+
 function cacheGet(key, ttlMs) {
   try {
-    const raw = localStorage.getItem('coc.cache.' + key);
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
     if (!raw) return null;
     const o = JSON.parse(raw);
-    if (Date.now() - o.ts > ttlMs) return null;
+    if (Date.now() - o.ts > ttlMs) {
+      localStorage.removeItem(CACHE_PREFIX + key);
+      return null;
+    }
     return o.v;
   } catch (e) { return null; }
 }
 
 function cacheSet(key, v) {
   try {
-    localStorage.setItem('coc.cache.' + key, JSON.stringify({ ts: Date.now(), v: v }));
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), v: v }));
   } catch (e) { /* quota or private mode - not fatal */ }
+}
+
+/* Remove cached responses older than maxAge, and any that cannot be read. Only
+ * the cache: the saved scenario and the Alpha Vantage key are left alone. */
+function pruneCache(maxAge) {
+  try {
+    const now = Date.now();
+    // List the keys first: removing an item can reorder the rest, so walking
+    // localStorage by index while removing skipped entries in Chrome.
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+    for (const k of keys) {
+      if (!k || k.indexOf(CACHE_PREFIX) !== 0) continue;
+      let ts = NaN;
+      try { ts = JSON.parse(localStorage.getItem(k)).ts; } catch (e) { /* unreadable */ }
+      if (!(now - ts < maxAge)) localStorage.removeItem(k);
+    }
+  } catch (e) { /* storage unavailable - nothing to prune */ }
 }
 
 const TREASURY_URL = 'https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml';
@@ -1543,7 +1572,17 @@ function renderAll() {
  * ========================================================== */
 
 function persist() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(snapshot())); } catch (e) { }
+  const json = JSON.stringify(snapshot());
+  try {
+    localStorage.setItem(STORE_KEY, json);
+  } catch (e) {
+    // Most likely the storage quota. Cached responses can be fetched again and
+    // the scenario cannot, so make room and try once more.
+    try {
+      pruneCache(0);
+      localStorage.setItem(STORE_KEY, json);
+    } catch (e2) { /* private mode or still full - nothing more to do */ }
+  }
 }
 
 function snapshot() {
@@ -2339,6 +2378,7 @@ function onLegEvent(e) {
 }
 
 function init() {
+  pruneCache(CACHE_MAX_AGE);
   // Commodity dropdown
   $('commodity').innerHTML = Object.keys(COMMODITIES)
     .map(k => `<option value="${k}">${COMMODITIES[k].label}</option>`).join('');

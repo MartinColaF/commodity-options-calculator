@@ -107,7 +107,7 @@ Notes and limitations, stated plainly in the UI as well:
 
 ## Development
 
-No dependencies, nothing to install. Node 18+ is the only requirement.
+No dependencies, nothing to install. Node 20+ is the only requirement (CI runs 20 and 22).
 
 ```bash
 npm run dev     # static server on http://localhost:3000 (UI only)
@@ -163,6 +163,11 @@ some browsers restrict cross-origin requests from `file://`.
   today and each leg; one series per greek profile; strike marks on the shared axis),
   the chart created once and updated in place, and the page carrying on without
   Chart.js.
+- `test/storage.test.js` — the local-storage cache: expired entries removed, pruning
+  that touches nothing but the cache, and a full quota making room for the saved
+  scenario instead of losing it.
+- `test/deploy.test.js` — `.vercelignore` keeping the notes, tests and tooling off the
+  site without ever dropping a file the page or the market function needs.
 - `test/privacy.test.js` — the privacy policy promising nothing the site does not do:
   no cookie banner it lacks, no "no cookies" while code sets one, ads described as
   inactive for as long as none load, and every third party the page may contact
