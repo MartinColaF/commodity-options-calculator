@@ -30,6 +30,10 @@ const EPILOGUE = `
   __setContractMonths: rows => { contractMonths = rows; },
   netCost, netGreeks, horizonDays, analyse, snapshot, restore,
   sanitizeLeg, legRowHtml, legPricingInputs, legImpliedVol,
+  KEY_STORE, parseTreasuryXml, fetchYieldCurve, applyRate, applyFuturesPrice, applyVol,
+  applyCurveYield, loadContractMonths, useContractMonth, applyLegPrices, autoFill,
+  applyCarryYield, applyPreset,
+  __contractMonths: () => contractMonths,
   forwardDelta, skewVol, legVolPct, scenarioTable,
   rateForTenor, realisedVol, impliedConvenienceYield, proxyAvailable,
   currentCommodity
@@ -37,26 +41,32 @@ const EPILOGUE = `
 renderAll = function () {};   /* these tests exercise logic, not rendering */
 `;
 
-function loadApp() {
+/* There is no page: getElementById finds nothing, so code that reached for the
+ * DOM would throw here. `opts.fetch` stands in for the network, which is
+ * otherwise refused, and `opts.protocol` for the page's (file: in place of
+ * https:). The returned app carries `storage`, the Map behind localStorage. */
+function loadApp(opts) {
+  const o = opts || {};
   const store = new Map();
   const sandbox = {
     console,
     setTimeout, clearTimeout,
     document: { addEventListener() { }, getElementById() { return null; } },
     window: {},
-    location: { protocol: 'https:', hash: '', origin: 'https://example.test', pathname: '/' },
+    location: { protocol: o.protocol || 'https:', hash: '', origin: 'https://example.test', pathname: '/' },
     localStorage: {
       getItem: k => (store.has(k) ? store.get(k) : null),
       setItem: (k, v) => store.set(k, String(v)),
       removeItem: k => store.delete(k)
     },
-    fetch: () => Promise.reject(new Error('network is not available in unit tests'))
+    fetch: o.fetch || (() => Promise.reject(new Error('network is not available in unit tests')))
   };
   vm.createContext(sandbox);
   // Two scripts in one context share their top-level bindings, as two
   // <script> tags on one page do, so app.js sees the table's const.
   vm.runInContext(fs.readFileSync(TABLE, 'utf8'), sandbox, { filename: 'commodities.js' });
   vm.runInContext(fs.readFileSync(APP, 'utf8') + EPILOGUE, sandbox, { filename: 'app.js' });
+  sandbox.__app.storage = store;
   return sandbox.__app;
 }
 
