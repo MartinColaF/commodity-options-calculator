@@ -1372,23 +1372,21 @@ const markerPlugin = {
   }
 };
 
+/* The chart's colours are the --chart-* variables in styles.css, which also
+ * switches them for the dark scheme, so the page and the chart keep their
+ * palette in one place. They used to be written out here too, for both schemes. */
 function themeColors() {
-  const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return {
-    grid: dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.10)',
-    zero: dark ? 'rgba(255,255,255,.45)' : 'rgba(0,0,0,.45)',
-    text: dark ? '#d9dde3' : '#333',
-    net: dark ? '#7fd1ff' : '#0b6ea8',
-    now: dark ? '#ffb45c' : '#d97706',
-    leg: dark ? 'rgba(255,255,255,.30)' : 'rgba(0,0,0,.25)',
-    spot: dark ? '#9aa4b2' : '#6b7280',
-    strike: dark ? '#8f8f8f' : '#9ca3af'
-  };
+  const css = getComputedStyle(document.documentElement);
+  const col = {};
+  for (const k of ['grid', 'zero', 'text', 'net', 'now', 'leg', 'spot', 'strike']) {
+    col[k] = css.getPropertyValue('--chart-' + k).trim();
+  }
+  return col;
 }
 
 /* Everything Chart.js is given for the current state: the series, the axes, the
- * strike and spot marks and the colours. Pure apart from reading the colour
- * scheme, so what the chart shows can be tested without a canvas. */
+ * strike and spot marks and the colours. Pure apart from reading the colours off
+ * the stylesheet, so what the chart shows can be tested without a canvas. */
 function chartConfig(a) {
   const col = themeColors();
   const mult = dollarMultiplier(currentCommodity());

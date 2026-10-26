@@ -8,6 +8,7 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const APP = path.join(ROOT, 'app.js');
 /* Loaded first, as index.html does: app.js reads its table at load time. */
 const TABLE = path.join(ROOT, 'commodities.js');
+const STYLES = path.join(ROOT, 'styles.css');
 
 /* app.js is deliberately a plain browser script with no module system, so the
  * page still works when opened from a file:// path. To exercise its maths in
@@ -27,12 +28,29 @@ const EPILOGUE = `
 /* No stub for renderAll: nothing outside the wiring calls it, and with no page
  * here, a domain function that did would throw and fail its test. */
 
+/* The custom properties styles.css sets on :root for one colour scheme - the
+ * light block, with the dark block's on top for 'dark' - which is what
+ * getComputedStyle gives app.js for the root element. */
+function cssVariables(scheme) {
+  const css = fs.readFileSync(STYLES, 'utf8');
+  const read = block => {
+    const out = {};
+    for (const m of block.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) out[m[1]] = m[2].trim();
+    return out;
+  };
+  const light = read(css.match(/^:root\s*\{([^}]*)\}/m)[1]);
+  if (scheme !== 'dark') return light;
+  const dark = css.match(/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/);
+  return Object.assign({}, light, read(dark[1]));
+}
+
 /* There is no page: getElementById finds nothing, so code that reached for the
  * DOM would throw here. `opts.fetch` stands in for the network, which is
  * otherwise refused, and `opts.protocol` for the page's (file: in place of
  * https:). `opts.elements` maps ids to stand-in elements and `opts.globals`
- * adds globals such as a fake Chart. The returned app carries `storage`, the
- * Map behind localStorage. */
+ * adds globals such as a fake Chart. The stylesheet is styles.css in
+ * `opts.scheme`, 'light' unless it says 'dark'. The returned app carries
+ * `storage`, the Map behind localStorage. */
 function loadApp(opts) {
   const o = opts || {};
   const store = new Map();
@@ -42,7 +60,12 @@ function loadApp(opts) {
     setTimeout, clearTimeout,
     document: {
       addEventListener() { },
-      getElementById: id => (Object.prototype.hasOwnProperty.call(elements, id) ? elements[id] : null)
+      getElementById: id => (Object.prototype.hasOwnProperty.call(elements, id) ? elements[id] : null),
+      documentElement: {}
+    },
+    getComputedStyle: () => {
+      const vars = cssVariables(o.scheme);
+      return { getPropertyValue: k => (Object.prototype.hasOwnProperty.call(vars, k) ? vars[k] : '') };
     },
     window: {},
     location: { protocol: o.protocol || 'https:', hash: '', origin: 'https://example.test', pathname: '/' },

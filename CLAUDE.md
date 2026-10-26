@@ -9,7 +9,7 @@ for users; this file covers what is easy to get wrong when changing it.
 | File | Role |
 |---|---|
 | `index.html` | markup only; every input has a stable `id` that `app.js` binds by hand |
-| `styles.css` | light/dark theming via CSS variables |
+| `styles.css` | light/dark theming via CSS variables, the chart's colours included |
 | `commodities.js` | the one table of markets, read by the page and by the function |
 | `app.js` | pricing engine, strategy analytics, data providers, rendering |
 | `api/market.js` | serverless futures-data proxy (Vercel) |
@@ -148,6 +148,13 @@ entry animation; the in-place update draws pixel-identical charts. Input events
 however many events arrived; clicks and selects still call `renderAll()` directly. Time
 renders before and after anything that touches this path: the pricing is 1–2 ms of
 it, so a slow redraw is nearly always Chart.js work.
+
+**The chart's colours live in `styles.css`**, as the `--chart-*` variables, set once in
+`:root` and again in the dark block. `themeColors()` reads them with `getComputedStyle`;
+the test loader serves the same variables from `styles.css`, for either scheme
+(`loadApp({ scheme: 'dark' })`). A new chart colour goes in **both** blocks, or the dark
+chart quietly takes the light one — `test/chart.test.js` fails when it does. They used
+to be written out in `app.js` as well, where nothing kept them in step with the page.
 
 **Chart.js is pinned by Subresource Integrity, and the CSP names that one file.** The
 script runs on the origin that holds the user's Alpha Vantage key, so the browser

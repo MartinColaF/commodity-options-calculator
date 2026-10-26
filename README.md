@@ -165,8 +165,8 @@ some browsers restrict cross-origin requests from `file://`.
   allows that file and nothing broader.
 - `test/chart.test.js` — what the payoff chart is given in every mode (the horizon,
   today and each leg; one series per greek profile; strike marks on the shared axis),
-  the chart created once and updated in place, and the page carrying on without
-  Chart.js.
+  the chart created once and updated in place, its colours read from the stylesheet
+  in both schemes, and the page carrying on without Chart.js.
 - `test/layers.test.js` — the calculations and actions never touching the page, the
   rendering never changing the state, the chart date kept within the horizon, and the
   listed strip: dropped with the commodity, never saved or shared.
