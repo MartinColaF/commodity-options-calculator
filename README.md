@@ -159,6 +159,10 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/page.test.js` — the page's one third-party script: pinned by its hash, an
   exact version of a file the package publishes, and a Content-Security-Policy that
   allows that file and nothing broader.
+- `test/privacy.test.js` — the privacy policy promising nothing the site does not do:
+  no cookie banner it lacks, no "no cookies" while code sets one, ads described as
+  inactive for as long as none load, and every third party the page may contact
+  named.
 - `test/api.test.js` — the serverless function with a mocked upstream: rejected
   commodities, method and action validation, series parsing, and the two curve rules
   (skip the delivery month, skip contracts that have not traded recently).
