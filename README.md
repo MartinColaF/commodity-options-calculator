@@ -57,13 +57,13 @@ Yahoo Finance sends no CORS headers, so the browser cannot read it directly. The
 serverless function in [`api/market.js`](api/market.js) makes that request instead.
 
 - The client sends a **commodity key, never a raw symbol**; every symbol is built
-  from a table inside the function. That keeps it from being usable as an open proxy.
+  from the commodity table. That keeps it from being usable as an open proxy.
 - Responses are cached at Vercel's edge (`s-maxage`: quotes 5 min, history and curve
   1 h) and again in the browser, so upstream sees very little traffic.
 - It only exists on the deployed site. Opening the page locally, the buttons say so
   and fall back to Alpha Vantage or your manual values.
-- Contract months per commodity are listed in `CONTRACTS`; the curve endpoint probes
-  the next listed contracts and keeps the first two that quote.
+- Contract months per commodity are listed in [`commodities.js`](commodities.js); the
+  curve endpoint probes the next listed contracts and keeps the first two that quote.
 
 Notes and limitations, stated plainly in the UI as well:
 
@@ -99,6 +99,8 @@ Notes and limitations, stated plainly in the UI as well:
 
 - `index.html` — markup
 - `styles.css` — styling, light and dark
+- `commodities.js` — the table of markets: contract specs, presets and futures
+  symbols. The page and the function both read it, so adding a market is one entry.
 - `app.js` — pricing engine, strategy analytics, data providers, rendering
 - `api/market.js` — serverless futures data proxy (Vercel)
 - `privacy.html` — privacy policy
@@ -145,6 +147,9 @@ some browsers restrict cross-origin requests from `file://`.
   imported files: hostile fields rejected or retyped, ids never taken from the input,
   a legitimate scenario round-tripping unchanged, and the legs table escaping every
   value it renders.
+- `test/commodities.test.js` — the page and the function reading one table: the
+  markets the page sends to the function are exactly those with futures data, and
+  every contract entry is in a form the function can build symbols from.
 - `test/page.test.js` — the page's one third-party script: pinned by its hash, an
   exact version of a file the package publishes, and a Content-Security-Policy that
   allows that file and nothing broader.

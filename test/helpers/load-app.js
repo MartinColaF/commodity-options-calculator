@@ -4,7 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const APP = path.resolve(__dirname, '..', '..', 'app.js');
+const ROOT = path.resolve(__dirname, '..', '..');
+const APP = path.join(ROOT, 'app.js');
+/* Loaded first, as index.html does: app.js reads its table at load time. */
+const TABLE = path.join(ROOT, 'commodities.js');
 
 /* app.js is deliberately a plain browser script with no module system, so the
  * page still works when opened from a file:// path. To exercise its maths in
@@ -50,6 +53,9 @@ function loadApp() {
     fetch: () => Promise.reject(new Error('network is not available in unit tests'))
   };
   vm.createContext(sandbox);
+  // Two scripts in one context share their top-level bindings, as two
+  // <script> tags on one page do, so app.js sees the table's const.
+  vm.runInContext(fs.readFileSync(TABLE, 'utf8'), sandbox, { filename: 'commodities.js' });
   vm.runInContext(fs.readFileSync(APP, 'utf8') + EPILOGUE, sandbox, { filename: 'app.js' });
   return sandbox.__app;
 }

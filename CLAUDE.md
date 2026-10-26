@@ -10,6 +10,7 @@ for users; this file covers what is easy to get wrong when changing it.
 |---|---|
 | `index.html` | markup only; every input has a stable `id` that `app.js` binds by hand |
 | `styles.css` | light/dark theming via CSS variables |
+| `commodities.js` | the one table of markets, read by the page and by the function |
 | `app.js` | pricing engine, strategy analytics, data providers, rendering |
 | `api/market.js` | serverless futures-data proxy (Vercel) |
 | `test/` | `node --test` suite, no framework |
@@ -171,8 +172,20 @@ or the browser blocks it silently and the feature just doesn't work. `style-src`
 `file:` keeps the page working when opened from disk, and is inert on https.
 
 **The API function takes a commodity key, never a raw symbol.** Symbols are built from
-the `CONTRACTS` table inside the function. Keep it that way or the endpoint becomes an
-open proxy. The curve endpoint also skips the current (delivery) month and any contract
+each market's `futures` entry in `commodities.js`. Keep it that way or the endpoint
+becomes an open proxy.
+
+**`commodities.js` is the only place a market is defined.** It used to be three lists in
+two shapes — the page's table, the page's list of markets the function serves, and the
+function's contracts — and the second one was a literal: forgetting to extend it made the
+data buttons fail with "no futures contract mapped", and no test noticed. Now the page
+derives that list from the table, the function `require`s the same file, and adding a
+market is **one entry**. The file is a plain script with a guarded
+`module.exports`, so it works as a browser global (from `file://` too) and as a Node
+module. Keep it that way, not ESM. `index.html` must load it **before** `app.js`, which
+reads it at load time, and the test loader does the same. Vercel's file tracer bundles
+it with the function because of the `require`, so do not read it with `fs`, which the
+tracer may miss. `test/commodities.test.js` pins the page and the function to the table. The curve endpoint also skips the current (delivery) month and any contract
 that has not traded in seven days — both were real bugs that poisoned the implied carry.
 
 **A price of zero must not reach `Math.log10`.** `strikeStep()` guards it. A half-typed
