@@ -126,6 +126,15 @@ here silently produces wrong maxima.
 **The horizon is the nearest expiry among active legs**, which is what makes calendar
 spreads read correctly — the far leg still holds time value there.
 
+**The probability of profit is measured at the position's own volatility.**
+`horizonVol()` takes the explicit volatility of the option nearest the money among those
+expiring at the horizon — what the IV button writes — and otherwise the panel's, which is
+also the skew's at-the-money level. It used to be the panel's always, so a call priced at
+its own 40% reported 14.5% instead of 28.7%. `analyse()` integrates the lognormal
+between the exact points where the P&L crosses zero, interpolated as the breakevens are;
+cell by cell, a bull call spread read 37.01% against an exact 37.76%. The summary says
+which volatility it used. `test/probability.test.js` pins both against closed forms.
+
 **Legs may price off their own delivery month.** `leg.under` is that leg's own contract
 price; `null` means the panel price. The chart sweeps **one** axis, so `legScenario()`
 moves each month in proportion and `strikeOnAxis()` converts a strike into a point on

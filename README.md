@@ -27,7 +27,8 @@ open `index.html` or serve the folder.
   date in between, individual leg overlays, strike and spot markers. The same chart
   also plots delta / gamma / vega / theta profiles across underlying prices.
 - **Analytics** — net debit or credit, max profit, max loss, all breakevens, and the
-  risk-neutral probability of profit.
+  risk-neutral probability of profit, at the volatility the position is priced at (the
+  summary says which).
 - **Scenario grid** — position P&L across underlying price, volatility shift and
   elapsed time: the grid a trader reads before putting a position on. Cells are
   shaded by size so the cliff is visible without reading every figure.
@@ -136,6 +137,9 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
   butterflies; bounded put payoffs; contract multipliers including cents-quoted
   markets; every preset and every commodity.
+- `test/probability.test.js` — the probability of profit against closed forms, on
+  either tail and between breakevens, measured at the volatility of the option nearest
+  the money at the horizon, and the summary naming that volatility.
 - `test/skew.test.js` — the skew curve reproducing the 25-delta quotes it was built
   from, the wings under a butterfly, the clamp on an extreme risk reversal, and the
   scenario grid's shape, ordering and response to volatility and time.

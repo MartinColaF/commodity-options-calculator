@@ -704,6 +704,23 @@ function horizonDays() {
   return Math.min.apply(null, opts.map(l => l.days));
 }
 
+/* The volatility the probability of profit is measured at, as a decimal: the
+ * explicit volatility of the option nearest the money among those expiring at
+ * the horizon - an implied one the IV button wrote there, say - and otherwise
+ * the panel's, which is also the skew's at-the-money level. It used to be the
+ * panel's always, so a call priced at its own 40% reported the probability of
+ * a 20% market: 14.5% instead of 28.7%. */
+function horizonVol() {
+  const t = horizonDays();
+  let best = null, dist = Infinity;
+  for (const leg of activeLegs()) {
+    if (leg.kind === 'underlying' || leg.days !== t) continue;
+    const d = Math.abs(Math.log(leg.strike / legUnder(leg)));
+    if (d < dist) { dist = d; best = leg; }
+  }
+  return Math.max(best && best.vol != null ? best.vol : state.vol, 0) / 100;
+}
+
 /* Put back whatever a change left out of bounds: the chart's evaluation date
  * cannot pass the horizon, which moves whenever a leg's expiry does. Runs
  * before every render, so drawing never has to correct the state it draws -
@@ -833,26 +850,37 @@ function analyse() {
   const unlimitedProfit = slopeHi > 1e-9;
   const unlimitedLoss = slopeHi < -1e-9;
 
-  // Risk-neutral probability of profit at the horizon.
-  const sigma = state.vol / 100, T = t / 365, b = carry();
+  // Risk-neutral probability of profit at the horizon: the reference contract
+  // lognormal at the position's own volatility, integrated between the points
+  // where the P&L crosses zero - interpolated as the breakevens are, so exact
+  // on a payoff that is linear between grid points. Cell by cell, the cell
+  // holding a breakeven counted whole or not at all: 0.75 points off on a
+  // bull call spread.
+  const sigma = horizonVol(), T = t / 365, b = carry();
   let pop = 0;
   if (T > 0 && sigma > 0) {
     const mu = Math.log(state.S) + (b - sigma * sigma / 2) * T;
     const sd = sigma * Math.sqrt(T);
-    const lnCdf = x => normCdf((Math.log(x) - mu) / sd);
-    for (let i = 1; i < wx.length; i++) {
-      const mid = (wy[i - 1] + wy[i]) / 2;
-      if (mid > 0) pop += lnCdf(wx[i]) - lnCdf(wx[i - 1]);
+    const lnCdf = x => (x > 0 ? normCdf((Math.log(x) - mu) / sd) : 0);
+    let from = wy[0] > 0 ? 0 : null;   // where the current profitable stretch began
+    for (let i = 1; i < n; i++) {
+      if ((wy[i - 1] > 0) === (wy[i] > 0)) continue;
+      const x = wx[i - 1] + (wx[i] - wx[i - 1]) * (0 - wy[i - 1]) / (wy[i] - wy[i - 1]);
+      if (from === null) {
+        from = x;
+      } else {
+        pop += lnCdf(x) - lnCdf(from);
+        from = null;
+      }
     }
-    if (wy[0] > 0) pop += lnCdf(wx[0]);
-    if (wy[n - 1] > 0) pop += 1 - lnCdf(wx[n - 1]);
+    if (from !== null) pop += 1 - lnCdf(from);
   }
 
   return {
     t, xs, ys,
     maxProfit: unlimitedProfit ? Infinity : maxP,
     maxLoss: unlimitedLoss ? -Infinity : minP,
-    breakevens: bes, pop
+    breakevens: bes, pop, popVol: sigma
   };
 }
 
@@ -1319,7 +1347,7 @@ function renderResults() {
     <div class="kpi"><span>Max profit</span><strong class="pos">${money(a.maxProfit)}</strong></div>
     <div class="kpi"><span>Max loss</span><strong class="neg">${money(a.maxLoss)}</strong></div>
     <div class="kpi"><span>Breakeven${a.breakevens.length === 1 ? '' : 's'}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmt(b, 2)).join(' / ') : '-'}</strong></div>
-    <div class="kpi"><span>Prob. of profit</span><strong>${(a.pop * 100).toFixed(1)}%</strong></div>
+    <div class="kpi"><span>Prob. of profit</span><strong>${(a.pop * 100).toFixed(1)}%</strong><small>risk-neutral, at ${escapeHtml(fmt(a.popVol * 100, 1))}% vol</small></div>
     <div class="kpi"><span>Horizon</span><strong>${escapeHtml(a.t)} days</strong></div>`;
 
   const mult = dollarMultiplier(c);
