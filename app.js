@@ -1026,11 +1026,27 @@ async function proxyGet(fn, commodity, ttlMs) {
   return json;
 }
 
+/* The curve between two listed contracts. These are the only copies of the two
+ * formulas: the Yield button and the leg fill both read the curve through them,
+ * so the carry one reports is the slope the other prices along. */
+
+/* Whole days between two contracts' expiries. Both are approximated to
+ * mid-month, so the gap - which is what the carry depends on - stays accurate. */
+function contractGapDays(near, far) {
+  return Math.round((new Date(far.expiry) - new Date(near.expiry)) / 86400e3);
+}
+
+/* The log slope from F1 to F2, `days` apart, as a continuously compounded
+ * annual rate. Under cost of carry it is r - y. */
+function logSlope(F1, F2, days) {
+  return Math.log(F2 / F1) / (days / 365);
+}
+
 /* Convenience yield implied by the cost-of-carry relation F = S e^{(r+u-y)T}. */
 function impliedConvenienceYield(spot, futures, days, ratePct) {
   const T = days / 365;
   if (!(spot > 0) || !(futures > 0) || !(T > 0)) return NaN;
-  return (ratePct / 100 - Math.log(futures / spot) / T) * 100;
+  return (ratePct / 100 - logSlope(spot, futures, days)) * 100;
 }
 
 /* ============================================================
@@ -1716,12 +1732,9 @@ async function applyVolFromAlphaVantage(opts) {
 async function applyCurveYield() {
   const c = await proxyGet('curve', state.commodity, 60 * 60e3);
   const near = c.contracts[0], far = c.contracts[1];
-  const days = Math.round((new Date(far.expiry) - new Date(near.expiry)) / 86400e3);
-  const dt = days / 365;
-  if (!(dt > 0) || !(near.price > 0) || !(far.price > 0)) {
-    throw new Error('the two contracts did not give a usable spread');
-  }
-  const y = (state.rate / 100 - Math.log(far.price / near.price) / dt) * 100;
+  const days = contractGapDays(near, far);
+  const y = impliedConvenienceYield(near.price, far.price, days, state.rate);
+  if (!isFinite(y)) throw new Error('the two contracts did not give a usable spread');
   state.yield = +y.toFixed(3);
   state.sources.yield = {
     live: true,
@@ -1885,11 +1898,11 @@ async function applyLegPrices() {
 
   const c = await proxyGet('curve', state.commodity, 60 * 60e3);
   const near = c.contracts[0], far = c.contracts[1];
-  const gapDays = Math.round((new Date(far.expiry) - new Date(near.expiry)) / 86400e3);
+  const gapDays = contractGapDays(near, far);
   if (!(gapDays > 0) || !(near.price > 0) || !(far.price > 0)) {
     throw new Error('the two contracts did not give a usable spread');
   }
-  const slope = Math.log(far.price / near.price) / (gapDays / 365);
+  const slope = logSlope(near.price, far.price, gapDays);
 
   let furthest = 0;
   for (const leg of opts) {

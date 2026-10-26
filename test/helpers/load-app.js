@@ -32,7 +32,7 @@ const EPILOGUE = `
   sanitizeLeg, legRowHtml, legPricingInputs, legImpliedVol,
   KEY_STORE, parseTreasuryXml, fetchYieldCurve, applyRate, applyFuturesPrice, applyVol,
   applyCurveYield, loadContractMonths, useContractMonth, applyLegPrices, autoFill,
-  applyCarryYield, applyPreset,
+  applyCarryYield, applyPreset, contractGapDays, logSlope,
   __contractMonths: () => contractMonths,
   forwardDelta, skewVol, legVolPct, scenarioTable,
   rateForTenor, realisedVol, impliedConvenienceYield, proxyAvailable,
