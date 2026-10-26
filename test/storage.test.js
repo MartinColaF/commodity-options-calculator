@@ -112,3 +112,72 @@ test('a full quota no longer loses the scenario: the cache makes room', () => {
   assert.ok(Array.from(store.keys()).every(k => k.indexOf('coc.cache.') !== 0),
     'the cache gave way');
 });
+
+/* ---- the Alpha Vantage key ---- */
+
+/* Stand-ins for every element the wiring binds, which record their listeners,
+ * so bindInputs() runs as it does on the page. */
+function wired() {
+  const listeners = {};
+  const element = id => ({
+    value: '', checked: false,
+    addEventListener: (type, fn) => { listeners[id + ' ' + type] = fn; }
+  });
+  const made = {};
+  const elements = new Proxy({}, {
+    getOwnPropertyDescriptor: (t, id) => ({ value: made[id] || (made[id] = element(id)), configurable: true, enumerable: true }),
+    get: (t, id) => made[id] || (made[id] = element(id))
+  });
+  const app = loadApp({ elements, globals: { window: { matchMedia: () => ({ addEventListener() { } }) } } });
+  resetState(app);
+  app.bindInputs();
+  return { app, type: value => listeners['avKey input']({ target: { value } }) };
+}
+
+test('emptying the key field takes the key out of the browser, and nothing else', () => {
+  // It used to be written on use and never removed: the field emptied, and
+  // the next visit filled it in again from storage.
+  const { app, type } = wired();
+  app.storage.set(app.KEY_STORE, 'OLD-KEY');
+  app.storage.set(app.STORE_KEY, '{"S":4000}');
+  app.storage.set('coc.cache.av.GLD', '{}');
+
+  type('OLD-KE');
+  assert.strictEqual(app.storage.get(app.KEY_STORE), 'OLD-KEY', 'editing is not emptying');
+  type('  ');
+  assert.strictEqual(app.storage.has(app.KEY_STORE), false, 'emptied: forgotten');
+  assert.deepStrictEqual(Array.from(app.storage.keys()).sort(), ['coc.cache.av.GLD', 'coc.state.v2'],
+    'the scenario and the cache stay');
+});
+
+test('a key is kept once it is used, and a full or private storage does not stop the request', async () => {
+  const series = [];
+  for (let i = 0; i < 40; i++) {
+    const c = 100 + Math.sin(i);
+    series.push([new Date(Date.UTC(2026, 8, 1 + i)).toISOString().slice(0, 10),
+      { '1. open': String(c), '2. high': String(c + 1), '3. low': String(c - 1), '4. close': String(c) }]);
+  }
+  const answer = { 'Time Series (Daily)': Object.fromEntries(series) };
+  const net = async url => (String(url).includes('alphavantage.co')
+    ? { ok: true, status: 200, json: async () => answer }
+    : { ok: false, status: 502, json: async () => ({ error: 'Upstream market data unavailable' }) });
+  const opts = { window: 20, estimator: 'close', avKey: 'NEW-KEY', symbol: '' };
+
+  const app = loadApp({ fetch: net });
+  resetState(app, { commodity: 'gold' });
+  await app.applyVol(opts);
+  assert.strictEqual(app.storage.get(app.KEY_STORE), 'NEW-KEY');
+
+  const store = new Map();
+  const refusing = {
+    getItem: k => (store.has(k) ? store.get(k) : null),
+    setItem: () => { throw new Error('QuotaExceededError'); },
+    removeItem: k => store.delete(k),
+    key: i => Array.from(store.keys())[i] || null,
+    get length() { return store.size; }
+  };
+  const full = loadApp({ fetch: net, globals: { localStorage: refusing } });
+  resetState(full, { commodity: 'gold', vol: 15 });
+  await full.applyVol(opts);
+  assert.notStrictEqual(full.state.vol, 15, 'the volatility still arrives');
+});

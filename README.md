@@ -175,8 +175,9 @@ some browsers restrict cross-origin requests from `file://`.
   rendering never changing the state, the chart date kept within the horizon, and the
   listed strip: dropped with the commodity, never saved or shared.
 - `test/storage.test.js` — the local-storage cache: expired entries removed, pruning
-  that touches nothing but the cache, and a full quota making room for the saved
-  scenario instead of losing it.
+  that touches nothing but the cache, a full quota making room for the saved
+  scenario instead of losing it, and the Alpha Vantage key forgotten when its field
+  is emptied.
 - `test/deploy.test.js` — `.vercelignore` keeping the notes, tests and tooling off the
   site without ever dropping a file the page or the market function needs.
 - `test/privacy.test.js` — the privacy policy promising nothing the site does not do:
