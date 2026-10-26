@@ -381,7 +381,11 @@ const state = {
   chart: { mode: 'payoff', tDays: 0, showLegs: true, range: 40 },
   // Where each market input came from; null = typed or preset. `legs` is the
   // fill from the curve, shown on its own line only while legs carry it.
-  sources: { price: null, rate: null, vol: null, yield: null, legs: null }
+  sources: { price: null, rate: null, vol: null, yield: null, legs: null },
+  // This visit only, never saved or shared: `strip` is the listed contracts
+  // last loaded for this commodity. Live quotes, and a stale strip in a shared
+  // link would be worse than none.
+  session: { strip: [] }
 };
 
 function newLeg(over) {
@@ -441,7 +445,6 @@ function applyStrategy(name) {
   const step = strikeStep(state.S);
   const k = Math.round(state.S / step) * step;
   state.legs = def.legs(k, step, state.days).map(l => newLeg(Object.assign({ days: state.days }, l)));
-  renderAll();
 }
 
 function strikeStep(S) {
@@ -699,6 +702,15 @@ function horizonDays() {
   const opts = activeLegs().filter(l => l.kind !== 'underlying');
   if (!opts.length) return state.days;
   return Math.min.apply(null, opts.map(l => l.days));
+}
+
+/* Put back whatever a change left out of bounds: the chart's evaluation date
+ * cannot pass the horizon, which moves whenever a leg's expiry does. Runs
+ * before every render, so drawing never has to correct the state it draws -
+ * renderResults() used to clip this itself. */
+function normalizeState() {
+  const t = horizonDays();
+  if (state.chart.tDays > t) state.chart.tDays = t;
 }
 
 /* Where a leg's strike falls on the reference price axis. A leg on its own
@@ -1175,14 +1187,13 @@ function renderMonths() {
   const sel = $('contractMonth');
   const current = state.contractMonth || '';
   const opts = ['<option value="">Front month (continuous)</option>'].concat(
-    contractMonths.map(c =>
+    state.session.strip.map(c =>
       '<option value="' + escapeHtml(c.symbol) + '">' + escapeHtml(monthLabel(c)) + '</option>')
   );
   sel.innerHTML = opts.join('');
-  // Keep the selection if the symbol is still in the strip; otherwise fall
-  // back to the continuous series rather than silently picking another month.
-  sel.value = contractMonths.some(c => c.symbol === current) ? current : '';
-  if (sel.value !== current) state.contractMonth = '';
+  // loadContractMonths() drops a picked month the strip no longer lists, so
+  // the selection is always one of these options.
+  sel.value = current;
 }
 
 function renderSources() {
@@ -1260,10 +1271,10 @@ function renderLegs() {
   // Show the way out before it is needed: the button sits there greyed until a
   // leg actually carries its own price, then lights up.
   $('clearLegPrices').disabled = !state.legs.some(l => l.under != null);
-  $('monthNote').textContent = contractMonths.length
+  $('monthNote').textContent = state.session.strip.length
     ? (state.contractMonth
       ? 'Pricing against one listed contract. "Fill leg prices" now interpolates between these ' +
-        contractMonths.length + ' real quotes instead of extrapolating a single slope.'
+        state.session.strip.length + ' real quotes instead of extrapolating a single slope.'
       : 'Listed months loaded. Pick one to price against that specific contract, which is what ' +
         'an option quote on a broker\'s screen refers to.')
     : 'The continuous front-month series by default. Load the listed months to price against one ' +
@@ -1306,7 +1317,6 @@ function renderResults() {
     <p class="muted small">Position column = per-unit greek x quantity x $${fmt(mult, 2)} multiplier.</p>`;
 
   $('tDays').max = Math.max(a.t, 1);
-  if (state.chart.tDays > a.t) state.chart.tDays = a.t;
   $('tDays').value = state.chart.tDays;
   $('tDaysLabel').textContent = state.chart.tDays === 0
     ? 'today' : 'in ' + state.chart.tDays + ' day' + (state.chart.tDays === 1 ? '' : 's');
@@ -1557,7 +1567,10 @@ function scheduleRender() {
   });
 }
 
+/* Drawing is a projection of the state: nothing below changes it. Whatever a
+ * change left out of bounds is put back first, in normalizeState(). */
 function renderAll() {
+  normalizeState();
   renderInputs();
   renderLegs();
   const a = renderResults();
@@ -1860,22 +1873,34 @@ async function applyCurveYield() {
   };
 }
 
-/* The listed contract strip for the selected commodity, newest fetch wins.
- * Not persisted: these are live quotes, and a stale strip in a shared link
- * would be worse than none. Cleared whenever the commodity changes. */
-let contractMonths = [];
-
-/* The wiring draws the picker from the strip once this resolves. */
+/* The listed strip for the selected commodity, newest fetch wins; it lives in
+ * state.session.strip. A month picked from an earlier strip that this one no
+ * longer lists stops being the picked month - its price and source stay, still
+ * true about where the number came from. That used to happen inside
+ * renderMonths(), which changed the state it was drawing. The wiring draws the
+ * picker once this resolves. */
 async function loadContractMonths() {
   const c = await proxyGet('months', state.commodity, 60 * 60e3);
   if (!c.contracts || !c.contracts.length) throw new Error('no listed contract quoted');
-  contractMonths = c.contracts;
-  return { message: contractMonths.length + ' listed months loaded' };
+  state.session.strip = c.contracts;
+  if (state.contractMonth && !c.contracts.some(m => m.symbol === state.contractMonth)) {
+    state.contractMonth = '';
+  }
+  return { message: c.contracts.length + ' listed months loaded' };
+}
+
+/* Another market: its strip is not this one's, and presets reset the rest -
+ * keeping the old strip would offer cocoa months while pricing gold. */
+function changeCommodity(key) {
+  if (!Object.prototype.hasOwnProperty.call(COMMODITIES, key)) return;
+  state.commodity = key;
+  state.session.strip = [];
+  applyPreset();
 }
 
 /* Price the panel against one specific delivery month. */
 function useContractMonth(symbol) {
-  const hit = contractMonths.find(c => c.symbol === symbol);
+  const hit = state.session.strip.find(c => c.symbol === symbol);
   if (!hit) {
     // Back to the continuous series: leave the price alone, since we have no
     // front-month quote in hand, but stop claiming it belongs to a month.
@@ -1934,7 +1959,7 @@ function daysUntil(isoDate, nowMs) {
  * anything. */
 function forwardFromStrip(days) {
   const now = Date.now();
-  const pts = contractMonths
+  const pts = state.session.strip
     .filter(c => c.price > 0)
     .map(c => ({ t: daysUntil(c.expiry, now), p: c.price }))
     .sort((a, b) => a.t - b.t);
@@ -1958,8 +1983,9 @@ function forwardFromStrip(days) {
  * the two-contract slope whenever the strip is in hand, because interpolating
  * between real quotes beats extrapolating one slope measured at the front. */
 function fillLegsFromStrip(opts) {
+  const strip = state.session.strip;
   const now = Date.now();
-  const pts = contractMonths.filter(c => c.price > 0).map(c => daysUntil(c.expiry, now));
+  const pts = strip.filter(c => c.price > 0).map(c => daysUntil(c.expiry, now));
   // Expiries are approximated to mid-month, so a leg within a couple of weeks
   // of the last contract is effectively on it. Flagging those as extrapolated
   // would cry wolf on the common case of a leg expiring at the last listed
@@ -1972,13 +1998,13 @@ function fillLegsFromStrip(opts) {
     leg.under = +f.toFixed(4);
     if (leg.days > furthestQuote && leg.days > beyond) beyond = leg.days;
   }
-  const first = contractMonths[0], last = contractMonths[contractMonths.length - 1];
+  const first = strip[0], last = strip[strip.length - 1];
   const tail = beyond
     ? `, extrapolated past the last listed month for the ${beyond}d leg`
     : '';
   return {
     live: true,
-    text: `legs interpolated across ${contractMonths.length} listed contracts, ` +
+    text: `legs interpolated across ${strip.length} listed contracts, ` +
       `${first.name || first.symbol} ${fmt(first.price, 2)} to ` +
       `${last.name || last.symbol} ${fmt(last.price, 2)}${tail}`
   };
@@ -1995,9 +2021,9 @@ async function applyLegPrices() {
   if (!opts.length) throw new Error('add an option leg first');
 
   // With the listed strip in hand, interpolate between real quotes.
-  if (contractMonths.length >= 2) {
+  if (state.session.strip.length >= 2) {
     state.sources.legs = fillLegsFromStrip(opts);
-    return { message: `leg prices from ${contractMonths.length} listed contracts` };
+    return { message: `leg prices from ${state.session.strip.length} listed contracts` };
   }
 
   const c = await proxyGet('curve', state.commodity, 60 * 60e3);
@@ -2177,13 +2203,10 @@ function num(el, fallback) {
 
 function bindInputs() {
   $('commodity').addEventListener('change', e => {
-    state.commodity = e.target.value;
-    // The strip belongs to the old commodity; keeping it would offer cocoa
-    // months while pricing gold.
-    contractMonths = [];
-    state.contractMonth = '';
+    changeCommodity(e.target.value);
     renderMonths();
-    actionApplyPreset();
+    resetProxyFields();
+    renderAll();
   });
 
   $('loadMonths').addEventListener('click', runAction('Contract months', async () => {
@@ -2229,7 +2252,9 @@ function bindInputs() {
   });
 
   $('strategy').addEventListener('change', e => {
-    if (e.target.value) applyStrategy(e.target.value);
+    if (!e.target.value) return;
+    applyStrategy(e.target.value);
+    renderAll();
   });
 
   $('addLeg').addEventListener('click', () => {

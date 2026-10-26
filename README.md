@@ -163,6 +163,9 @@ some browsers restrict cross-origin requests from `file://`.
   today and each leg; one series per greek profile; strike marks on the shared axis),
   the chart created once and updated in place, and the page carrying on without
   Chart.js.
+- `test/layers.test.js` — the calculations and actions never touching the page, the
+  rendering never changing the state, the chart date kept within the horizon, and the
+  listed strip: dropped with the commodity, never saved or shared.
 - `test/storage.test.js` — the local-storage cache: expired entries removed, pruning
   that touches nothing but the cache, and a full quota making room for the saved
   scenario instead of losing it.

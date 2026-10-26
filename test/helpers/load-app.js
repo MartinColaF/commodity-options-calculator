@@ -25,10 +25,7 @@ const EPILOGUE = `
   legValue, legGreeks, activeLegs, legEntry, strategyPnl, pnlEvaluator,
   legUnder, legRatio, legScenario, strikeOnAxis, displayGrid, statsGrid,
   clearLegPrices, forwardFromStrip, daysUntil,
-  /* contractMonths is a module-level binding the loader owns, so hand the
-     tests a setter rather than letting them reach for the variable. */
-  __setContractMonths: rows => { contractMonths = rows; },
-  netCost, netGreeks, horizonDays, analyse, snapshot, restore,
+  netCost, netGreeks, horizonDays, normalizeState, analyse, snapshot, restore,
   sanitizeLeg, legRowHtml, legPricingInputs, legImpliedVol,
   KEY_STORE, parseTreasuryXml, fetchYieldCurve, applyRate, applyFuturesPrice, applyVol,
   applyCurveYield, loadContractMonths, useContractMonth, applyLegPrices, autoFill,
@@ -36,13 +33,14 @@ const EPILOGUE = `
   setReferencePrice, typeMarketInput, typeLegPrice,
   chartConfig, renderChart, renderChartSafely,
   cacheGet, cacheSet, pruneCache, persist, STORE_KEY, CACHE_MAX_AGE,
-  __contractMonths: () => contractMonths,
+  changeCommodity,
   forwardDelta, skewVol, legVolPct, scenarioTable,
   rateForTenor, realisedVol, impliedConvenienceYield, proxyAvailable,
   currentCommodity
 };
-renderAll = function () {};   /* these tests exercise logic, not rendering */
 `;
+/* No stub for renderAll: nothing outside the wiring calls it, and with no page
+ * here, a domain function that did would throw and fail its test. */
 
 /* There is no page: getElementById finds nothing, so code that reached for the
  * DOM would throw here. `opts.fetch` stands in for the network, which is
@@ -93,6 +91,7 @@ function resetState(app, over) {
   // test's skew or scenario settings leak into the next.
   app.state.skew = { on: false, rr: 0, bf: 0 };
   app.state.scenario = { volShift: 5, pricePct: 20 };
+  app.state.session = { strip: [] };
   if (over && over.skew) Object.assign(app.state.skew, over.skew);
   if (over && over.scenario) Object.assign(app.state.scenario, over.scenario);
   return app.state;

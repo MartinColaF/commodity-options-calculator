@@ -46,7 +46,7 @@ function fresh(over) {
   resetState(app, over);
   state.sources = { price: null, rate: null, vol: null, yield: null, legs: null };
   state.contractMonth = '';
-  app.__setContractMonths([]);
+  state.session.strip = [];
   app.storage.clear();     // the response cache lives in localStorage
   calls.length = 0;
 }
@@ -283,17 +283,17 @@ test('the listed strip is kept for the picker, and an empty one is an error', as
   handler = serve({ 'fn=months&commodity=gold': ok({ contracts: months }) });
   const r = await app.loadContractMonths();
   assert.strictEqual(r.message, '3 listed months loaded');
-  assert.deepStrictEqual(Array.from(app.__contractMonths(), c => c.symbol), ['GC0', 'GC1', 'GC2']);
+  assert.deepStrictEqual(Array.from(state.session.strip, c => c.symbol), ['GC0', 'GC1', 'GC2']);
 
   app.storage.clear();
   handler = serve({ 'fn=months': ok({ contracts: [] }) });
   await assert.rejects(app.loadContractMonths(), /no listed contract quoted/);
-  assert.strictEqual(app.__contractMonths().length, 3, 'the strip already loaded is kept');
+  assert.strictEqual(state.session.strip.length, 3, 'the strip already loaded is kept');
 });
 
 test('picking a month prices the panel on it; going back stops claiming one', () => {
   fresh({ S: 4000 });
-  app.__setContractMonths(strip([[50, 4025.5], [110, 4061.2]]));
+  state.session.strip = strip([[50, 4025.5], [110, 4061.2]]);
   app.useContractMonth('GC1');
   assert.strictEqual(state.S, 4061.2);
   assert.strictEqual(state.contractMonth, 'GC1');
@@ -333,7 +333,7 @@ test('legs priced along the two-contract slope, on their own source line, and un
 
 test('with the strip loaded, legs interpolate between real quotes and nothing is fetched', async () => {
   fresh({ S: 4000 });
-  app.__setContractMonths(strip([[20, 4025.5], [80, 4061.2], [140, 4093.8]]));
+  state.session.strip = strip([[20, 4025.5], [80, 4061.2], [140, 4093.8]]);
   state.legs = [app.newLeg({ kind: 'call', days: 50 }), app.newLeg({ kind: 'put', days: 110 })];
   const r = await app.applyLegPrices();
   assert.strictEqual(calls.length, 0);
@@ -361,7 +361,7 @@ const QUOTE = { symbol: 'GC=F', name: 'Gold Dec 26', currency: 'USD', price: 402
 
 test('fetching the front month drops a picked listed month', async () => {
   fresh({ S: 4000 });
-  app.__setContractMonths(strip([[50, 4025.5], [110, 4061.2]]));
+  state.session.strip = strip([[50, 4025.5], [110, 4061.2]]);
   app.useContractMonth('GC1');
   assert.strictEqual(state.contractMonth, 'GC1');
   handler = serve({ 'fn=quote&commodity=gold': ok(QUOTE) });
@@ -373,7 +373,7 @@ test('fetching the front month drops a picked listed month', async () => {
 
 test('a price typed by hand is the user\'s, not a listed contract\'s', () => {
   fresh({ S: 4000 });
-  app.__setContractMonths(strip([[50, 4025.5], [110, 4061.2]]));
+  state.session.strip = strip([[50, 4025.5], [110, 4061.2]]);
   app.useContractMonth('GC1');
   assert.match(state.sources.price.text, /one listed contract/);
 
@@ -400,7 +400,7 @@ test('a rate, volatility or yield typed over a fetched one loses its source', ()
 
 test('a leg price typed over a fill stops the line vouching for every leg', async () => {
   fresh({ S: 4000 });
-  app.__setContractMonths(strip([[20, 4025.5], [80, 4061.2], [140, 4093.8]]));
+  state.session.strip = strip([[20, 4025.5], [80, 4061.2], [140, 4093.8]]);
   state.legs = [app.newLeg({ kind: 'call', days: 50 }), app.newLeg({ kind: 'put', days: 110 })];
   await app.applyLegPrices();
   const filled = state.sources.legs.text;
@@ -423,7 +423,7 @@ test('fill, type a price, undo the fill: no stale source comes back', async () =
   fresh({ S: 4000 });
   state.sources.price = { live: true, text: 'Gold Dec 26 last 4,000.00' };
   state.legs = [app.newLeg({ kind: 'call', days: 50 })];
-  app.__setContractMonths(strip([[20, 4025.5], [80, 4061.2]]));
+  state.session.strip = strip([[20, 4025.5], [80, 4061.2]]);
   await app.applyLegPrices();
   app.typeMarketInput('S', 4100);
   app.clearLegPrices();
@@ -433,7 +433,7 @@ test('fill, type a price, undo the fill: no stale source comes back', async () =
 
 test('presets drop a picked month along with the price\'s source, and keep the price', () => {
   fresh({ S: 4000 });
-  app.__setContractMonths(strip([[50, 4025.5], [110, 4061.2]]));
+  state.session.strip = strip([[50, 4025.5], [110, 4061.2]]);
   app.useContractMonth('GC1');
   app.applyPreset();
   assert.strictEqual(state.S, 4061.2);
@@ -479,7 +479,7 @@ test('the carry boxes imply a yield, and an empty box is refused with the reason
 test('presets reset the inputs, clear the leg prices and say they are not market data', async () => {
   fresh({ commodity: 'corn', S: 431.25, vol: 22, yield: 1, size: 1, quote: 'USD' });
   state.legs = [app.newLeg({ kind: 'call', days: 30 })];
-  app.__setContractMonths(strip([[20, 431.25], [80, 445.5]]));
+  state.session.strip = strip([[20, 431.25], [80, 445.5]]);
   await app.applyLegPrices();
   assert.ok(state.legs[0].under > 0);
 
