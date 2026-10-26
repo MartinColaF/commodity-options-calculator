@@ -3,6 +3,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const handler = require('../api/market.js');
+const COMMODITIES = require('../commodities.js');
 
 const MONTH_CODES = { F: 1, G: 2, H: 3, J: 4, K: 5, M: 6, N: 7, Q: 8, U: 9, V: 10, X: 11, Z: 12 };
 
@@ -71,7 +72,8 @@ test('rejects anything that is not a known commodity', async () => {
   const original = global.fetch;
   const seen = mockFetch(() => chartPayload());
   try {
-    for (const commodity of ['bitcoin', '../../etc/passwd', '', 'GC=F', '__proto__']) {
+    // 'custom' is in the table but has no futures data, so it is not served.
+    for (const commodity of ['bitcoin', '../../etc/passwd', '', 'GC=F', '__proto__', 'custom']) {
       const out = await call({ fn: 'quote', commodity });
       assert.strictEqual(out.code, 400, `${commodity} is refused`);
       assert.match(out.body.error, /Unknown commodity/, 'explains why');
@@ -197,8 +199,8 @@ test('every commodity in the table resolves to a symbol', async () => {
   const original = global.fetch;
   const seen = mockFetch(sym => chartPayload({ symbol: sym, shortName: sym }));
   try {
-    const commodities = ['gold', 'silver', 'copper', 'wti', 'brent', 'natgas', 'corn',
-      'wheat', 'soybean', 'sugar', 'coffee', 'cocoa', 'cotton', 'cattle'];
+    const commodities = Object.keys(COMMODITIES).filter(k => COMMODITIES[k].futures);
+    assert.ok(commodities.length > 0, 'the table has markets with futures data');
     for (const c of commodities) {
       const out = await call({ fn: 'quote', commodity: c });
       assert.strictEqual(out.code, 200, `${c} resolves`);

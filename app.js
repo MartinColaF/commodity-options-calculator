@@ -338,29 +338,9 @@ function impliedVol(kind, target, S, K, T, r, b, style) {
  * 2. Commodity reference data
  * ========================================================== */
 
-/* size/quote drive the dollar multiplier: cents-quoted grains and softs need
- * the 0.01 factor or P&L comes out 100x too big.
- * vol/yield are long-run typical values used only as a fallback - they are
- * NOT live market data and the UI labels them as such.
- * priceSymbol is a liquid ETF used to estimate realised volatility. Its price
- * level is unrelated to the futures price, only its returns are used. */
-const COMMODITIES = {
-  gold: { label: 'Gold (COMEX GC)', size: 100, unit: 'troy oz', quote: 'USD', vol: 15, yield: 0.3, priceSymbol: 'GLD', proxy: 'SPDR Gold Shares - tracks spot gold closely' },
-  silver: { label: 'Silver (COMEX SI)', size: 5000, unit: 'troy oz', quote: 'USD', vol: 28, yield: 0.3, priceSymbol: 'SLV', proxy: 'iShares Silver Trust' },
-  copper: { label: 'Copper (COMEX HG)', size: 25000, unit: 'lb', quote: 'USD', vol: 25, yield: 1.5, priceSymbol: 'CPER', proxy: 'US Copper Index Fund' },
-  wti: { label: 'Crude Oil WTI (NYMEX CL)', size: 1000, unit: 'barrels', quote: 'USD', vol: 35, yield: 4, priceSymbol: 'USO', proxy: 'US Oil Fund - rolls front-month WTI' },
-  brent: { label: 'Crude Oil Brent (ICE B)', size: 1000, unit: 'barrels', quote: 'USD', vol: 33, yield: 3.5, priceSymbol: 'BNO', proxy: 'US Brent Oil Fund' },
-  natgas: { label: 'Natural Gas (NYMEX NG)', size: 10000, unit: 'MMBtu', quote: 'USD', vol: 60, yield: 5, priceSymbol: 'UNG', proxy: 'US Natural Gas Fund' },
-  corn: { label: 'Corn (CBOT ZC)', size: 5000, unit: 'bushels', quote: 'cents', vol: 28, yield: 2.5, priceSymbol: 'CORN', proxy: 'Teucrium Corn Fund' },
-  wheat: { label: 'Wheat (CBOT ZW)', size: 5000, unit: 'bushels', quote: 'cents', vol: 30, yield: 3, priceSymbol: 'WEAT', proxy: 'Teucrium Wheat Fund' },
-  soybean: { label: 'Soybeans (CBOT ZS)', size: 5000, unit: 'bushels', quote: 'cents', vol: 25, yield: 2.5, priceSymbol: 'SOYB', proxy: 'Teucrium Soybean Fund' },
-  sugar: { label: 'Sugar #11 (ICE SB)', size: 112000, unit: 'lb', quote: 'cents', vol: 40, yield: 2, priceSymbol: 'CANE', proxy: 'Teucrium Sugar Fund' },
-  coffee: { label: 'Coffee C (ICE KC)', size: 37500, unit: 'lb', quote: 'cents', vol: 45, yield: 1.5, priceSymbol: 'JO', proxy: 'iPath Coffee ETN - thin, treat vol with care' },
-  cocoa: { label: 'Cocoa (ICE CC)', size: 10, unit: 'metric tons', quote: 'USD', vol: 40, yield: 1, priceSymbol: '', proxy: 'No ETF proxy - use the futures buttons above' },
-  cotton: { label: 'Cotton #2 (ICE CT)', size: 50000, unit: 'lb', quote: 'cents', vol: 25, yield: 1.5, priceSymbol: 'BAL', proxy: 'iPath Cotton ETN - thin' },
-  cattle: { label: 'Live Cattle (CME LE)', size: 40000, unit: 'lb', quote: 'cents', vol: 15, yield: 1, priceSymbol: '', proxy: 'No ETF proxy - use the futures buttons above' },
-  custom: { label: 'Custom / other', size: 1, unit: 'units', quote: 'USD', vol: 30, yield: 0, priceSymbol: '', proxy: 'Set the contract size and symbol yourself' }
-};
+/* COMMODITIES, the table of markets, lives in commodities.js: index.html loads it
+ * before this file, and api/market.js reads the same table, so the page and the
+ * function cannot disagree about which markets exist. */
 
 function dollarMultiplier(c) {
   return c.size * (c.quote === 'cents' ? 0.01 : 1);
@@ -1003,8 +983,9 @@ function realisedVol(series, window) {
  * page from a file:// path just falls back to the other providers. */
 
 const PROXY = '/api/market';
-const PROXY_COMMODITIES = ['gold', 'silver', 'copper', 'wti', 'brent', 'natgas',
-  'corn', 'wheat', 'soybean', 'sugar', 'coffee', 'cocoa', 'cotton', 'cattle'];
+/* The markets the function serves: exactly those with futures data in the table,
+ * which is also what the function itself reads. */
+const PROXY_COMMODITIES = Object.keys(COMMODITIES).filter(k => COMMODITIES[k].futures);
 
 function proxyAvailable(commodity) {
   return /^https?:$/.test(location.protocol) &&

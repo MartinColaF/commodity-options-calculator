@@ -19,25 +19,14 @@ const YAHOO = 'https://query1.finance.yahoo.com/v8/finance/chart/';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-/* root = Yahoo continuous front-month symbol prefix (root + "=F")
- * suffix = exchange code used by month contracts
- * months = listed contract months, as CME month codes */
-const CONTRACTS = {
-  gold: { root: 'GC', suffix: 'CMX', months: 'GJMQVZ' },
-  silver: { root: 'SI', suffix: 'CMX', months: 'FHKNUZ' },
-  copper: { root: 'HG', suffix: 'CMX', months: 'HKNUZ' },
-  wti: { root: 'CL', suffix: 'NYM', months: 'FGHJKMNQUVXZ' },
-  brent: { root: 'BZ', suffix: 'NYM', months: 'FGHJKMNQUVXZ' },
-  natgas: { root: 'NG', suffix: 'NYM', months: 'FGHJKMNQUVXZ' },
-  corn: { root: 'ZC', suffix: 'CBT', months: 'HKNUZ' },
-  wheat: { root: 'ZW', suffix: 'CBT', months: 'HKNUZ' },
-  soybean: { root: 'ZS', suffix: 'CBT', months: 'FHKNQUX' },
-  sugar: { root: 'SB', suffix: 'NYB', months: 'HKNV' },
-  coffee: { root: 'KC', suffix: 'NYB', months: 'HKNUZ' },
-  cocoa: { root: 'CC', suffix: 'NYB', months: 'HKNUZ' },
-  cotton: { root: 'CT', suffix: 'NYB', months: 'HKNVZ' },
-  cattle: { root: 'LE', suffix: 'CME', months: 'GJMQVZ' }
-};
+/* The contracts come from commodities.js, the one table the page reads too: each
+ * market's root (root + "=F" is the continuous front month), exchange suffix and
+ * listed months. A market with no futures data is not served at all. */
+const COMMODITIES = require('../commodities.js');
+const CONTRACTS = {};
+for (const key of Object.keys(COMMODITIES)) {
+  if (COMMODITIES[key].futures) CONTRACTS[key] = COMMODITIES[key].futures;
+}
 
 const MONTH_CODES = { F: 1, G: 2, H: 3, J: 4, K: 5, M: 6, N: 7, Q: 8, U: 9, V: 10, X: 11, Z: 12 };
 

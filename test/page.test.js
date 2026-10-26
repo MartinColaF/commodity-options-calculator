@@ -36,6 +36,13 @@ test('the page still loads Chart.js from the CDN', () => {
   assert.ok(externalScripts.some(a => /chart\.js@/.test(a.src)), 'a Chart.js script tag');
 });
 
+test('the commodity table loads before app.js, which reads it at load time', () => {
+  const local = Array.from(html.matchAll(/<script\b([^>]*)>/gi), m => attributes(m[1]).src)
+    .filter(src => src && !/^(https?:)?\/\//i.test(src));
+  assert.ok(local.includes('commodities.js'), 'commodities.js is loaded');
+  assert.ok(local.indexOf('commodities.js') < local.indexOf('app.js'), 'and before app.js');
+});
+
 test('every script from another origin is pinned by its hash', () => {
   for (const a of externalScripts) {
     assert.match(a.integrity || '', /^sha(384|512)-[A-Za-z0-9+/]+={0,2}$/, `integrity on ${a.src}`);
