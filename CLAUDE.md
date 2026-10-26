@@ -265,6 +265,11 @@ something is missing from the repo.
   geometric mean of its ends. Outside the strip the nearest segment's slope is
   extended, which is still extrapolation but anchored on the two closest real quotes.
   The source line says which path ran and when it went past the last listed month.
+- **Two contracts are read through `contractGapDays()` and `logSlope()` only.** The
+  Yield button (via `impliedConvenienceYield()`) and the two-contract leg fill each used
+  to carry their own copy of both formulas. Now the carry one reports is the slope the
+  other prices along; `test/actions.test.js` checks `slope = r − y` across the two.
+  Moving to real expiry dates is a change to `contractGapDays()` alone.
 
 ## Known modelling limitations
 

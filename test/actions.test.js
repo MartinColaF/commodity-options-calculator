@@ -246,6 +246,27 @@ test('the curve\'s convenience yield follows the carry formula and hands back it
   assert.match(state.sources.yield.text, /Gold Dec 26 4,025\.50 vs Gold Feb 27 4,061\.20, 62d apart/);
 });
 
+test('the curve is read through one gap and one slope', () => {
+  assert.strictEqual(app.contractGapDays(CURVE.contracts[0], CURVE.contracts[1]), CURVE_GAP_DAYS);
+  near(app.logSlope(100, 100 * Math.exp(0.05), 365), 0.05, 1e-12, 'a year at 5%');
+  near(app.logSlope(100, 100 * Math.exp(0.05), 73), 0.25, 1e-12, 'the same move in a fifth of a year');
+  // Under cost of carry the slope is r - y, which is what the yield inverts.
+  const y = app.impliedConvenienceYield(4025.5, 4061.2, CURVE_GAP_DAYS, 4);
+  near(y, 4 - 100 * app.logSlope(4025.5, 4061.2, CURVE_GAP_DAYS), 1e-12, 'y = r - slope');
+});
+
+test('the Yield button and the leg fill read the same slope off the curve', async () => {
+  // They used to compute it separately, each with its own copy of the formula.
+  fresh({ S: 4000, rate: 4, yield: 0.3 });
+  handler = serve({ 'fn=curve&commodity=gold': ok(CURVE) });
+  await app.applyCurveYield();
+  state.legs = [app.newLeg({ kind: 'call', strike: 4000, days: 365 })];
+  await app.applyLegPrices();
+  // A year out the leg sits at S e^slope, and the slope is r - y.
+  const slope = Math.log(state.legs[0].under / 4000);
+  near(100 * slope, 4 - state.yield, 1e-3, 'slope = r - y, in percent (the yield is shown to 3 dp)');
+});
+
 test('two contracts that give no spread leave the yield alone', async () => {
   fresh({ yield: 0.3 });
   const backwards = { contracts: [CURVE.contracts[1], CURVE.contracts[0]] };
