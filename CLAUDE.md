@@ -214,6 +214,18 @@ For the same reason the Treasury feed is read by `parseTreasuryXml()` with patte
 `DOMParser`, which Node lacks; `test/fixtures/` holds a real response. When an action
 needs a new input, pass it in; when it shows something outside `state`, return it.
 
+**A source line must describe the number on screen.** The reference price changes only
+through `setReferencePrice(S, source, month)`, so the price, the listed month it belongs
+to and its source line move together. Fetching the front month used to leave "Cocoa Mar
+27" picked, and a price typed by hand kept that month's quote as its source. A number
+typed into price, rate, volatility or yield goes through `typeMarketInput()` and becomes
+the user's own (`null` source); `renderInputs()` keeps the picker on `state.contractMonth`.
+Leg prices from the curve have **their own** line, `state.sources.legs`, shown only while
+the fill is on the legs, so `clearLegPrices()` has nothing to restore. When one line
+served both, undoing a fill restored whatever the price line said before it, even after
+the price had changed. A leg price typed over a fill marks that line "edited by hand
+since" (`typeLegPrice()`). Any new market input needs the same treatment.
+
 **Saved scenarios and share links go through `snapshot()` / `restore()`.** When adding
 a state field, add it to **both** — in `restore()` with its type checked, never copied
 raw — and decide explicitly what an old saved scenario without the field should mean.
@@ -264,7 +276,8 @@ something is missing from the repo.
   right space: the curve's shape is a carry rate, so the midpoint of a segment is the
   geometric mean of its ends. Outside the strip the nearest segment's slope is
   extended, which is still extrapolation but anchored on the two closest real quotes.
-  The source line says which path ran and when it went past the last listed month.
+  The "Leg prices" source line says which path ran and when it went past the last
+  listed month.
 - **Two contracts are read through `contractGapDays()` and `logSlope()` only.** The
   Yield button (via `impliedConvenienceYield()`) and the two-contract leg fill each used
   to carry their own copy of both formulas. Now the carry one reports is the slope the

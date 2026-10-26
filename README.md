@@ -82,7 +82,7 @@ Notes and limitations, stated plainly in the UI as well:
 - Per-leg prices interpolate across the listed strip when it has been loaded, and
   otherwise fall back to the slope between two contracts. Either way the points are
   real quotes and everything between them is an estimate; past the last listed month
-  it is an extrapolation, and the source line says so. Contract expiries are
+  it is an extrapolation, and the "Leg prices" source line says so. Contract expiries are
   approximated to mid-month. The payoff chart then shifts every month in proportion,
   so each month's basis to the reference stays fixed as the price moves.
 - American prices are a closed-form approximation, not an exact lattice. Measured
@@ -150,8 +150,9 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/actions.test.js` — every market-data action against a fake network: the rate
   read off a real Treasury response, the price switching to cents on a `USX` quote,
   the Alpha Vantage fallback, the curve's convenience yield, leg prices from the slope
-  and from the listed strip with their undo, auto-fill carrying on past a failure, and
-  the presets.
+  and from the listed strip with their undo, auto-fill carrying on past a failure, the
+  presets, and every source line staying true: a price, rate, volatility or yield typed
+  by hand is the user's own, and the month picker follows the price.
 - `test/commodities.test.js` — the page and the function reading one table: the
   markets the page sends to the function are exactly those with futures data, and
   every contract entry is in a form the function can build symbols from.

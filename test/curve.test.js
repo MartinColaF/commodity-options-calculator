@@ -153,18 +153,18 @@ test('clearing the leg prices undoes the curve fill exactly', () => {
   near(netCost(), before, 1e-9, 'cost returns to the pre-fill value');
 });
 
-test('clearing restores the price source rather than blanking it', () => {
-  // The curve fill overwrites the source line. Undoing it must put back what
-  // the price fetch said, not leave the panel claiming nothing is known.
+test('clearing the leg prices leaves the panel price\'s source alone', () => {
+  // The fill reports on its own line. Undoing it removes that line and must
+  // not touch what the price fetch said about the panel price.
   resetState(app, { S: 100 });
-  state.legs = [newLeg({ kind: 'call', strike: 100, days: 90 })];
+  state.legs = [newLeg({ kind: 'call', strike: 100, days: 90, under: 104 })];
   const fetched = { live: true, text: 'Cocoa last 5,000.00 USD' };
   state.sources.price = fetched;
+  state.sources.legs = { live: true, text: 'legs interpolated across 5 listed contracts' };
 
-  // Stand in for applyLegPrices()'s bookkeeping without touching the network.
   app.clearLegPrices();
-  assert.strictEqual(state.sources.price, fetched,
-    'clearing with nothing filled must not disturb the source');
+  assert.strictEqual(state.sources.price, fetched);
+  assert.strictEqual(state.sources.legs, null);
 });
 
 test('an underlying leg is cleared along with the option legs', () => {

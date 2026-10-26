@@ -43,9 +43,8 @@ const serve = map => url => {
 };
 
 function fresh(over) {
-  app.clearLegPrices();   // resets the bookkeeping behind the leg-price undo
   resetState(app, over);
-  state.sources = { price: null, rate: null, vol: null, yield: null };
+  state.sources = { price: null, rate: null, vol: null, yield: null, legs: null };
   state.contractMonth = '';
   app.__setContractMonths([]);
   app.storage.clear();     // the response cache lives in localStorage
@@ -305,7 +304,7 @@ test('picking a month prices the panel on it; going back stops claiming one', ()
 
 /* ---- leg prices ---- */
 
-test('legs priced along the two-contract slope, and the undo puts the source back', async () => {
+test('legs priced along the two-contract slope, on their own source line, and undone', async () => {
   fresh({ S: 4000 });
   state.sources.price = { live: true, text: 'what the panel said' };
   state.legs = [
@@ -320,13 +319,15 @@ test('legs priced along the two-contract slope, and the undo puts the source bac
   assert.strictEqual(state.legs[1].under, +(4000 * Math.exp(slope * 60 / 365)).toFixed(4));
   assert.strictEqual(state.legs[2].under, null, 'the underlying leg is the panel price');
   assert.strictEqual(r.message, `leg prices from a ${(slope * 100).toFixed(2)}%/yr curve`);
+  assert.match(state.sources.legs.text, /^from 4,000\.00 in the panel, priced along the curve at 5\.20%\/yr/);
+  // The panel price's own line is not the fill's to overwrite.
+  assert.strictEqual(state.sources.price.text, 'what the panel said');
 
-  // A second fill must not remember its own text as the thing to restore.
   await app.applyLegPrices();
   app.clearLegPrices();
   assert.ok(state.legs.every(l => l.under === null));
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(state.sources.price)),
-    { live: true, text: 'what the panel said' });
+  assert.strictEqual(state.sources.legs, null);
+  assert.strictEqual(state.sources.price.text, 'what the panel said');
 });
 
 test('with the strip loaded, legs interpolate between real quotes and nothing is fetched', async () => {
@@ -340,13 +341,103 @@ test('with the strip loaded, legs interpolate between real quotes and nothing is
   }
   assert.ok(state.legs[0].under > 4025.5 && state.legs[0].under < 4061.2, 'between its two quotes');
   assert.strictEqual(r.message, 'leg prices from 3 listed contracts');
-  assert.match(state.sources.price.text, /^legs interpolated across 3 listed contracts/);
+  assert.match(state.sources.legs.text, /^legs interpolated across 3 listed contracts/);
 });
 
 test('leg prices need an option leg', async () => {
   fresh();
   state.legs = [app.newLeg({ kind: 'underlying' })];
   await assert.rejects(app.applyLegPrices(), /add an option leg first/);
+});
+
+/* ---- where each number came from ----
+ *
+ * Every market input says where it came from, and that line must stay true:
+ * a number typed by hand is the user's, and the month picker shows the month
+ * the price belongs to. Both used to drift. */
+
+const QUOTE = { symbol: 'GC=F', name: 'Gold Dec 26', currency: 'USD', price: 4025.5, asOf: '2026-10-26T03:39:56.000Z' };
+
+test('fetching the front month drops a picked listed month', async () => {
+  fresh({ S: 4000 });
+  app.__setContractMonths(strip([[50, 4025.5], [110, 4061.2]]));
+  app.useContractMonth('GC1');
+  assert.strictEqual(state.contractMonth, 'GC1');
+  handler = serve({ 'fn=quote&commodity=gold': ok(QUOTE) });
+  await app.applyFuturesPrice();
+  assert.strictEqual(state.S, 4025.5);
+  assert.strictEqual(state.contractMonth, '', 'the picker used to stay on the month');
+  assert.match(state.sources.price.text, /^Gold Dec 26 last 4,025\.50/);
+});
+
+test('a price typed by hand is the user\'s, not a listed contract\'s', () => {
+  fresh({ S: 4000 });
+  app.__setContractMonths(strip([[50, 4025.5], [110, 4061.2]]));
+  app.useContractMonth('GC1');
+  assert.match(state.sources.price.text, /one listed contract/);
+
+  app.typeMarketInput('S', 6000);
+  assert.strictEqual(state.S, 6000);
+  assert.strictEqual(state.sources.price, null, 'it used to keep the month\'s quote as its source');
+  assert.strictEqual(state.contractMonth, '');
+});
+
+test('a rate, volatility or yield typed over a fetched one loses its source', () => {
+  for (const key of ['rate', 'vol', 'yield']) {
+    fresh({ rate: 4, vol: 15, yield: 0.3 });
+    state.sources[key] = { live: true, text: 'from the market' };
+    app.typeMarketInput(key, 7.5);
+    assert.strictEqual(state[key], 7.5);
+    assert.strictEqual(state.sources[key], null, key);
+  }
+  // Only the market inputs: anything else is ignored rather than written.
+  fresh({ size: 100 });
+  app.typeMarketInput('size', 5);
+  app.typeMarketInput('__proto__', 5);
+  assert.strictEqual(state.size, 100);
+});
+
+test('a leg price typed over a fill stops the line vouching for every leg', async () => {
+  fresh({ S: 4000 });
+  app.__setContractMonths(strip([[20, 4025.5], [80, 4061.2], [140, 4093.8]]));
+  state.legs = [app.newLeg({ kind: 'call', days: 50 }), app.newLeg({ kind: 'put', days: 110 })];
+  await app.applyLegPrices();
+  const filled = state.sources.legs.text;
+
+  app.typeLegPrice(state.legs[0], 4500);
+  assert.strictEqual(state.legs[0].under, 4500);
+  assert.strictEqual(state.sources.legs.text, filled + '; edited by hand since');
+  app.typeLegPrice(state.legs[1], 4600);
+  assert.strictEqual(state.sources.legs.text, filled + '; edited by hand since', 'said once');
+
+  // Blank every leg by hand and nothing is left for the line to describe.
+  app.typeLegPrice(state.legs[0], null);
+  app.typeLegPrice(state.legs[1], null);
+  assert.strictEqual(state.sources.legs, null);
+});
+
+test('fill, type a price, undo the fill: no stale source comes back', async () => {
+  // When one line served both, undoing the fill restored whatever the price
+  // line said before it - here a quote for a price the user has since typed over.
+  fresh({ S: 4000 });
+  state.sources.price = { live: true, text: 'Gold Dec 26 last 4,000.00' };
+  state.legs = [app.newLeg({ kind: 'call', days: 50 })];
+  app.__setContractMonths(strip([[20, 4025.5], [80, 4061.2]]));
+  await app.applyLegPrices();
+  app.typeMarketInput('S', 4100);
+  app.clearLegPrices();
+  assert.strictEqual(state.sources.price, null);
+  assert.strictEqual(state.sources.legs, null);
+});
+
+test('presets drop a picked month along with the price\'s source, and keep the price', () => {
+  fresh({ S: 4000 });
+  app.__setContractMonths(strip([[50, 4025.5], [110, 4061.2]]));
+  app.useContractMonth('GC1');
+  app.applyPreset();
+  assert.strictEqual(state.S, 4061.2);
+  assert.strictEqual(state.contractMonth, '');
+  assert.strictEqual(state.sources.price, null);
 });
 
 /* ---- everything at once ---- */
@@ -398,7 +489,9 @@ test('presets reset the inputs, clear the leg prices and say they are not market
   assert.strictEqual(state.size, meta.size);
   assert.strictEqual(state.quote, meta.quote);
   assert.strictEqual(state.legs[0].under, null, 'leg prices are market data too');
+  assert.strictEqual(state.sources.legs, null);
   assert.strictEqual(state.sources.price, null);
+  assert.strictEqual(state.S, 431.25, 'presets have no price; the one in the panel stays');
   assert.strictEqual(state.sources.vol.live, false);
   assert.match(state.sources.vol.text, /not market data/);
   assert.match(state.sources.yield.text, /not market data/);
