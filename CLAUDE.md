@@ -173,20 +173,21 @@ or the browser blocks it silently and the feature just doesn't work. `style-src`
 
 **The API function takes a commodity key, never a raw symbol.** Symbols are built from
 each market's `futures` entry in `commodities.js`. Keep it that way or the endpoint
-becomes an open proxy.
+becomes an open proxy. The curve endpoint also skips the current (delivery) month and
+any contract that has not traded in seven days — both were real bugs that poisoned the
+implied carry.
 
 **`commodities.js` is the only place a market is defined.** It used to be three lists in
 two shapes — the page's table, the page's list of markets the function serves, and the
 function's contracts — and the second one was a literal: forgetting to extend it made the
 data buttons fail with "no futures contract mapped", and no test noticed. Now the page
 derives that list from the table, the function `require`s the same file, and adding a
-market is **one entry**. The file is a plain script with a guarded
-`module.exports`, so it works as a browser global (from `file://` too) and as a Node
-module. Keep it that way, not ESM. `index.html` must load it **before** `app.js`, which
-reads it at load time, and the test loader does the same. Vercel's file tracer bundles
-it with the function because of the `require`, so do not read it with `fs`, which the
-tracer may miss. `test/commodities.test.js` pins the page and the function to the table. The curve endpoint also skips the current (delivery) month and any contract
-that has not traded in seven days — both were real bugs that poisoned the implied carry.
+market is **one entry**. The file is a plain script with a guarded `module.exports`, so
+it works as a browser global (from `file://` too) and as a Node module. Keep it that
+way, not ESM. `index.html` must load it **before** `app.js`, which reads it at load
+time, and the test loader does the same. Vercel's file tracer bundles it with the
+function because of the `require`, so do not read it with `fs`, which the tracer may
+miss. `test/commodities.test.js` pins the page and the function to the table.
 
 **A price of zero must not reach `Math.log10`.** `strikeStep()` guards it. A half-typed
 price field used to make every derived strike `NaN` and poison the whole curve.
