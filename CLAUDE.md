@@ -52,9 +52,13 @@ the user's own and lives only in their browser's local storage — never commit 
 
 **`app.js` has no module system on purpose** so the page still works from a `file://`
 path. Do not convert it to ESM or CommonJS, and do not wrap it in an IIFE. The tests
-load it into a `vm` with a DOM stub and capture its `const` bindings through an
-appended epilogue; if you add a top-level binding the tests need, add it to the
-epilogue in `test/helpers/load-app.js`, or it will be invisible to the suite.
+load it into a `vm` with a DOM stub. Every top-level `function` reaches them on its
+own: a function declaration becomes a property of the `vm`'s global object, and the
+loader hands over all of them. `const` and `let` do not, so the few the tests read are
+captured through an appended epilogue in `test/helpers/load-app.js`; a test that needs
+another one adds it there, or it will be invisible to the suite. The epilogue used to
+list every function too, 81 names by hand. `test/loader.test.js` checks that every
+function `app.js` declares arrives.
 
 **One pricer, parameterised by cost of carry.** `gbs(kind, S, K, T, r, b, sigma)` is
 generalised Black-Scholes-Merton: `b = 0` gives Black-76 on a futures price, `b = r - q`
