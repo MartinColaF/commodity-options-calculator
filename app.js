@@ -1614,6 +1614,17 @@ function persist() {
   }
 }
 
+/* The Alpha Vantage key, kept in this browser and nowhere else. An empty key
+ * removes it, which is how emptying the field takes it out of the browser: it
+ * used to be written on use and never removed, so a cleared field filled
+ * itself in again on the next visit. */
+function storeAvKey(key) {
+  try {
+    if (key) localStorage.setItem(KEY_STORE, key);
+    else localStorage.removeItem(KEY_STORE);
+  } catch (e) { /* private mode - the key is just not remembered */ }
+}
+
 function snapshot() {
   return {
     commodity: state.commodity, model: state.model, style: state.style,
@@ -1845,7 +1856,7 @@ async function applyVolFromAlphaVantage(opts) {
   const meta = commodityMeta(state.commodity);
   const symbol = (opts.symbol || meta.priceSymbol || '').toUpperCase();
   if (!symbol) throw new Error('no ticker to read prices from');
-  localStorage.setItem(KEY_STORE, opts.avKey);
+  storeAvKey(opts.avKey);
 
   const series = await fetchDailySeries(symbol, opts.avKey);
   const rv = realisedVol(series, win);
@@ -2313,6 +2324,10 @@ function bindInputs() {
   $('fetchPrice').addEventListener('click', runAction('Futures price', applyFuturesPrice));
   $('fetchRate').addEventListener('click', runAction('Risk-free rate', applyRate));
   $('fetchVol').addEventListener('click', runAction('Volatility', () => applyVol(volInputs())));
+  // Emptying the key field forgets the key; a new one is kept once it is used.
+  $('avKey').addEventListener('input', e => {
+    if (!e.target.value.trim()) storeAvKey('');
+  });
   $('fetchCurve').addEventListener('click', runAction('Convenience yield', applyCurveYield));
   $('fillLegPrices').addEventListener('click', runAction('Leg prices', applyLegPrices));
   $('clearLegPrices').addEventListener('click', () => {

@@ -284,7 +284,10 @@ since" (`typeLegPrice()`). Any new market input needs the same treatment.
 response cache (`coc.cache.*`).** The cache must not crowd out the scenario: an entry read
 past its TTL is removed, `init()` prunes everything older than `CACHE_MAX_AGE` (keep that
 at least the longest TTL any caller uses), and if `persist()` hits the quota it clears
-the cache and tries again. `pruneCache()` lists the keys before removing any, because in
+the cache and tries again. The Alpha Vantage key goes through `storeAvKey()` alone: kept once it is used,
+removed when the field is emptied. It used to be written and never removed, so a cleared
+field filled itself in again on the next visit. `snapshot()` leaves it out, so it is never
+in a share link or an export. `pruneCache()` lists the keys before removing any, because in
 Chrome removing an item reorders the rest and an index walk skipped entries.
 `test/storage.test.js` simulates that reordering.
 
