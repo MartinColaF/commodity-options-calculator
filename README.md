@@ -145,6 +145,9 @@ some browsers restrict cross-origin requests from `file://`.
   imported files: hostile fields rejected or retyped, ids never taken from the input,
   a legitimate scenario round-tripping unchanged, and the legs table escaping every
   value it renders.
+- `test/page.test.js` — the page's one third-party script: pinned by its hash, an
+  exact version of a file the package publishes, and a Content-Security-Policy that
+  allows that file and nothing broader.
 - `test/api.test.js` — the serverless function with a mocked upstream: rejected
   commodities, method and action validation, series parsing, and the two curve rules
   (skip the delivery month, skip contracts that have not traded recently).

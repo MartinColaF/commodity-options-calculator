@@ -126,6 +126,25 @@ everything after `renderChart()` in the render order — the scenario grid, the 
 list and `persist()`, so the user also silently lost their saved state. Keep the chart
 last-but-one and keep it wrapped.
 
+**Chart.js is pinned by Subresource Integrity, and the CSP names that one file.** The
+script runs on the origin that holds the user's Alpha Vantage key, so the browser
+refuses it unless its bytes match the `integrity` hash; a mismatch looks like a CDN
+outage and `renderChartSafely()` handles it. Load the file the package **publishes**
+(`dist/chart.umd.js`, already minified), never `chart.umd.min.js`: Chart.js does not
+ship that one, so jsDelivr generates it on request, and its header says not to pin a
+hash on it. `script-src` lists the exact URL rather than `https://cdn.jsdelivr.net`,
+because jsDelivr serves every package on npm and the bare host would allow anyone's
+script. `test/page.test.js` pins all of this. To upgrade:
+
+1. Change the version in the `<script src>` **and** in `script-src`.
+2. Fetch the file from the npm tarball (`registry.npmjs.org/chart.js/-/chart.js-X.Y.Z.tgz`,
+   checked against the registry's `dist.integrity`) and confirm the CDN copy is
+   byte-identical — the hash should come from what the package published, not from
+   whatever the CDN served.
+3. `openssl dgst -sha384 -binary chart.umd.js | base64` gives the new `integrity`.
+4. Load the page and check that the chart draws. A wrong hash raises no error on the
+   page; the chart is simply replaced by the "chart unavailable" note.
+
 **Table lookups from user-controlled keys must use `hasOwnProperty`.** State can arrive
 from a shared link, and `CONTRACTS['__proto__']` resolves to `Object.prototype`, which
 is truthy and slipped past the commodity whitelist once already.
