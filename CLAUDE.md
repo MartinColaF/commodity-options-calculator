@@ -66,10 +66,24 @@ long-dated high-volatility contracts; the measured envelope is in that file.
 `carryTracksRate()` exists because `b = 0` is both "Black-76" and a legitimate carry
 value, and the rho bump has to tell them apart.
 
+`legPricingInputs()` is the single place that assembles what a pricer needs for one
+leg — its own underlying, strike, time, rate, carry, volatility and exercise style.
+**Every path that prices a leg goes through it**: `legValue`, `legGreeks`, the P&L
+sweep in `pnlEvaluator`, the chart's greek profile and the IV solver
+(`legImpliedVol`). Never assemble `(S, K, T, r, b, sigma, style)` by hand. They used to
+be assembled in four places, and the IV button drifted: it solved against the panel
+price instead of the leg's own delivery month, returning 52.74% for a leg priced at 30%
+and writing that back into the leg. `test/leg-pricing.test.js` pins the paths together.
+
+Without a scenario price it prices the leg **today**, at `legUnder(leg)` — not
+`legScenario(leg, state.S)`, which differs when the panel price is zero. In
+`pnlEvaluator` the inputs are resolved once per leg and only `S` and `T` are written per
+grid point, which keeps the sweep hoisted.
+
 `legVolPct()` is the single place that decides what volatility a leg prices at: an
-explicit per-leg number, else the skew curve, else the global figure. Anything that
-needs a leg's volatility goes through it — the greek-profile chart drifted off it
-once and silently ignored the skew.
+explicit per-leg number, else the skew curve, else the global figure.
+`legPricingInputs()` calls it, so nothing else needs to — the greek-profile chart once
+bypassed it and silently ignored the skew.
 
 **Dollar multiplier = `size × (quote === 'cents' ? 0.01 : 1)`.** Getting the quoting
 convention wrong rescales the whole position P&L by 100. Grains and softs quote in

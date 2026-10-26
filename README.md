@@ -138,6 +138,9 @@ some browsers restrict cross-origin requests from `file://`.
   no-arbitrage bounds, the early-exercise premium on both sides of a futures
   option, the exercise boundary, greeks by finite difference, and the
   style-aware implied-volatility solver.
+- `test/leg-pricing.test.js` — every path that prices a leg agreeing with the others:
+  the implied volatility of a leg's own premium is its own volatility, a position marked
+  today at today's price shows no P&L, and value and greeks report the same price.
 - `test/restore.test.js` — the trust boundary for shared links, saved state and
   imported files: hostile fields rejected or retyped, ids never taken from the input,
   a legitimate scenario round-tripping unchanged, and the legs table escaping every
