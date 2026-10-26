@@ -45,7 +45,7 @@ test('nothing the page or the market function needs is left out of the deploymen
 
 test('the notes, tests and tooling are not deployed', () => {
   for (const f of ['CLAUDE.md', 'test/api.test.js', 'test/fixtures/treasury-2026-10.xml',
-    'scripts/serve.js', '.github/workflows/test.yml']) {
+    'scripts/serve.js', '.github/workflows/test.yml', 'eslint.config.mjs']) {
     assert.ok(ignored(f), `${f} would be served on the public site`);
   }
 });

@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const { loadApp, resetState } = require('./helpers/load-app.js');
 
 const app = loadApp();
-const { state, newLeg, gbs, normCdf, forwardDelta, skewVol, legVolPct,
+const { state, newLeg, normCdf, forwardDelta, skewVol, legVolPct,
   snapshot, restore } = app;
 
 const near = (a, b, tol, msg) =>
