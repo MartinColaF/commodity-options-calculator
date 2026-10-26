@@ -379,7 +379,9 @@ const state = {
   skew: { on: false, rr: 0, bf: 0 },
   scenario: { volShift: 5, pricePct: 20 },
   chart: { mode: 'payoff', tDays: 0, showLegs: true, range: 40 },
-  sources: { price: null, rate: null, vol: null, yield: null }
+  // Where each market input came from; null = typed or preset. `legs` is the
+  // fill from the curve, shown on its own line only while legs carry it.
+  sources: { price: null, rate: null, vol: null, yield: null, legs: null }
 };
 
 function newLeg(over) {
@@ -1086,6 +1088,9 @@ function renderInputs() {
   setField('model', state.model);
   setField('style', state.style);
   setField('spot', state.S);
+  // The picker shows the month the price belongs to, so it follows the price
+  // when the front month or a typed number replaces it.
+  setField('contractMonth', state.contractMonth);
   setField('vol', state.vol);
   setField('rate', state.rate);
   setField('yield', state.yield);
@@ -1153,6 +1158,9 @@ function renderSources() {
     ['Volatility', state.sources.vol],
     ['Convenience yield', state.sources.yield]
   ];
+  // Only while legs carry prices from the curve: with none, every leg is on
+  // the panel price, which the first line already describes.
+  if (state.sources.legs) rows.push(['Leg prices', state.sources.legs]);
   $('sources').innerHTML = rows.map(([name, s]) => {
     if (!s) return '<div class="src"><span class="dot preset"></span>' + name +
       ': <em>manual / preset (not market data)</em></div>';
@@ -1647,10 +1655,37 @@ async function applyRate() {
   return { message: `risk-free rate ${state.rate}% (Treasury ${curve.date})` };
 }
 
+/* The one way the reference price changes, so the price, the listed contract
+ * it belongs to and the line saying where it came from cannot disagree. No
+ * `source` means the user's own number; `month` is the listed contract's
+ * symbol, or '' for the continuous front month. The picker and the price used
+ * to drift apart: fetching the front month left "Cocoa Mar 27" selected, and a
+ * price typed by hand kept the month's quote as its source. */
+function setReferencePrice(S, source, month) {
+  state.S = S;
+  state.sources.price = source || null;
+  state.contractMonth = month || '';
+}
+
+/* A number typed into one of the market inputs is the user's own: whatever
+ * source filled that box no longer describes it. For the price that also means
+ * it is no longer a listed month's quote - it used to keep the month's source
+ * and leave the month picked. */
+const TYPED_INPUTS = ['vol', 'rate', 'yield'];
+
+function typeMarketInput(key, v) {
+  if (key === 'S') {
+    setReferencePrice(v, null, '');
+    return;
+  }
+  if (TYPED_INPUTS.indexOf(key) === -1) return;
+  state[key] = v;
+  state.sources[key] = null;
+}
+
 async function applyFuturesPrice() {
   const q = await proxyGet('quote', state.commodity, 5 * 60e3);
   if (!(q.price > 0)) throw new Error('no price returned');
-  state.S = q.price;
 
   // Yahoo reports USX for cents-quoted contracts. Trust it over our table:
   // getting this wrong scales the whole position P&L by 100.
@@ -1661,12 +1696,13 @@ async function applyFuturesPrice() {
     unitNote = `, quoting switched to ${wanted} to match the contract`;
   }
 
-  state.sources.price = {
+  // The continuous front month, so no listed month is picked any more.
+  setReferencePrice(q.price, {
     live: true,
     text: `${q.name || q.symbol} last ${fmt(q.price, 2)}` +
       (q.currency ? ` ${q.currency}` : '') +
       (q.asOf ? `, ${q.asOf.slice(0, 16).replace('T', ' ')} UTC` : '') + unitNote
-  };
+  }, '');
   return { message: `${q.name || q.symbol} at ${fmt(q.price, 2)}${unitNote}` };
 }
 
@@ -1764,45 +1800,41 @@ async function loadContractMonths() {
 
 /* Price the panel against one specific delivery month. */
 function useContractMonth(symbol) {
-  state.contractMonth = symbol || '';
   const hit = contractMonths.find(c => c.symbol === symbol);
   if (!hit) {
     // Back to the continuous series: leave the price alone, since we have no
     // front-month quote in hand, but stop claiming it belongs to a month.
-    state.sources.price = null;
+    setReferencePrice(state.S, null, '');
     return;
   }
-  state.S = hit.price;
-  state.sources.price = {
+  setReferencePrice(hit.price, {
     live: true,
     text: `${hit.name || hit.symbol} ${fmt(hit.price, 2)} ${hit.currency || ''}`.trim() +
       (hit.asOf ? `, ${hit.asOf.slice(0, 10)}` : '') +
       ' - one listed contract, not the continuous series'
-  };
+  }, hit.symbol);
 }
-
-/* Price every leg at its own delivery month, from the listed curve.
- *
- * Two contracts give the curve's log slope; each leg's expiry is then priced
- * along it. That is an extrapolation of a single observed slope, not a fitted
- * term structure - honest for the two- or three-month span a calendar spread
- * usually covers, and increasingly rough beyond the far contract. */
-/* The price source line as it stood before the curve overwrote it, so clearing
- * the leg prices can put it back instead of inventing one. Null means either
- * nothing was overwritten or the fill has already been undone. */
-let priceSourceBeforeFill = null;
-let legPricesFilled = false;
 
 /* Undo for applyLegPrices(). The fill rewrites every option leg at once, so it
  * needs a matching one-click way back - clearing seven legs by hand is not an
  * undo. A blank leg price means "use the contract in the panel", which is
- * exactly the state the fill replaced. */
+ * exactly the state the fill replaced. The fill has its own source line, so
+ * undoing it leaves the panel price's line alone: there is nothing to restore,
+ * which is what used to go wrong when one line served both. */
 function clearLegPrices() {
   for (const leg of state.legs) leg.under = null;
-  if (legPricesFilled) {
-    state.sources.price = priceSourceBeforeFill;
-    priceSourceBeforeFill = null;
-    legPricesFilled = false;
+  state.sources.legs = null;
+}
+
+/* A leg price typed by hand. After a fill the curve's line stops vouching for
+ * every leg, and once no leg carries a price of its own it goes. */
+function typeLegPrice(leg, v) {
+  if (v === leg.under) return;
+  leg.under = v;
+  const s = state.sources.legs;
+  if (!state.legs.some(l => l.under != null)) state.sources.legs = null;
+  else if (s && !s.edited) {
+    state.sources.legs = { live: s.live, text: s.text + '; edited by hand since', edited: true };
   }
 }
 
@@ -1877,22 +1909,19 @@ function fillLegsFromStrip(opts) {
   };
 }
 
+/* Price every leg at its own delivery month, from the listed curve: across the
+ * loaded strip when there is one, otherwise along the slope between two
+ * contracts, which is an extrapolation of one observed slope rather than a
+ * fitted term structure - honest for the two- or three-month span a calendar
+ * usually covers, and increasingly rough beyond the far contract. The fill
+ * reports on its own source line; the panel price's line is left alone. */
 async function applyLegPrices() {
   const opts = state.legs.filter(l => l.kind !== 'underlying');
   if (!opts.length) throw new Error('add an option leg first');
 
-  // Remember what the price source said before this overwrote it, but only on
-  // the first fill: a second fill must not record its own text as the thing to
-  // restore to.
-  const remember = () => {
-    if (!legPricesFilled) priceSourceBeforeFill = state.sources.price;
-    legPricesFilled = true;
-  };
-
   // With the listed strip in hand, interpolate between real quotes.
   if (contractMonths.length >= 2) {
-    remember();
-    state.sources.price = fillLegsFromStrip(opts);
+    state.sources.legs = fillLegsFromStrip(opts);
     return { message: `leg prices from ${contractMonths.length} listed contracts` };
   }
 
@@ -1910,15 +1939,13 @@ async function applyLegPrices() {
     if (leg.days > furthest) furthest = leg.days;
   }
 
-  remember();
-
   const pct = (slope * 100).toFixed(2);
   const beyond = furthest > gapDays
     ? `, extrapolated past the ${gapDays}d observed span for the ${furthest}d leg`
     : '';
-  state.sources.price = {
+  state.sources.legs = {
     live: true,
-    text: `${fmt(state.S, 2)} front month; legs priced along the curve at ` +
+    text: `from ${fmt(state.S, 2)} in the panel, priced along the curve at ` +
       `${pct}%/yr from ${near.name || near.symbol} ${fmt(near.price, 2)} vs ` +
       `${far.name || far.symbol} ${fmt(far.price, 2)}${beyond}`
   };
@@ -1974,7 +2001,9 @@ function applyPreset() {
   clearLegPrices();
   state.sources.vol = { live: false, text: 'preset long-run average (' + meta.vol + '%) - not market data' };
   state.sources.yield = { live: false, text: 'preset (' + meta.yield + '%) - not market data' };
-  state.sources.price = null;
+  // The price is kept but no longer vouched for: presets also run when the
+  // commodity changes, and the old market's quote must not describe it.
+  setReferencePrice(state.S, null, '');
 }
 
 /* ============================================================
@@ -2093,14 +2122,16 @@ function bindInputs() {
   });
 
   /* Each handler keeps the previous value when the box is momentarily empty or
-   * half-typed, so clearing a field does not zero out the whole model. */
+   * half-typed, so clearing a field does not zero out the whole model. The four
+   * market inputs go through typeMarketInput(): a number typed there is no
+   * longer the market's. */
   const simple = {
     model: el => { state.model = el.value; },
     style: el => { state.style = el.value; },
-    spot: el => { state.S = num(el, state.S); },
-    vol: el => { state.vol = num(el, state.vol); },
-    rate: el => { state.rate = num(el, state.rate); },
-    yield: el => { state.yield = num(el, state.yield); },
+    spot: el => { typeMarketInput('S', num(el, state.S)); },
+    vol: el => { typeMarketInput('vol', num(el, state.vol)); },
+    rate: el => { typeMarketInput('rate', num(el, state.rate)); },
+    yield: el => { typeMarketInput('yield', num(el, state.yield)); },
     skewRr: el => { state.skew.rr = num(el, state.skew.rr); },
     skewBf: el => { state.skew.bf = num(el, state.skew.bf); },
     scenPct: el => { state.scenario.pricePct = num(el, state.scenario.pricePct); },
@@ -2118,8 +2149,6 @@ function bindInputs() {
   Object.keys(simple).forEach(id => {
     $(id).addEventListener('input', e => {
       simple[id](e.target);
-      // A hand-typed value is no longer sourced from market data.
-      if (id === 'vol' || id === 'rate' || id === 'yield') state.sources[id] = null;
       renderAll();
     });
   });
@@ -2265,7 +2294,7 @@ function onLegEvent(e) {
     case 'strike': leg.strike = num(el, leg.strike); break;
     case 'days': leg.days = Math.max(0, num(el, leg.days)); break;
     case 'vol': leg.vol = el.value.trim() === '' ? null : num(el, null); break;
-    case 'under': leg.under = el.value.trim() === '' ? null : num(el, null); break;
+    case 'under': typeLegPrice(leg, el.value.trim() === '' ? null : num(el, null)); break;
     case 'entry': leg.entry = el.value.trim() === '' ? null : num(el, null); break;
   }
   renderAll();
