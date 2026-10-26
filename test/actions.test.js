@@ -109,10 +109,11 @@ test('the rate is read off the Treasury curve at the contract tenor', async () =
   fresh({ days: 30, rate: 4 });
   handler = serve({ 'home.treasury.gov': ok(TREASURY) });
   const r = await app.applyRate();
-  // 30 days is inside the one-month point, 4.11% par.
-  assert.strictEqual(state.rate, +(Math.log(1.0411) * 100).toFixed(3));
-  assert.match(r.message, /risk-free rate 4\.028% \(Treasury 2026-10-23\)/);
-  assert.match(state.sources.rate.text, /US Treasury par curve 2026-10-23/);
+  // 30 days is inside the one-month point, 4.11% par: semi-annual, so 2 ln(1.02055).
+  assert.strictEqual(state.rate, +(2 * Math.log(1 + 0.0411 / 2) * 100).toFixed(3));
+  assert.strictEqual(state.rate, 4.068);
+  assert.match(r.message, /risk-free rate 4\.068% \(Treasury 2026-10-23\)/);
+  assert.match(state.sources.rate.text, /US Treasury par curve 2026-10-23, interpolated at 30d = 4\.11% par \(semi-annual\) -> 4\.068% continuous/);
 });
 
 test('a month with no data yet falls back to the month before', async () => {
@@ -122,7 +123,7 @@ test('a month with no data yet falls back to the month before', async () => {
   await app.applyRate();
   assert.strictEqual(calls.length, 2, 'two months asked for');
   assert.notStrictEqual(calls[0], calls[1]);
-  assert.strictEqual(state.rate, 4.028);
+  assert.strictEqual(state.rate, 4.068);
 });
 
 test('when the Treasury cannot be read the rate keeps its value', async () => {
@@ -456,8 +457,8 @@ test('auto-fill reports each input on its own and keeps going past a failure', a
   assert.strictEqual(state.S, 4000, 'the price that failed kept its value');
   assert.ok(r.results.some(x => x.carry), 'the curve\'s working comes back for the carry boxes');
   // The yield is computed with the rate fetched a step earlier.
-  assert.strictEqual(state.rate, 4.028);
-  assert.strictEqual(state.yield, +app.impliedConvenienceYield(4025.5, 4061.2, CURVE_GAP_DAYS, 4.028).toFixed(3));
+  assert.strictEqual(state.rate, 4.068);
+  assert.strictEqual(state.yield, +app.impliedConvenienceYield(4025.5, 4061.2, CURVE_GAP_DAYS, 4.068).toFixed(3));
 });
 
 /* ---- by hand, and the presets ---- */

@@ -131,10 +131,13 @@ test('yield curve interpolation and continuous compounding', () => {
   // Outside the curve it clamps rather than extrapolating.
   near(rateForTenor(curve, 0.001).par, 3.8, 1e-9, 'below the short end');
   near(rateForTenor(curve, 40).par, 4.06, 1e-9, 'beyond the long end');
-  // Annual to continuously compounded.
-  near(rateForTenor(curve, 0.25).continuous, Math.log(1 + 0.039) * 100, 1e-9, 'continuous conversion');
-  assert.ok(rateForTenor(curve, 0.25).continuous < rateForTenor(curve, 0.25).par,
-    'the continuous rate is below the par rate');
+  // The par curve is bond-equivalent, compounded semi-annually: (1 + y/2)^2 = e^r.
+  const r = rateForTenor(curve, 0.25).continuous / 100;
+  near(Math.exp(r), Math.pow(1 + 0.039 / 2, 2), 1e-12, 'semi-annual to continuous');
+  assert.ok(r * 100 < 3.9, 'the continuous rate is below the par rate');
+  // It used to be read as annual, ln(1 + y), which is lower by about y^2/4.
+  const gap = r * 100 - Math.log(1.039) * 100;
+  assert.ok(gap > 0.035 && gap < 0.038, `3.7bp above the annual reading at 3.9% (got ${gap})`);
 });
 
 test('convenience yield inverts the cost of carry', () => {

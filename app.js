@@ -920,7 +920,12 @@ function parseTreasuryXml(text) {
   return { date: field('NEW_DATE').slice(0, 10), points };
 }
 
-/* Linear interpolation on the par curve, then annual -> continuously compounded. */
+/* Linear interpolation on the par curve, then to a continuously compounded rate.
+ *
+ * The Treasury quotes the par curve on a bond-equivalent basis, compounded
+ * semi-annually, so (1 + y/2)^2 = e^r and r = 2 ln(1 + y/2). Treating it as
+ * annual, ln(1 + y), which this once did, understates r by about y^2/4: 3.8
+ * basis points at 4%, 6 at 5%. */
 function rateForTenor(curve, years) {
   const p = curve.points;
   let y;
@@ -935,7 +940,7 @@ function rateForTenor(curve, years) {
       }
     }
   }
-  return { par: y, continuous: Math.log(1 + y / 100) * 100 };
+  return { par: y, continuous: 2 * Math.log(1 + y / 200) * 100 };
 }
 
 const AV_URL = 'https://www.alphavantage.co/query';
@@ -1681,7 +1686,7 @@ async function applyRate() {
   state.sources.rate = {
     live: true,
     text: `US Treasury par curve ${curve.date}, interpolated at ${state.days}d = ` +
-      `${r.par.toFixed(2)}% par -> ${r.continuous.toFixed(3)}% continuous`
+      `${r.par.toFixed(2)}% par (semi-annual) -> ${r.continuous.toFixed(3)}% continuous`
   };
   return { message: `risk-free rate ${state.rate}% (Treasury ${curve.date})` };
 }
