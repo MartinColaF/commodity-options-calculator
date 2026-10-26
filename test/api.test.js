@@ -131,11 +131,11 @@ test('history parses the series and drops gaps', async () => {
   } finally { global.fetch = original; }
 });
 
-test('curve skips the current delivery month', async () => {
+test('the listed strip skips the current delivery month', async () => {
   const original = global.fetch;
   const seen = mockFetch(sym => chartPayload({ symbol: sym, shortName: sym, price: 4600 }));
   try {
-    await call({ fn: 'curve', commodity: 'gold' });
+    await call({ fn: 'months', commodity: 'gold' });
     assert.ok(seen.length > 0, 'contracts were probed');
 
     const now = new Date();
@@ -151,7 +151,7 @@ test('curve skips the current delivery month', async () => {
   } finally { global.fetch = original; }
 });
 
-test('curve ignores contracts that have not traded recently', async () => {
+test('the listed strip ignores contracts that have not traded recently', async () => {
   const original = global.fetch;
   const stale = Math.floor(Date.now() / 1000) - 30 * 86400;
   const fresh = Math.floor(Date.now() / 1000) - 3600;
@@ -162,26 +162,48 @@ test('curve ignores contracts that have not traded recently', async () => {
     return chartPayload({ symbol: sym, shortName: sym, price: 4600 + n, time: n === 1 ? stale : fresh });
   });
   try {
-    const out = await call({ fn: 'curve', commodity: 'gold' });
+    const out = await call({ fn: 'months', commodity: 'gold' });
     assert.strictEqual(out.code, 200);
-    assert.strictEqual(out.body.contracts.length, 2, 'two contracts returned');
+    assert.ok(out.body.contracts.length >= 2, 'the rest of the strip is returned');
     assert.ok(!out.body.contracts.some(c => c.symbol === seen[0]),
       'the stale contract is not used');
     for (const c of out.body.contracts) {
       assert.ok(c.price > 0 && c.expiry && c.asOf, 'each contract is fully described');
     }
-    assert.ok(new Date(out.body.contracts[1].expiry) > new Date(out.body.contracts[0].expiry),
-      'contracts come back in chronological order');
+    for (let i = 1; i < out.body.contracts.length; i++) {
+      assert.ok(new Date(out.body.contracts[i].expiry) > new Date(out.body.contracts[i - 1].expiry),
+        'contracts come back in chronological order');
+    }
   } finally { global.fetch = original; }
 });
 
-test('curve fails cleanly when too few contracts quote', async () => {
+test('curve and months fail cleanly when too few contracts quote', async () => {
   const original = global.fetch;
   mockFetch(() => null); // every probe 404s
   try {
-    const out = await call({ fn: 'curve', commodity: 'cocoa' });
-    assert.strictEqual(out.code, 502);
-    assert.match(out.body.error, /two contracts/);
+    const curve = await call({ fn: 'curve', commodity: 'cocoa' });
+    assert.strictEqual(curve.code, 502);
+    assert.match(curve.body.error, /two contracts/);
+    const months = await call({ fn: 'months', commodity: 'cocoa' });
+    assert.strictEqual(months.code, 502);
+    assert.match(months.body.error, /any listed contract/);
+  } finally { global.fetch = original; }
+});
+
+test('curve is the first two contracts of the same probe as months', async () => {
+  // The page reads the whole curve from months. curve used to probe 5
+  // contracts of its own, overlapping the 14 that months probes.
+  const original = global.fetch;
+  const time = Math.floor(Date.now() / 1000) - 3600;
+  const seen = mockFetch(sym => chartPayload({ symbol: sym, shortName: sym, price: 4000 + sym.charCodeAt(2), time }));
+  try {
+    const months = await call({ fn: 'months', commodity: 'gold' });
+    const probed = seen.splice(0);
+    const curve = await call({ fn: 'curve', commodity: 'gold' });
+    assert.strictEqual(curve.code, 200);
+    assert.deepStrictEqual(seen, probed, 'the same contracts are probed');
+    assert.deepStrictEqual(curve.body.contracts, months.body.contracts.slice(0, 2));
+    assert.strictEqual(curve.headers['cache-control'], months.headers['cache-control']);
   } finally { global.fetch = original; }
 });
 

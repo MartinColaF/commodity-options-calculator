@@ -58,12 +58,15 @@ serverless function in [`api/market.js`](api/market.js) makes that request inste
 
 - The client sends a **commodity key, never a raw symbol**; every symbol is built
   from the commodity table. That keeps it from being usable as an open proxy.
-- Responses are cached at Vercel's edge (`s-maxage`: quotes 5 min, history and curve
-  1 h) and again in the browser, so upstream sees very little traffic.
+- Responses are cached at Vercel's edge (`s-maxage`: quotes 5 min, history and the
+  listed contracts 1 h) and again in the browser, so upstream sees very little traffic.
 - It only exists on the deployed site. Opening the page locally, the buttons say so
   and fall back to Alpha Vantage or your manual values.
-- Contract months per commodity are listed in [`commodities.js`](commodities.js); the
-  curve endpoint probes the next listed contracts and keeps the first two that quote.
+- Contract months per commodity are listed in [`commodities.js`](commodities.js). The
+  `months` endpoint probes the next listed contracts and returns those that quote,
+  nearest first. The month picker, the convenience yield and the per-leg fill all read
+  that one answer, the last two from its first two contracts, so the page makes one
+  request for the whole curve.
 
 Notes and limitations, stated plainly in the UI as well:
 
@@ -72,7 +75,7 @@ Notes and limitations, stated plainly in the UI as well:
   available here.
 - Volatility is measured on the front-month continuous series, where **roll gaps can
   inflate the estimate** slightly.
-- Contract expiries in the curve endpoint are approximated to mid-month. Both
+- Contract expiries from the function are approximated to mid-month. Both
   contracts use the same convention, so the *gap* driving the carry stays accurate.
 - The skew is read once per leg, at today's price and the leg's full tenor, and held
   as the scenario price moves — sticky strike, not sticky delta. Real surfaces shift
@@ -150,7 +153,8 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/actions.test.js` — every market-data action against a fake network: the rate
   read off a real Treasury response, the price switching to cents on a `USX` quote,
   the Alpha Vantage fallback, the curve's convenience yield, leg prices from the slope
-  and from the listed strip with their undo, auto-fill carrying on past a failure, the
+  and from the listed strip with their undo, all three reading one request for the
+  curve, auto-fill carrying on past a failure, the
   presets, and every source line staying true: a price, rate, volatility or yield typed
   by hand is the user's own, and the month picker follows the price.
 - `test/commodities.test.js` — the page and the function reading one table: the
@@ -176,8 +180,9 @@ some browsers restrict cross-origin requests from `file://`.
   inactive for as long as none load, and every third party the page may contact
   named.
 - `test/api.test.js` — the serverless function with a mocked upstream: rejected
-  commodities, method and action validation, series parsing, and the two curve rules
-  (skip the delivery month, skip contracts that have not traded recently).
+  commodities, method and action validation, series parsing, the two rules of the
+  contract probe (skip the delivery month, skip contracts that have not traded
+  recently), and `curve` being the first two contracts of that same probe.
 
 `app.js` has no module system on purpose, so the page still runs from a `file://`
 path. The tests load it into a VM with a small DOM stub — see

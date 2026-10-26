@@ -10,8 +10,8 @@
  * Endpoints (all GET):
  *   /api/market?fn=quote&commodity=gold      front-month price
  *   /api/market?fn=history&commodity=gold    daily OHLC series for realised vol
- *   /api/market?fn=curve&commodity=gold      two listed contracts, for carry
  *   /api/market?fn=months&commodity=gold     every listed contract that quotes
+ *   /api/market?fn=curve&commodity=gold      the first two of those
  */
 'use strict';
 
@@ -166,10 +166,11 @@ module.exports = async function handler(req, res) {
     }
 
     if (fn === 'curve' || fn === 'months') {
-      // curve needs only the two nearest live contracts to imply the carry.
-      // months wants the whole listed strip, so it probes further out.
-      const wanted = fn === 'curve' ? 2 : 12;
-      const found = await liveContracts(spec, fn === 'curve' ? 5 : 14, wanted);
+      // One probe for both. The page asks for months only and takes the carry
+      // off its two nearest contracts; curve is those two, from the same probe,
+      // kept for a page loaded before it stopped asking. They used to probe 5
+      // and 14 contracts separately, up to 19 overlapping requests upstream.
+      const found = await liveContracts(spec, 14, 12);
 
       if (fn === 'curve' && found.length < 2) {
         return fail(res, 502, 'Could not read two contracts for this commodity');
@@ -179,7 +180,7 @@ module.exports = async function handler(req, res) {
       }
 
       res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
-      return res.status(200).json({ commodity: key, contracts: found });
+      return res.status(200).json({ commodity: key, contracts: fn === 'curve' ? found.slice(0, 2) : found });
     }
 
     return fail(res, 400, 'Unknown fn. Use quote, history, curve or months.');

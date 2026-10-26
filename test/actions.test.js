@@ -65,9 +65,12 @@ function series(base, n) {
   return out;
 }
 
+/* The function's months answer, which is the whole curve: the carry is read off
+ * its two nearest contracts, and the third is there to show nothing else is. */
 const CURVE = { commodity: 'gold', contracts: [
   { symbol: 'GCZ26.CMX', name: 'Gold Dec 26', price: 4025.5, expiry: '2026-12-15' },
-  { symbol: 'GCG27.CMX', name: 'Gold Feb 27', price: 4061.2, expiry: '2027-02-15' }] };
+  { symbol: 'GCG27.CMX', name: 'Gold Feb 27', price: 4061.2, expiry: '2027-02-15' },
+  { symbol: 'GCJ27.CMX', name: 'Gold Apr 27', price: 4150.0, expiry: '2027-04-15' }] };
 const CURVE_GAP_DAYS = 62;   // 15 Dec to 15 Feb
 
 /* A strip whose expiries sit a known number of days from now. */
@@ -237,7 +240,7 @@ test('without a key, the function\'s own error is what the user sees', async () 
 
 test('the curve\'s convenience yield follows the carry formula and hands back its working', async () => {
   fresh({ rate: 4, yield: 0.3 });
-  handler = serve({ 'fn=curve&commodity=gold': ok(CURVE) });
+  handler = serve({ 'fn=months&commodity=gold': ok(CURVE) });
   const r = await app.applyCurveYield();
   const y = app.impliedConvenienceYield(4025.5, 4061.2, CURVE_GAP_DAYS, 4);
   assert.strictEqual(state.yield, +y.toFixed(3));
@@ -258,7 +261,7 @@ test('the curve is read through one gap and one slope', () => {
 test('the Yield button and the leg fill read the same slope off the curve', async () => {
   // They used to compute it separately, each with its own copy of the formula.
   fresh({ S: 4000, rate: 4, yield: 0.3 });
-  handler = serve({ 'fn=curve&commodity=gold': ok(CURVE) });
+  handler = serve({ 'fn=months&commodity=gold': ok(CURVE) });
   await app.applyCurveYield();
   state.legs = [app.newLeg({ kind: 'call', strike: 4000, days: 365 })];
   await app.applyLegPrices();
@@ -270,9 +273,36 @@ test('the Yield button and the leg fill read the same slope off the curve', asyn
 test('two contracts that give no spread leave the yield alone', async () => {
   fresh({ yield: 0.3 });
   const backwards = { contracts: [CURVE.contracts[1], CURVE.contracts[0]] };
-  handler = serve({ 'fn=curve': ok(backwards) });
+  handler = serve({ 'fn=months': ok(backwards) });
   await assert.rejects(app.applyCurveYield(), /did not give a usable spread/);
   assert.strictEqual(state.yield, 0.3);
+});
+
+test('the Yield button, the leg fill and the month picker share one request', async () => {
+  // They used to ask the function for curve and for months separately: two
+  // requests probing up to 19 overlapping contracts upstream, cached under two
+  // keys, and a carry measured on other quotes than the picker listed.
+  fresh({ S: 4000, rate: 4, yield: 0.3 });
+  handler = serve({ 'fn=months&commodity=gold': ok(CURVE) });
+  const r = await app.applyCurveYield();
+  state.legs = [app.newLeg({ kind: 'call', strike: 4000, days: 60 })];
+  await app.applyLegPrices();
+  await app.loadContractMonths();
+  assert.deepStrictEqual(calls, ['/api/market?fn=months&commodity=gold'], 'one request');
+  const [a, b] = state.session.strip;
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(r.carry)), { near: a.price, far: b.price, days: CURVE_GAP_DAYS },
+    'the carry is measured on the two nearest months the picker lists');
+});
+
+test('one listed contract is not a curve', async () => {
+  fresh({ S: 4000, yield: 0.3 });
+  handler = serve({ 'fn=months': ok({ contracts: CURVE.contracts.slice(0, 1) }) });
+  await assert.rejects(app.applyCurveYield(), /fewer than two listed contracts quote/);
+  assert.strictEqual(state.yield, 0.3);
+  state.legs = [app.newLeg({ kind: 'call', strike: 4000, days: 60 })];
+  await assert.rejects(app.applyLegPrices(), /fewer than two listed contracts quote/);
+  assert.strictEqual(state.legs[0].under, null);
+  assert.strictEqual(state.sources.legs, null);
 });
 
 /* ---- the listed strip ---- */
@@ -313,7 +343,7 @@ test('legs priced along the two-contract slope, on their own source line, and un
     app.newLeg({ kind: 'call', side: 1, strike: 4000, days: 60 }),
     app.newLeg({ kind: 'underlying', strike: 0, days: 30 })
   ];
-  handler = serve({ 'fn=curve&commodity=gold': ok(CURVE) });
+  handler = serve({ 'fn=months&commodity=gold': ok(CURVE) });
   const r = await app.applyLegPrices();
   const slope = Math.log(4061.2 / 4025.5) / (CURVE_GAP_DAYS / 365);
   assert.strictEqual(state.legs[0].under, +(4000 * Math.exp(slope * 30 / 365)).toFixed(4));
@@ -449,7 +479,7 @@ test('auto-fill reports each input on its own and keeps going past a failure', a
     'home.treasury.gov': ok(TREASURY),
     'fn=quote': { status: 502, body: { error: 'Upstream market data unavailable' } },
     'fn=history': ok({ symbol: 'GC=F', series: series(4000, 90) }),
-    'fn=curve': ok(CURVE)
+    'fn=months': ok(CURVE)
   });
   const r = await app.autoFill({ window: 20, estimator: 'close', avKey: '', symbol: '' });
   assert.strictEqual(r.done.length, 3);
