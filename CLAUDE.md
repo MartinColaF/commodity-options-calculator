@@ -303,6 +303,22 @@ something is missing from the repo.
 - Contract expiries in the curve endpoint are approximated to mid-month. Both
   contracts use the same convention, so the gap driving the carry stays accurate.
 
+## Before switching on ads
+
+The owner plans to show Google AdSense ads. Today `index.html` carries only the
+account's verification meta tag: no ad script loads, the site sets no cookies, and
+`privacy.html` says so in sections 1 to 3. `test/privacy.test.js` fails the moment an
+AdSense script appears without the policy changing. Switching ads on takes all of this:
+
+1. **A certified consent banner (CMP)** for visitors from the EEA, the UK and
+   Switzerland. Google requires one there before it serves ads.
+2. **The Content-Security-Policy** in `index.html`: AdSense needs script, frame and
+   connect origins that `test/page.test.js` will flag. Its scripts cannot carry an
+   `integrity` hash because Google changes them, so that test needs a deliberate,
+   commented exception, not a loosened rule.
+3. **`privacy.html`, sections 1 to 3**, rewritten to say ads are on, with a new
+   effective date. The policy once promised a cookie banner the site never had.
+
 ## Tone of the UI
 
 Every market-data value shows its source and as-of date, and preset values are
