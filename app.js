@@ -568,21 +568,53 @@ function legVolPct(leg) {
     state.vol / 100, state.skew.rr / 100, state.skew.bf / 100) * 100;
 }
 
-/* Value of one unit of a leg, with the volatility already resolved. */
-function legValueAt(leg, price, tau, sigma) {
-  if (leg.kind === 'underlying') return price;
-  const r = state.rate / 100;
-  return state.style === 'american'
-    ? americanPrice(leg.kind, price, leg.strike, tau, r, carry(), sigma)
-    : gbs(leg.kind, price, leg.strike, tau, r, carry(), sigma).price;
+/* Everything a pricer needs for one leg, assembled in one place.
+ *
+ * Every path that prices a leg - its value, its greeks, the chart's greek
+ * profile, the P&L sweep and the implied-volatility solver - goes through
+ * here, so they cannot disagree about which underlying, which volatility or
+ * which exercise style a leg has. They used to assemble these by hand in four
+ * places, and the IV button drifted: it solved against the panel price
+ * instead of the leg's own delivery month, returning 52.74% for a leg priced
+ * at 30% and writing that back into the leg.
+ *
+ * opts.P is a scenario price for the reference contract. Without it the leg
+ * is priced today, at its own month's price - legUnder(), not
+ * legScenario(leg, state.S), which differ when the panel price is zero.
+ * opts.tDays is time elapsed from today; opts.volShift moves the surface, in
+ * vol points. */
+function legPricingInputs(leg, opts) {
+  const o = opts || {};
+  return {
+    kind: leg.kind,
+    S: o.P === undefined ? legUnder(leg) : legScenario(leg, o.P),
+    K: leg.strike,
+    T: Math.max(leg.days - (o.tDays || 0), 0) / 365,
+    r: state.rate / 100,
+    b: carry(),
+    sigma: Math.max(legVolPct(leg) + (o.volShift || 0), 0) / 100,
+    style: state.style,
+    bTracksRate: carryTracksRate()
+  };
+}
+
+/* Value of one unit, from resolved inputs. */
+function valueFromInputs(p) {
+  if (p.kind === 'underlying') return p.S;
+  return p.style === 'american'
+    ? americanPrice(p.kind, p.S, p.K, p.T, p.r, p.b, p.sigma)
+    : gbs(p.kind, p.S, p.K, p.T, p.r, p.b, p.sigma).price;
+}
+
+/* Price and greeks of one unit, from resolved inputs. */
+function greeksFromInputs(p) {
+  return priceOption(p.kind, p.S, p.K, p.T, p.r, p.b, p.sigma, p.style, p.bTracksRate);
 }
 
 /* Value of one unit of a leg when the reference contract is at P, tDays after
  * today. volShift moves the whole surface, in vol points. */
 function legValue(leg, P, tDays, volShift) {
-  const tau = Math.max(leg.days - tDays, 0) / 365;
-  const sigma = Math.max(legVolPct(leg) + (volShift || 0), 0) / 100;
-  return legValueAt(leg, legScenario(leg, P), tau, sigma);
+  return valueFromInputs(legPricingInputs(leg, { P: P, tDays: tDays, volShift: volShift }));
 }
 
 /* Greeks of one unit of a leg today. Delta and gamma are quoted against the
@@ -591,9 +623,15 @@ function legGreeks(leg) {
   if (leg.kind === 'underlying') {
     return { price: legUnder(leg), delta: 1, gamma: 0, vega: 0, theta: 0, rho: 0 };
   }
-  const sigma = legVolPct(leg) / 100;
-  return priceOption(leg.kind, legUnder(leg), leg.strike, leg.days / 365,
-    state.rate / 100, carry(), sigma, state.style, carryTracksRate());
+  return greeksFromInputs(legPricingInputs(leg));
+}
+
+/* The volatility, as a decimal, at which this leg is worth `premium` - or NaN
+ * when none is. Solved against the leg's own inputs, so a volatility found
+ * here reprices the leg to the premium it came from. */
+function legImpliedVol(leg, premium) {
+  const p = legPricingInputs(leg);
+  return impliedVol(p.kind, premium, p.S, p.K, p.T, p.r, p.b, p.style);
 }
 
 function activeLegs() {
@@ -615,20 +653,22 @@ function legEntry(leg) {
  * volShift moves the whole surface, in vol points, for the scenario table. */
 function pnlEvaluator(volShift) {
   const mult = dollarMultiplier(currentCommodity());
-  const shift = volShift || 0;
   const prepared = activeLegs().map(leg => ({
     leg,
     weight: leg.side * leg.qty * mult,
     entry: legEntry(leg),
     ratio: legRatio(leg),
-    sigma: Math.max(legVolPct(leg) + shift, 0) / 100
+    // Resolved once per sweep - the volatility, rate, carry and style. Only
+    // the price and the time move from point to point, and they are written
+    // straight onto this object, which belongs to this closure alone.
+    inputs: legPricingInputs(leg, { volShift: volShift })
   }));
   return function (P, tDays) {
     let pnl = 0;
     for (const p of prepared) {
-      const tau = Math.max(p.leg.days - tDays, 0) / 365;
-      const v = legValueAt(p.leg, P * p.ratio, tau, p.sigma);
-      pnl += p.weight * (v - p.entry);
+      p.inputs.S = P * p.ratio;
+      p.inputs.T = Math.max(p.leg.days - tDays, 0) / 365;
+      pnl += p.weight * (valueFromInputs(p.inputs) - p.entry);
     }
     return pnl;
   };
@@ -1290,10 +1330,7 @@ function renderChart(a) {
       for (const leg of activeLegs()) {
         const w = leg.side * leg.qty;
         if (leg.kind === 'underlying') { if (which === 'delta') v += w; continue; }
-        const tau = Math.max(leg.days - tOff, 0) / 365;
-        const sigma = legVolPct(leg) / 100;
-        const g = priceOption(leg.kind, legScenario(leg, x), leg.strike, tau,
-          state.rate / 100, carry(), sigma, state.style, carryTracksRate());
+        const g = greeksFromInputs(legPricingInputs(leg, { P: x, tDays: tOff }));
         v += w * g[which];
       }
       return { x, y: v * mult };
@@ -2131,8 +2168,7 @@ function onLegEvent(e) {
       setStatus('Enter the market premium in the Entry column first, then press IV.', 'err');
       return;
     }
-    const iv = impliedVol(leg.kind, target, state.S, leg.strike, leg.days / 365,
-      state.rate / 100, carry(), state.style);
+    const iv = legImpliedVol(leg, target);
     if (!isFinite(iv)) {
       setStatus('No implied volatility solves that premium (check the price and the strike).', 'err');
       return;
