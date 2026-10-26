@@ -194,9 +194,9 @@ const iso = d => new Date(Date.now() + d * 86400e3).toISOString().slice(0, 10);
 const STRIP_TOL = 1e-6;
 
 function setStrip(rows) {
-  app.__setContractMonths(rows.map(([sym, price, days]) => ({
+  state.session.strip = rows.map(([sym, price, days]) => ({
     symbol: sym, name: sym, price, currency: 'USD', expiry: iso(days)
-  })));
+  }));
 }
 
 test('the strip interpolates log-linearly between two real quotes', () => {
@@ -248,11 +248,11 @@ test('a strip too thin to interpolate says so instead of guessing', () => {
 });
 
 test('a contract with no price is dropped rather than poisoning the curve', () => {
-  app.__setContractMonths([
+  state.session.strip = [
     { symbol: 'A', name: 'A', price: 100, expiry: iso(100) },
     { symbol: 'DEAD', name: 'DEAD', price: 0, expiry: iso(150) },
     { symbol: 'B', name: 'B', price: 110, expiry: iso(200) }
-  ]);
+  ];
   const ta = app.daysUntil(iso(100)), tb = app.daysUntil(iso(200));
   near(app.forwardFromStrip((ta + tb) / 2), Math.sqrt(100 * 110), STRIP_TOL,
     'the zero-priced month must not drag the curve to zero');

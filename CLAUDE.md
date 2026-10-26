@@ -221,6 +221,16 @@ rebuilds the whole tbody, so updating per keystroke fights with typing. A test t
 types into a leg field and reads the result without blurring sees a stale value — that
 is the design, not a bug.
 
+**Three layers, one direction.** The calculations (§1–§6) and the actions (§9) change
+`state` and never touch the page or ask for a redraw; the rendering (§7) draws `state` and
+never changes it; only the wiring (§10) reads the page, calls an action and then renders.
+Anything a change leaves out of bounds — the chart date past a horizon that moved — is put
+back by `normalizeState()`, which `renderAll()` runs first. All three rules were broken
+once: `renderResults()` clipped the chart date, `renderMonths()` dropped the picked month,
+and `applyStrategy()` redrew the page. `test/layers.test.js` scans the sections for both
+rules, and the test loader no longer stubs `renderAll`, so a calculation that tried to
+draw would throw in its own test.
+
 **The market-data actions never touch the page.** Each `apply*` in §9 takes what it
 needs as arguments, updates `state` and returns `{ message, … }`. Only the wiring in §10
 reads the page's inputs (`volInputs()`) and writes back what an action returned:
@@ -297,9 +307,11 @@ something is missing from the repo.
   before "fixing" it — dropping the single largest move and seeing how far the
   estimate falls distinguishes the two.
 - **The listed strip** (`fn=months`) is the whole set of contracts that quote,
-  nearest first. It lives in the module-level `contractMonths`, is **not persisted**
-  (a stale strip in a shared link is worse than none), and is dropped whenever the
-  commodity changes — otherwise the picker offers cocoa months while pricing gold.
+  nearest first. It lives in `state.session.strip`, is **not persisted** — `snapshot()`
+  leaves `state.session` out and `restore()` never reads it, since a stale strip in a
+  shared link is worse than none — and `changeCommodity()` drops it, otherwise the
+  picker offers cocoa months while pricing gold. Reloading it drops a picked month the
+  new strip no longer lists, in `loadContractMonths()`.
 - **Per-leg prices** interpolate log-linearly across that strip when it is loaded,
   and fall back to the two-contract slope (`fn=curve`) when it is not. Logs are the
   right space: the curve's shape is a carry rate, so the midpoint of a segment is the
