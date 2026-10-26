@@ -147,6 +147,11 @@ some browsers restrict cross-origin requests from `file://`.
   imported files: hostile fields rejected or retyped, ids never taken from the input,
   a legitimate scenario round-tripping unchanged, and the legs table escaping every
   value it renders.
+- `test/actions.test.js` — every market-data action against a fake network: the rate
+  read off a real Treasury response, the price switching to cents on a `USX` quote,
+  the Alpha Vantage fallback, the curve's convenience yield, leg prices from the slope
+  and from the listed strip with their undo, auto-fill carrying on past a failure, and
+  the presets.
 - `test/commodities.test.js` — the page and the function reading one table: the
   markets the page sends to the function are exactly those with futures data, and
   every contract entry is in a form the function can build symbols from.

@@ -203,6 +203,17 @@ rebuilds the whole tbody, so updating per keystroke fights with typing. A test t
 types into a leg field and reads the result without blurring sees a stale value — that
 is the design, not a bug.
 
+**The market-data actions never touch the page.** Each `apply*` in §9 takes what it
+needs as arguments, updates `state` and returns `{ message, … }`. Only the wiring in §10
+reads the page's inputs (`volInputs()`) and writes back what an action returned:
+`showResult()` puts the curve's two contracts into the manual carry boxes, and
+`renderMonths()` draws the picker after `loadContractMonths()`. They used to read and
+write the DOM directly, so none of them could run under the tests and none had one;
+`test/actions.test.js` now runs every one against a fake network (`loadApp({ fetch })`).
+For the same reason the Treasury feed is read by `parseTreasuryXml()` with patterns, not
+`DOMParser`, which Node lacks; `test/fixtures/` holds a real response. When an action
+needs a new input, pass it in; when it shows something outside `state`, return it.
+
 **Saved scenarios and share links go through `snapshot()` / `restore()`.** When adding
 a state field, add it to **both** — in `restore()` with its type checked, never copied
 raw — and decide explicitly what an old saved scenario without the field should mean.

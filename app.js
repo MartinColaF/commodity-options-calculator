@@ -885,25 +885,37 @@ async function fetchYieldCurve() {
       text = await res.text();
     } catch (e) { continue; }
 
-    const doc = new DOMParser().parseFromString(text, 'application/xml');
-    const props = doc.getElementsByTagNameNS('*', 'properties');
-    if (!props.length) continue;
-    const last = props[props.length - 1];
-    const val = tag => {
-      const el = last.getElementsByTagNameNS('*', tag)[0];
-      return el ? parseFloat(el.textContent) : NaN;
-    };
-    const dateEl = last.getElementsByTagNameNS('*', 'NEW_DATE')[0];
-    const points = TENORS
-      .map(([t, y]) => ({ years: y, yield: val(t) }))
-      .filter(p => isFinite(p.yield));
-    if (!points.length) continue;
-
-    const curve = { date: dateEl ? dateEl.textContent.slice(0, 10) : '', points };
+    const curve = parseTreasuryXml(text);
+    if (!curve) continue;
     cacheSet('treasury', curve);
     return curve;
   }
   throw new Error('Treasury yield curve unavailable');
+}
+
+/* The last day in one month of the Treasury's yield curve feed, or null when
+ * the text holds no usable day.
+ *
+ * Read with patterns rather than DOMParser so that it runs under Node as well
+ * as in the browser, which is what lets the tests feed it a real response. The
+ * feed is flat: one <m:properties> block per day, in date order, and one
+ * element per tenor inside it. A tenor with no quote that day is an empty,
+ * self-closing element marked m:null="true", and is skipped. */
+function parseTreasuryXml(text) {
+  const days = String(text).match(/<(?:\w+:)?properties\b[^>]*>[\s\S]*?<\/(?:\w+:)?properties>/g);
+  if (!days) return null;
+  const last = days[days.length - 1];
+  // The text of one element, matched on its local name so the prefix does not
+  // matter; \b keeps BC_30YEAR from matching BC_30YEARDISPLAY.
+  const field = tag => {
+    const m = last.match(new RegExp('<(?:\\w+:)?' + tag + '\\b[^>]*?(/?)>([^<]*)'));
+    return m && !m[1] ? m[2] : '';
+  };
+  const points = TENORS
+    .map(([t, y]) => ({ years: y, yield: parseFloat(field(t)) }))
+    .filter(p => isFinite(p.yield));
+  if (!points.length) return null;
+  return { date: field('NEW_DATE').slice(0, 10), points };
 }
 
 /* Linear interpolation on the par curve, then annual -> continuously compounded. */
@@ -1095,6 +1107,27 @@ function renderInputs() {
   $('multInfo').textContent = '1 contract = ' + fmt(c.size, 0) + ' ' + c.unit +
     (c.quote === 'cents' ? ' (quoted in cents)' : '') +
     ' - P&L multiplier $' + fmt(dollarMultiplier(c), 2) + ' per point';
+}
+
+function monthLabel(c) {
+  const name = c.name || c.symbol;
+  return name + ' - ' + fmt(c.price, 2);
+}
+
+/* Fill the picker from whatever the strip holds. The empty value is the
+ * continuous front-month series, which stays the default. */
+function renderMonths() {
+  const sel = $('contractMonth');
+  const current = state.contractMonth || '';
+  const opts = ['<option value="">Front month (continuous)</option>'].concat(
+    contractMonths.map(c =>
+      '<option value="' + escapeHtml(c.symbol) + '">' + escapeHtml(monthLabel(c)) + '</option>')
+  );
+  sel.innerHTML = opts.join('');
+  // Keep the selection if the symbol is still in the strip; otherwise fall
+  // back to the continuous series rather than silently picking another month.
+  sel.value = contractMonths.some(c => c.symbol === current) ? current : '';
+  if (sel.value !== current) state.contractMonth = '';
 }
 
 function renderSources() {
@@ -1578,14 +1611,12 @@ function readHash() {
  * 9. Market data actions
  * ========================================================== */
 
-function setStatus(msg, kind) {
-  const el = $('dataStatus');
-  el.textContent = msg || '';
-  el.className = 'status ' + (kind || '');
-}
-
-/* Each apply* function updates one input and returns a short description of
- * what it did, or throws with a message fit to show the user. */
+/* Each apply* function fills one input from market data. It takes what it
+ * needs as arguments, updates `state`, and resolves to a result for the wiring
+ * to show: always a `message`, plus anything the page displays that is not
+ * part of the state. It never reads or writes the page, which is what lets the
+ * tests run it. When it cannot fill its input it throws with a message fit to
+ * show the user, and the input keeps its value. */
 
 async function applyRate() {
   const curve = await fetchYieldCurve();
@@ -1597,7 +1628,7 @@ async function applyRate() {
     text: `US Treasury par curve ${curve.date}, interpolated at ${state.days}d = ` +
       `${r.par.toFixed(2)}% par -> ${r.continuous.toFixed(3)}% continuous`
   };
-  return `risk-free rate ${state.rate}% (Treasury ${curve.date})`;
+  return { message: `risk-free rate ${state.rate}% (Treasury ${curve.date})` };
 }
 
 async function applyFuturesPrice() {
@@ -1620,14 +1651,16 @@ async function applyFuturesPrice() {
       (q.currency ? ` ${q.currency}` : '') +
       (q.asOf ? `, ${q.asOf.slice(0, 16).replace('T', ' ')} UTC` : '') + unitNote
   };
-  return `${q.name || q.symbol} at ${fmt(q.price, 2)}${unitNote}`;
+  return { message: `${q.name || q.symbol} at ${fmt(q.price, 2)}${unitNote}` };
 }
 
 /* Realised vol from the real futures series, falling back to Alpha Vantage's
- * ETF proxy when the futures proxy is not reachable. */
-async function applyVol() {
-  const win = +$('volWindow').value;
-  const est = $('volEstimator').value;
+ * ETF proxy when the futures proxy is not reachable. `opts` is what the
+ * volatility panel holds: the `window` in days, the `estimator`, the Alpha
+ * Vantage `avKey` and any `symbol` typed in place of the preset ETF. */
+async function applyVol(opts) {
+  const win = opts.window;
+  const est = opts.estimator;
   try {
     const h = await proxyGet('history', state.commodity, 60 * 60e3);
     const rv = realisedVol(h.series || [], win);
@@ -1643,21 +1676,22 @@ async function applyVol() {
         `close-to-close ${rv.close.toFixed(1)}% / EWMA ${rv.ewma.toFixed(1)}%` +
         (rv.parkinson ? ` / Parkinson ${rv.parkinson.toFixed(1)}%` : '')
     };
-    return `volatility ${state.vol}% from ${h.symbol}`;
+    return { message: `volatility ${state.vol}% from ${h.symbol}` };
   } catch (proxyErr) {
-    const key = $('avKey').value.trim();
-    if (!key) throw proxyErr;
-    return applyVolFromAlphaVantage(key, win, est);
+    if (!opts.avKey) throw proxyErr;
+    return applyVolFromAlphaVantage(opts);
   }
 }
 
-async function applyVolFromAlphaVantage(key, win, est) {
+async function applyVolFromAlphaVantage(opts) {
+  const win = opts.window;
+  const est = opts.estimator;
   const meta = commodityMeta(state.commodity);
-  const symbol = ($('volSymbol').value.trim() || meta.priceSymbol || '').toUpperCase();
+  const symbol = (opts.symbol || meta.priceSymbol || '').toUpperCase();
   if (!symbol) throw new Error('no ticker to read prices from');
-  localStorage.setItem(KEY_STORE, key);
+  localStorage.setItem(KEY_STORE, opts.avKey);
 
-  const series = await fetchDailySeries(symbol, key);
+  const series = await fetchDailySeries(symbol, opts.avKey);
   const rv = realisedVol(series, win);
   if (!rv) throw new Error('not enough history');
   const chosen = rv[est];
@@ -1674,7 +1708,7 @@ async function applyVolFromAlphaVantage(key, win, est) {
       `last close ${rv.last}. close-to-close ${rv.close.toFixed(1)}% / EWMA ${rv.ewma.toFixed(1)}%` +
       (rv.parkinson ? ` / Parkinson ${rv.parkinson.toFixed(1)}%` : '')
   };
-  return `volatility ${state.vol}% from ${symbol} (ETF proxy)`;
+  return { message: `volatility ${state.vol}% from ${symbol} (ETF proxy)` };
 }
 
 /* Convenience yield from the real futures curve: two listed contracts give
@@ -1695,11 +1729,11 @@ async function applyCurveYield() {
       `${far.name || far.symbol} ${fmt(far.price, 2)}, ${days}d apart (expiries approximated to ` +
       `mid-month), r=${state.rate}% -> y=${y.toFixed(3)}%`
   };
-  // Show the working in the manual boxes so the number is auditable.
-  $('carryS').value = near.price;
-  $('carryF').value = far.price;
-  $('carryDays').value = days;
-  return `convenience yield ${state.yield}% from the curve`;
+  // The working, for the manual carry boxes, so the number is auditable.
+  return {
+    message: `convenience yield ${state.yield}% from the curve`,
+    carry: { near: near.price, far: far.price, days: days }
+  };
 }
 
 /* The listed contract strip for the selected commodity, newest fetch wins.
@@ -1707,33 +1741,12 @@ async function applyCurveYield() {
  * would be worse than none. Cleared whenever the commodity changes. */
 let contractMonths = [];
 
-function monthLabel(c) {
-  const name = c.name || c.symbol;
-  return name + ' - ' + fmt(c.price, 2);
-}
-
-/* Fill the picker from whatever the strip holds. The empty value is the
- * continuous front-month series, which stays the default. */
-function renderMonths() {
-  const sel = $('contractMonth');
-  const current = state.contractMonth || '';
-  const opts = ['<option value="">Front month (continuous)</option>'].concat(
-    contractMonths.map(c =>
-      '<option value="' + escapeHtml(c.symbol) + '">' + escapeHtml(monthLabel(c)) + '</option>')
-  );
-  sel.innerHTML = opts.join('');
-  // Keep the selection if the symbol is still in the strip; otherwise fall
-  // back to the continuous series rather than silently picking another month.
-  sel.value = contractMonths.some(c => c.symbol === current) ? current : '';
-  if (sel.value !== current) state.contractMonth = '';
-}
-
+/* The wiring draws the picker from the strip once this resolves. */
 async function loadContractMonths() {
   const c = await proxyGet('months', state.commodity, 60 * 60e3);
   if (!c.contracts || !c.contracts.length) throw new Error('no listed contract quoted');
   contractMonths = c.contracts;
-  renderMonths();
-  return contractMonths.length + ' listed months loaded';
+  return { message: contractMonths.length + ' listed months loaded' };
 }
 
 /* Price the panel against one specific delivery month. */
@@ -1867,7 +1880,7 @@ async function applyLegPrices() {
   if (contractMonths.length >= 2) {
     remember();
     state.sources.price = fillLegsFromStrip(opts);
-    return `leg prices from ${contractMonths.length} listed contracts`;
+    return { message: `leg prices from ${contractMonths.length} listed contracts` };
   }
 
   const c = await proxyGet('curve', state.commodity, 60 * 60e3);
@@ -1896,64 +1909,47 @@ async function applyLegPrices() {
       `${pct}%/yr from ${near.name || near.symbol} ${fmt(near.price, 2)} vs ` +
       `${far.name || far.symbol} ${fmt(far.price, 2)}${beyond}`
   };
-  return `leg prices from a ${pct}%/yr curve`;
+  return { message: `leg prices from a ${pct}%/yr curve` };
 }
 
-/* One button that fills everything it can, reporting each field separately. */
-async function actionAutoFill() {
-  setStatus('Fetching market data...', 'busy');
+/* Every input it can fill, each on its own: one that fails never stops the
+ * rest. `vol` is what applyVol() takes. Resolves to every step's result and
+ * two lists for the status line, what was updated and what was left as it was. */
+async function autoFill(vol) {
   const steps = [
-    ['risk-free rate', applyRate],
-    ['futures price', applyFuturesPrice],
-    ['volatility', applyVol],
-    ['convenience yield', applyCurveYield]   // uses the rate fetched above
+    ['risk-free rate', () => applyRate()],
+    ['futures price', () => applyFuturesPrice()],
+    ['volatility', () => applyVol(vol)],
+    ['convenience yield', () => applyCurveYield()]   // uses the rate fetched above
   ];
-  const done = [], failed = [];
+  const results = [], done = [], failed = [];
   for (const [name, step] of steps) {
-    try { done.push(await step()); }
-    catch (e) { failed.push(`${name} (${e.message})`); }
-  }
-  renderAll();
-
-  const parts = [];
-  if (done.length) parts.push('Updated ' + done.join('; ') + '.');
-  if (failed.length) parts.push('Left unchanged: ' + failed.join('; ') + '.');
-  setStatus(parts.join(' '), failed.length ? (done.length ? '' : 'err') : 'ok');
-}
-
-/* Thin wrapper so every single-field button behaves the same way. */
-function runAction(label, step) {
-  return async () => {
-    setStatus(label + '...', 'busy');
     try {
-      const msg = await step();
-      renderAll();
-      setStatus('Updated ' + msg + '.', 'ok');
-    } catch (e) {
-      setStatus(label + ' failed: ' + e.message + '. The current value is unchanged.', 'err');
-    }
-  };
+      const r = await step();
+      results.push(r);
+      done.push(r.message);
+    } catch (e) { failed.push(`${name} (${e.message})`); }
+  }
+  return { results: results, done: done, failed: failed };
 }
 
-function actionImplyYield() {
-  const F = parseFloat($('carryF').value);
-  const S = parseFloat($('carryS').value);
-  const d = parseFloat($('carryDays').value);
-  const y = impliedConvenienceYield(S, F, d, state.rate);
+/* The convenience yield implied by two prices typed into the carry boxes: the
+ * manual check beside the Yield button. */
+function applyCarryYield(S, F, days) {
+  const y = impliedConvenienceYield(S, F, days, state.rate);
   if (!isFinite(y)) {
-    setStatus('Enter a spot price, a futures price and the days to the futures expiry.', 'err');
-    return;
+    throw new Error('Enter a spot price, a futures price and the days to the futures expiry.');
   }
   state.yield = +y.toFixed(3);
   state.sources.yield = {
     live: true,
-    text: `implied by carry: F=${fmt(F, 2)}, S=${fmt(S, 2)}, ${d}d, r=${state.rate}% -> y=${y.toFixed(3)}%`
+    text: `implied by carry: F=${fmt(F, 2)}, S=${fmt(S, 2)}, ${days}d, r=${state.rate}% -> y=${y.toFixed(3)}%`
   };
-  setStatus('Convenience yield implied from the spot/futures basis: ' + y.toFixed(3) + '%.', 'ok');
-  renderAll();
+  return { message: 'Convenience yield implied from the spot/futures basis: ' + y.toFixed(3) + '%.' };
 }
 
-function actionApplyPreset() {
+/* Back to the commodity's long-run typical values, labelled as not market data. */
+function applyPreset() {
   const meta = commodityMeta(state.commodity);
   state.vol = meta.vol;
   state.yield = meta.yield;
@@ -1966,14 +1962,96 @@ function actionApplyPreset() {
   state.sources.vol = { live: false, text: 'preset long-run average (' + meta.vol + '%) - not market data' };
   state.sources.yield = { live: false, text: 'preset (' + meta.yield + '%) - not market data' };
   state.sources.price = null;
-  $('volSymbol').value = meta.priceSymbol || '';
-  $('proxyNote').textContent = meta.proxy || '';
-  renderAll();
 }
 
 /* ============================================================
  * 10. Wiring
+ *
+ * The only code that reads the page's inputs for an action or writes what it
+ * returned. The actions above get their inputs as arguments and hand back
+ * their results.
  * ========================================================== */
+
+function setStatus(msg, kind) {
+  const el = $('dataStatus');
+  el.textContent = msg || '';
+  el.className = 'status ' + (kind || '');
+}
+
+/* What the volatility panel holds, as applyVol() takes it. */
+function volInputs() {
+  return {
+    window: +$('volWindow').value,
+    estimator: $('volEstimator').value,
+    avKey: $('avKey').value.trim(),
+    symbol: $('volSymbol').value.trim()
+  };
+}
+
+/* The part of an action's result that the page shows outside `state`: the
+ * curve's two contracts behind a convenience yield, written into the manual
+ * carry boxes so the number can be checked by hand. */
+function showResult(r) {
+  if (r && r.carry) {
+    $('carryS').value = r.carry.near;
+    $('carryF').value = r.carry.far;
+    $('carryDays').value = r.carry.days;
+  }
+}
+
+/* The commodity's preset ETF and what it is, beside the Alpha Vantage fallback. */
+function resetProxyFields() {
+  const meta = commodityMeta(state.commodity);
+  $('volSymbol').value = meta.priceSymbol || '';
+  $('proxyNote').textContent = meta.proxy || '';
+}
+
+/* Thin wrapper so every single-field button behaves the same way. */
+function runAction(label, step) {
+  return async () => {
+    setStatus(label + '...', 'busy');
+    try {
+      const r = await step();
+      showResult(r);
+      renderAll();
+      setStatus('Updated ' + r.message + '.', 'ok');
+    } catch (e) {
+      setStatus(label + ' failed: ' + e.message + '. The current value is unchanged.', 'err');
+    }
+  };
+}
+
+/* One button that fills everything it can, reporting each field separately. */
+async function actionAutoFill() {
+  setStatus('Fetching market data...', 'busy');
+  const r = await autoFill(volInputs());
+  r.results.forEach(showResult);
+  renderAll();
+
+  const parts = [];
+  if (r.done.length) parts.push('Updated ' + r.done.join('; ') + '.');
+  if (r.failed.length) parts.push('Left unchanged: ' + r.failed.join('; ') + '.');
+  setStatus(parts.join(' '), r.failed.length ? (r.done.length ? '' : 'err') : 'ok');
+}
+
+function actionImplyYield() {
+  let r;
+  try {
+    r = applyCarryYield(parseFloat($('carryS').value), parseFloat($('carryF').value),
+      parseFloat($('carryDays').value));
+  } catch (e) {
+    setStatus(e.message, 'err');
+    return;
+  }
+  setStatus(r.message, 'ok');
+  renderAll();
+}
+
+function actionApplyPreset() {
+  applyPreset();
+  resetProxyFields();
+  renderAll();
+}
 
 function num(el, fallback) {
   const v = parseFloat(el.value);
@@ -1991,7 +2069,11 @@ function bindInputs() {
     actionApplyPreset();
   });
 
-  $('loadMonths').addEventListener('click', runAction('Contract months', loadContractMonths));
+  $('loadMonths').addEventListener('click', runAction('Contract months', async () => {
+    const r = await loadContractMonths();
+    renderMonths();
+    return r;
+  }));
   $('contractMonth').addEventListener('change', e => {
     useContractMonth(e.target.value);
     renderAll();
@@ -2074,7 +2156,7 @@ function bindInputs() {
   $('autoFill').addEventListener('click', actionAutoFill);
   $('fetchPrice').addEventListener('click', runAction('Futures price', applyFuturesPrice));
   $('fetchRate').addEventListener('click', runAction('Risk-free rate', applyRate));
-  $('fetchVol').addEventListener('click', runAction('Volatility', applyVol));
+  $('fetchVol').addEventListener('click', runAction('Volatility', () => applyVol(volInputs())));
   $('fetchCurve').addEventListener('click', runAction('Convenience yield', applyCurveYield));
   $('fillLegPrices').addEventListener('click', runAction('Leg prices', applyLegPrices));
   $('clearLegPrices').addEventListener('click', () => {
@@ -2192,9 +2274,7 @@ function init() {
     state.legs = [newLeg({ strike: 4200, days: state.days })];
   }
 
-  const meta = commodityMeta(state.commodity);
-  $('volSymbol').value = meta.priceSymbol || '';
-  $('proxyNote').textContent = meta.proxy || '';
+  resetProxyFields();
   $('avKey').value = localStorage.getItem(KEY_STORE) || '';
   $('range').value = state.chart.range;
   $('rangeLabel').textContent = '+/-' + state.chart.range + '%';
