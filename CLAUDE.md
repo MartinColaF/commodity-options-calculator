@@ -268,7 +268,10 @@ something is missing from the repo.
 
 ## Data sources and their limits
 
-- **Risk-free rate**: US Treasury daily par yield curve, CORS-enabled, no key.
+- **Risk-free rate**: US Treasury daily par yield curve, CORS-enabled, no key. The curve
+  is quoted on a **semi-annual bond-equivalent** basis, so `rateForTenor()` converts with
+  `r = 2 ln(1 + y/2)`. It used to read it as annual, `ln(1 + y)`, which understated every
+  rate by about y²/4 — 4 bp at 4% — and `test/pricing.test.js` pinned the wrong formula.
 - **Futures prices and history**: Yahoo via `api/market.js`. Undocumented endpoint;
   its terms do not grant redistribution rights. If it breaks, the app degrades to
   Alpha Vantage and manual entry — keep that fallback working.

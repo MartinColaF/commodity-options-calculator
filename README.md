@@ -46,7 +46,7 @@ own source and anything that fails is left untouched.
 | Input | Source | Key needed |
 |---|---|---|
 | Futures price | Front-month contract (`GC=F`, `CL=F`, `ZC=F`…) via `/api/market` | no |
-| Risk-free rate | US Treasury daily par yield curve, interpolated to your expiry and converted to a continuously compounded rate | no |
+| Risk-free rate | US Treasury daily par yield curve, interpolated to your expiry and converted from its semi-annual bond-equivalent basis to a continuously compounded rate | no |
 | Volatility | Realised volatility (close-to-close, EWMA, Parkinson) on the futures series itself | no |
 | Convenience yield | Implied by the real curve from two listed contracts: `y = r − ln(F2/F1)/(T2−T1)` | no |
 | *Fallback* | Alpha Vantage ETF proxies, for custom tickers or if the function is down | free key |
