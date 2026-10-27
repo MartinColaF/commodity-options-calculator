@@ -92,7 +92,9 @@ Notes and limitations, stated plainly in the UI as well:
   real quotes and everything between them is an estimate; past the last listed month
   it is an extrapolation, and the "Leg prices" source line says so. Contract expiries are
   approximated to mid-month. The payoff chart then shifts every month in proportion,
-  so each month's basis to the reference stays fixed as the price moves.
+  so each month's basis to the reference stays fixed as the price moves. The
+  position's delta and gamma follow the same move: they are per point of the panel's
+  contract, while the legs table gives each leg's delta against its own month.
 - American prices are a closed-form approximation, not an exact lattice. Measured
   against a 3000-step binomial tree over 300 contracts (both types, one month to
   two years, strikes 0.8–1.25 of spot, vol 15–60%, rates 2–8%), the error is a
@@ -157,7 +159,9 @@ some browsers restrict cross-origin requests from `file://`.
   style-aware implied-volatility solver.
 - `test/leg-pricing.test.js` — every path that prices a leg agreeing with the others:
   the implied volatility of a leg's own premium is its own volatility, a position marked
-  today at today's price shows no P&L, and value and greeks report the same price.
+  today at today's price shows no P&L, value and greeks report the same price, and
+  every net greek and greek profile is the matching derivative of the chart's P&L,
+  with legs on other months.
 - `test/restore.test.js` — the trust boundary for shared links, saved state and
   imported files: hostile fields rejected or retyped, ids never taken from the input,
   a legitimate scenario round-tripping unchanged, and the legs table escaping every
