@@ -31,7 +31,9 @@ open `index.html` or serve the folder.
   also plots delta / gamma / vega / theta profiles across underlying prices.
 - **Analytics** — net debit or credit, max profit, max loss, all breakevens, and the
   risk-neutral probability of profit, at the volatility the position is priced at (the
-  summary says which).
+  summary says which). An unlimited maximum says how fast it grows, in dollars per
+  point as the price rises: a naked call loses $100 a point, a European calendar a few
+  cents.
 - **Premium financing** — a premium is paid or received today, so every P&L at a later
   date counts it with the interest it has carried since: at the risk-free rate by
   default, at a rate of your own, or not at all for the nominal P&L. At the risk-free
@@ -119,6 +121,10 @@ Notes and limitations, stated plainly in the UI as well:
   worth exercising early unless its carry is positive, nor a call unless its carry is
   negative, and both price exactly as European; where early exercise still pays at
   negative rates, the error stays under **0.4%** on two-year contracts.
+- Max profit and max loss are searched up to four times the price, or 2.5 times the
+  highest strike. An American call kept past the horizon under Black-Scholes with a small
+  yield may be exercised only beyond that, and then reads Unlimited at the rate it grows
+  within that range.
 - The premium's interest runs from today, continuously compounded, since the tool has
   no trade date: a position opened earlier carries only what is still to come. A futures
   leg has no premium and carries none; under Black-Scholes an underlying leg stands for
@@ -167,8 +173,9 @@ some browsers restrict cross-origin requests from `file://`.
   the volatility estimators against a series of known volatility, curve
   interpolation and the carry inversion.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
-  butterflies, financed and nominal; bounded put payoffs; contract multipliers including
-  cents-quoted markets; every preset and every commodity.
+  butterflies, financed and nominal; bounded put payoffs; the rate an unlimited maximum
+  grows at, a European calendar's against an American one's and a naked call's;
+  contract multipliers including cents-quoted markets; every preset and every commodity.
 - `test/financing.test.js` — the premium's interest: a debit paying it and a credit
   earning it up to the date the P&L is read, a fairly priced option breaking even on
   average at the risk-free rate (by quadrature, a calendar's far leg included), a rate

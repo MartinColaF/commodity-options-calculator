@@ -1005,6 +1005,11 @@ function analyse() {
   const slopeHi = wy[n - 1] - wy[n - 2];
   const unlimitedProfit = slopeHi > 1e-9;
   const unlimitedLoss = slopeHi < -1e-9;
+  // How fast it goes there, in dollars per point of the reference contract.
+  // "Unlimited" alone said the same of a naked call, losing $100 a point, and a
+  // European call calendar, whose far leg is worth its discounted intrinsic up
+  // there and so bleeds $0.33 a point.
+  const upSlope = slopeHi / (wx[n - 1] - wx[n - 2]);
 
   // Risk-neutral probability of profit at the horizon: the reference contract
   // lognormal at the position's own volatility, integrated between the points
@@ -1036,7 +1041,7 @@ function analyse() {
     t, xs, ys,
     maxProfit: unlimitedProfit ? Infinity : maxP,
     maxLoss: unlimitedLoss ? -Infinity : minP,
-    breakevens: bes, pop, popVol: sigma
+    upSlope, breakevens: bes, pop, popVol: sigma
   };
 }
 
@@ -1573,11 +1578,18 @@ function renderResults() {
   const interest = carried
     ? `<strong>${money(-premiumInterest(a.t))}</strong><small>to the horizon, at ${ratePct}%, ${state.financing.mode === 'custom' ? 'your rate' : 'the risk-free rate'}</small>`
     : '<strong>Not charged</strong><small>nominal P&amp;L</small>';
+  // An unlimited maximum says how fast it grows: that is what tells a naked call
+  // from a calendar bleeding cents a point. A rate that rounds to no cents keeps
+  // two significant figures rather than read $0.00.
+  const perPoint = Math.abs(a.upSlope) >= 0.005
+    ? money(a.upSlope)
+    : (a.upSlope < 0 ? '-$' : '$') + Math.abs(a.upSlope).toPrecision(2);
+  const rising = `<small>${perPoint} per point as the price rises</small>`;
 
   $('summary').innerHTML = `
     <div class="kpi"><span>Net ${cost >= 0 ? 'debit (paid)' : 'credit (received)'}</span><strong>${money(Math.abs(cost))}</strong></div>
-    <div class="kpi"><span>Max profit</span><strong class="pos">${money(a.maxProfit)}</strong></div>
-    <div class="kpi"><span>Max loss</span><strong class="neg">${money(a.maxLoss)}</strong></div>
+    <div class="kpi"><span>Max profit</span><strong class="pos">${money(a.maxProfit)}</strong>${a.maxProfit === Infinity ? rising : ''}</div>
+    <div class="kpi"><span>Max loss</span><strong class="neg">${money(a.maxLoss)}</strong>${a.maxLoss === -Infinity ? rising : ''}</div>
     <div class="kpi"><span>Breakeven${a.breakevens.length === 1 ? '' : 's'}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmtPrice(b)).join(' / ') : '-'}</strong></div>
     <div class="kpi"><span>Prob. of profit</span><strong>${(a.pop * 100).toFixed(1)}%</strong><small>risk-neutral, at ${escapeHtml(fmt(a.popVol * 100, 1))}% vol</small></div>
     <div class="kpi"><span>Horizon</span><strong>${escapeHtml(a.t)} days</strong></div>

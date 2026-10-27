@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { loadApp, resetState } = require('./helpers/load-app.js');
+const { loadApp, resetState, wired } = require('./helpers/load-app.js');
 
 const app = loadApp();
 const { state, newLeg, applyStrategy, analyse, netCost, netGreeks,
@@ -83,6 +83,49 @@ test('iron condor and butterfly are capped on both sides', () => {
   }
   applyStrategy('iron-condor');
   assert.ok(netCost() < 0, 'an iron condor is opened for a credit');
+});
+
+test('an unlimited maximum comes with how fast it grows: a calendar bleeds where a naked call falls', () => {
+  // REVISION_2_LOGICA.md, L12: past the strikes a European call calendar's far
+  // leg is worth its intrinsic discounted for the month it has left, so the
+  // position loses (e^(-r 30/365) - 1) x $100 a point. "Unlimited" alone read
+  // like a naked call's $100.
+  resetState(app);
+  applyStrategy('calendar');
+  let a = analyse();
+  assert.strictEqual(a.maxLoss, -Infinity, 'in the model the loss has no floor');
+  near(a.upSlope, (Math.exp(-0.04 * 30 / 365) - 1) * 100, 1e-6, 'a European calendar, per point');
+  // American, the far leg is exercised up there instead: a floor, and flat.
+  state.style = 'american';
+  a = analyse();
+  assert.ok(Number.isFinite(a.maxLoss), 'an American calendar\'s loss is bounded');
+  near(a.upSlope, 0, 1e-9, 'flat as the price rises');
+
+  state.style = 'european';
+  applyStrategy('short-call');
+  near(analyse().upSlope, -100, 1e-6, 'a naked call loses the multiplier a point');
+  applyStrategy('long-call');
+  near(analyse().upSlope, 100, 1e-6, 'a long call makes it');
+  resetState(app, { commodity: 'corn', size: 5000, quote: 'cents', S: 450, vol: 28 });
+  applyStrategy('long-call');
+  near(analyse().upSlope, 50, 1e-6, 'corn, per cent: its $50 multiplier');
+});
+
+test('the summary gives that rate under an unlimited maximum, and nothing under a bounded one', () => {
+  const { app: page, el } = wired();
+  const summary = () => { page.renderResults(); return el('summary').innerHTML; };
+  page.applyStrategy('calendar');
+  assert.match(summary(), /Max loss<\/span><strong class="neg">Unlimited<\/strong><small>-\$0\.33 per point as the price rises<\/small>/);
+  assert.match(summary(), /Max profit<\/span><strong class="pos">[^<]+<\/strong><\/div>/, 'a bounded maximum has no rate');
+  page.state.style = 'american';
+  assert.doesNotMatch(summary(), /as the price rises/, 'nor an American calendar');
+
+  page.applyStrategy('long-call');
+  assert.match(summary(), /Max profit<\/span><strong class="pos">Unlimited<\/strong><small>\$100\.00 per point as the price rises<\/small>/);
+  // A rate too small for cents keeps two significant figures.
+  Object.assign(page.state, { style: 'european', rate: 0.01 });
+  page.applyStrategy('calendar');
+  assert.match(summary(), /Unlimited<\/strong><small>-\$0\.00082 per point as the price rises<\/small>/);
 });
 
 test('a calendar spread keeps time value in the far leg at the near expiry', () => {
