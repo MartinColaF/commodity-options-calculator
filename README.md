@@ -103,7 +103,10 @@ Notes and limitations, stated plainly in the UI as well:
   two years, strikes 0.8–1.25 of spot, vol 15–60%, rates 2–8%), the error is a
   median of **0.008%** of the underlying and **0.58%** at its worst, on two-year
   60%-vol contracts. Ignoring early exercise entirely — the European setting —
-  is wrong by up to **2.6%** over the same set.
+  is wrong by up to **2.6%** over the same set. At zero or negative rates a put is never
+  worth exercising early unless its carry is positive, nor a call unless its carry is
+  negative, and both price exactly as European; where early exercise still pays at
+  negative rates, the error stays under **0.4%** on two-year contracts.
 - Yahoo's quote endpoint is undocumented: it can change without notice, and their
   terms do not grant redistribution rights. If it breaks, the app degrades to the
   Alpha Vantage path and manual entry.
@@ -160,8 +163,9 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/american.test.js` — an independent CRR binomial tree, and the
   Barone-Adesi-Whaley pricer checked against it: the approximation envelope, the
   no-arbitrage bounds, the early-exercise premium on both sides of a futures
-  option, the exercise boundary, greeks by finite difference, and the
-  style-aware implied-volatility solver.
+  option, the exercise boundary, greeks by finite difference, the
+  style-aware implied-volatility solver, and negative rates: European exactly where
+  the tree finds no early-exercise value, never below the European price anywhere.
 - `test/leg-pricing.test.js` — every path that prices a leg agreeing with the others:
   the implied volatility of a leg's own premium is its own volatility, a position marked
   today at today's price shows no P&L, value and greeks report the same price, and
