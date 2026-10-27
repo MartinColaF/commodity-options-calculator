@@ -70,7 +70,8 @@ test('breakevens, strikes, the scenario grid and the chart read in the same deci
   const { app: page, el } = wired();
   Object.assign(page.state, { commodity: 'copper', quote: 'USD', size: 25000, S: 4.5, vol: 22, rate: 4, days: 30 });
   page.state.legs = [page.newLeg({ kind: 'call', strike: 4.7, days: 30 })];
-  const breakeven = 4.7 + page.legGreeks(page.state.legs[0]).price;
+  // The premium with its month of interest at 4%, which moves the fourth decimal.
+  const breakeven = 4.7 + page.legGreeks(page.state.legs[0]).price * Math.exp(0.04 * 30 / 365);
 
   page.renderResults();
   assert.match(el('summary').innerHTML, new RegExp('<strong>' + breakeven.toFixed(4).replace('.', '\\.') + '</strong>'),

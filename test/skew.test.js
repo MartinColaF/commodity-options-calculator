@@ -261,8 +261,9 @@ test('the scenario grid prices volatility and time the way a long call feels the
   for (let c = 1; c < row.length; c++) {
     assert.ok(row[c] < row[c - 1], `time decay should be monotone at column ${c}`);
   }
-  // At expiry, at the strike, the loss is the premium paid.
-  near(row[row.length - 1], -app.netCost(), 1e-6, 'expires worthless at the strike');
+  // At expiry, at the strike, the loss is the premium paid, with the interest
+  // it carried for the 120 days at 5%.
+  near(row[row.length - 1], -app.netCost() * Math.exp(0.05 * 120 / 365), 1e-6, 'expires worthless at the strike');
 });
 
 test('a zero volatility shift collapses the grid to one panel', () => {

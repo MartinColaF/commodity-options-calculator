@@ -32,6 +32,12 @@ open `index.html` or serve the folder.
 - **Analytics** — net debit or credit, max profit, max loss, all breakevens, and the
   risk-neutral probability of profit, at the volatility the position is priced at (the
   summary says which).
+- **Premium financing** — a premium is paid or received today, so every P&L at a later
+  date counts it with the interest it has carried since: at the risk-free rate by
+  default, at a rate of your own, or not at all for the nominal P&L. At the risk-free
+  rate a fairly priced option breaks even on average; read nominally it shows a profit
+  that is only the interest, 8.3% of the premium on a two-year option at 4%. Theta stays
+  the options' own, with the interest per day given beside it.
 - **Scenario grid** — position P&L across underlying price, volatility shift and
   elapsed time: the grid a trader reads before putting a position on. Cells are
   shaded by size so the cliff is visible without reading every figure.
@@ -113,6 +119,11 @@ Notes and limitations, stated plainly in the UI as well:
   worth exercising early unless its carry is positive, nor a call unless its carry is
   negative, and both price exactly as European; where early exercise still pays at
   negative rates, the error stays under **0.4%** on two-year contracts.
+- The premium's interest runs from today, continuously compounded, since the tool has
+  no trade date: a position opened earlier carries only what is still to come. A futures
+  leg has no premium and carries none; under Black-Scholes an underlying leg stands for
+  the physical, and the cost of funding it is not modelled. A scenario saved before
+  financing existed opens with it set to None, so its numbers stay as they were.
 - Yahoo's quote endpoint is undocumented: it can change without notice, and their
   terms do not grant redistribution rights. If it breaks, the app degrades to the
   Alpha Vantage path and manual entry.
@@ -156,8 +167,13 @@ some browsers restrict cross-origin requests from `file://`.
   the volatility estimators against a series of known volatility, curve
   interpolation and the carry inversion.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
-  butterflies; bounded put payoffs; contract multipliers including cents-quoted
-  markets; every preset and every commodity.
+  butterflies, financed and nominal; bounded put payoffs; contract multipliers including
+  cents-quoted markets; every preset and every commodity.
+- `test/financing.test.js` — the premium's interest: a debit paying it and a credit
+  earning it up to the date the P&L is read, a fairly priced option breaking even on
+  average at the risk-free rate (by quadrature, a calendar's far leg included), a rate
+  of your own or none, a futures leg carrying nothing, the chart's leg curves adding up
+  to the position, what the page says in each mode, and old scenarios restoring nominal.
 - `test/probability.test.js` — the probability of profit against closed forms, on
   either tail and between breakevens, measured at the volatility of the option nearest
   the money at the horizon, and the summary naming that volatility.
@@ -179,12 +195,12 @@ some browsers restrict cross-origin requests from `file://`.
   the implied volatility of a leg's own premium is its own volatility, a position marked
   today at today's price shows no P&L, value and greeks report the same price,
   every net greek and greek profile is the matching derivative of the chart's P&L,
-  with legs on other months, and the IV button writing nothing for a premium with no
-  time value.
+  with legs on other months and theta beside the premium's interest per day, and the IV
+  button writing nothing for a premium with no time value.
 - `test/restore.test.js` — the trust boundary for shared links, saved state and
   imported files: hostile fields rejected or retyped, ids never taken from the input,
-  a legitimate scenario round-tripping unchanged, and the legs table escaping every
-  value it renders.
+  a legitimate scenario, its financing included, round-tripping unchanged, and the legs
+  table escaping every value it renders.
 - `test/inputs.test.js` — what a number may be: a price, strike or size above zero and
   a volatility not below it, refused in the panel, the legs table and a restored
   scenario, with the reason beside the field until the user's next action.

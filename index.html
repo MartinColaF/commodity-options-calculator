@@ -80,6 +80,16 @@
         <label for="rate">Risk-free rate (% continuous)</label>
         <input type="number" id="rate" step="any" value="4">
 
+        <label for="financing">Premium financing</label>
+        <select id="financing">
+          <option value="rate">At the risk-free rate</option>
+          <option value="custom">At my own rate</option>
+          <option value="none">None (nominal P&amp;L)</option>
+        </select>
+        <label for="financingRate">Your financing rate (% continuous)</label>
+        <input type="number" id="financingRate" step="any" value="4">
+        <p class="note" id="financingNote"></p>
+
         <label for="yield">Convenience yield (%)</label>
         <input type="number" id="yield" step="any" value="0.3">
         <p class="note" id="yieldNote"></p>
@@ -246,7 +256,7 @@
           </div>
         </div>
         <div class="chart-box"><canvas id="payoffChart"></canvas></div>
-        <p class="note">The solid line is the P&amp;L at the nearest expiry among your legs; the dashed line is the mark-to-market value at the evaluation date you pick. Vertical marks show the strikes and the current price.</p>
+        <p class="note">The solid line is the P&amp;L at the nearest expiry among your legs; the dashed line is the mark-to-market value at the evaluation date you pick. Both carry the premium's interest up to their date, unless <em>Premium financing</em> in the Contract panel is set to None. Vertical marks show the strikes and the current price.</p>
       </div>
 
       <div class="card">

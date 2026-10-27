@@ -103,7 +103,9 @@ test('today\'s inputs use the leg\'s own month even when the panel price is zero
  * against the reference price, vega and theta against the volatility and the
  * date, which the ratio does not touch. Delta and gamma used to add each
  * leg's own-month figures unscaled, and a call calendar whose months sat 2.5%
- * apart showed $0.49 of delta beside a chart sloping $1.78 per $1. */
+ * apart showed $0.49 of delta beside a chart sloping $1.78 per $1. Theta stays
+ * the options' own: the date also grows the premium's interest, which the page
+ * gives beside it, and the two add up to the P&L's change from day to day. */
 
 /* Options on two months and a futures leg, the far month at c.under. */
 function acrossMonths(c) {
@@ -141,7 +143,8 @@ test('the net greeks are the derivatives of the chart\'s P&L today', () => {
   for (const c of matrix()) {
     acrossMonths(c);
     const want = derivatives(state.S, 0);
-    const got = app.netGreeks().money;
+    const got = Object.assign({}, app.netGreeks().money);
+    got.theta -= app.premiumInterestPerDay(0);
     for (const k of Object.keys(TOL)) {
       near(got[k], want[k], TOL[k] * Math.abs(want[k]) + 1e-6, `${k}, ${c.label}`);
     }
@@ -158,7 +161,8 @@ test('each greek profile on the chart is the matching derivative of its curve', 
       for (let i = 0; i < points.length; i += 97) {
         const { x, y } = points[i];
         const want = derivatives(x, 20)[mode];
-        near(y, want, TOL[mode] * Math.abs(want) + 1e-6, `${mode} at ${x.toFixed(2)}, ${c.label}`);
+        const got = mode === 'theta' ? y - app.premiumInterestPerDay(20) : y;
+        near(got, want, TOL[mode] * Math.abs(want) + 1e-6, `${mode} at ${x.toFixed(2)}, ${c.label}`);
       }
     }
   }

@@ -146,8 +146,10 @@ function resetState(app, over) {
   app.state.skew = { on: false, rr: 0, bf: 0 };
   app.state.scenario = { volShift: 5, pricePct: 20 };
   app.state.session = { strip: [] };
+  app.state.financing = { mode: 'rate', rate: 4 };
   if (over && over.skew) Object.assign(app.state.skew, over.skew);
   if (over && over.scenario) Object.assign(app.state.scenario, over.scenario);
+  if (over && over.financing) Object.assign(app.state.financing, over.financing);
   return app.state;
 }
 

@@ -29,7 +29,11 @@ function position(legs, over) {
   state.legs = legs.map(l => newLeg(Object.assign({ days: 30 }, l)));
   return app.analyse();
 }
-const premium = i => app.legEntry(state.legs[i]);
+/* A leg's premium as it stands at the horizon: paid or received today, with a
+ * month's interest at the 4% rate. That is what the position has to make back,
+ * or has to give up, by expiry. */
+const G = Math.exp(0.04 * T);
+const premium = i => app.legEntry(state.legs[i]) * G;
 
 test('the probability is exact at the breakevens, on either tail and between them', () => {
   let a = position([{ kind: 'call', strike: 4100 }]);
@@ -39,7 +43,7 @@ test('the probability is exact at the breakevens, on either tail and between the
   near(a.pop, 1 - above(3900 - premium(0), 0.2), 'long put: below K - premium, down to zero');
 
   a = position([{ kind: 'call', strike: 4000 }, { kind: 'call', side: -1, strike: 4200 }]);
-  near(a.pop, above(4000 + app.netCost() / 100, 0.2), 'bull call spread: above K1 + debit');
+  near(a.pop, above(4000 + app.netCost() * G / 100, 0.2), 'bull call spread: above K1 + debit');
 
   a = position([{ kind: 'call', strike: 4000 }, { kind: 'put', strike: 4000 }]);
   const paid = premium(0) + premium(1);
@@ -66,7 +70,7 @@ test('among the options at the horizon, the one nearest the money sets it', () =
     { kind: 'call', strike: 4000, vol: 30 }
   ]);
   assert.strictEqual(a.popVol, 0.3);
-  near(a.pop, above(4000 + app.netCost() / 100, 0.3), 'priced on two volatilities, measured at the money');
+  near(a.pop, above(4000 + app.netCost() * G / 100, 0.3), 'priced on two volatilities, measured at the money');
 
   // A far leg nearer the money does not count: the horizon is the near expiry.
   a = position([
@@ -90,7 +94,9 @@ test('with the skew on, the probability takes its at-the-money level', () => {
 });
 
 test('the summary says which volatility the probability was measured at', () => {
+  // 28.66% read nominally, the review's figure; the premium's month of
+  // interest moves the breakeven up 0.46 and the probability down to 28.63%.
   position([{ kind: 'call', strike: 4100, vol: 40 }]);
   app.renderResults();
-  assert.match(elements.summary.innerHTML, /Prob\. of profit<\/span><strong>28\.7%<\/strong><small>risk-neutral, at 40\.0% vol<\/small>/);
+  assert.match(elements.summary.innerHTML, /Prob\. of profit<\/span><strong>28\.6%<\/strong><small>risk-neutral, at 40\.0% vol<\/small>/);
 });
