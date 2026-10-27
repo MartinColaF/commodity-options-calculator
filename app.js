@@ -393,6 +393,11 @@ const state = {
   vol: 15,
   rate: 4.0,
   yield: 0.3,
+  // The premium paid or received today, carried to the date the P&L is read
+  // at: 'rate' at the risk-free rate above, the one that discounts the price;
+  // 'custom' at `rate`, the user's own, in % continuous; 'none' not at all,
+  // which is the nominal P&L.
+  financing: { mode: 'rate', rate: 4.0 },
   days: 30,
   size: 100,
   quote: 'USD',
@@ -739,6 +744,18 @@ function legEntry(leg) {
   return leg.kind === 'underlying' ? legUnder(leg) : legGreeks(leg).price;
 }
 
+/* The rate a premium is carried at, continuously compounded, as a decimal: the
+ * risk-free rate, the user's own, or 0 for the nominal P&L. At the risk-free
+ * rate - the one that discounts the price - a fairly priced option is worth on
+ * average, at any later date, what its premium has grown to by then, so it
+ * breaks even. Read nominally it shows a profit of premium x (e^(rT) - 1) it
+ * never had: 8.3% of the premium on a two-year option at 4%. */
+function premiumRate() {
+  const f = state.financing;
+  if (f.mode === 'none') return 0;
+  return (f.mode === 'custom' ? f.rate : state.rate) / 100;
+}
+
 /* Prepared P&L function. The entry cost, the multiplier, the set of active
  * legs and each leg's volatility are all fixed while a curve is swept, but
  * legEntry() prices an option to get the theoretical entry - under American
@@ -746,13 +763,21 @@ function legEntry(leg) {
  * solve per strike. Recomputing either per grid point dominated every redraw,
  * so resolve them once and then evaluate the curve.
  *
- * volShift moves the whole surface, in vol points, for the scenario table. */
-function pnlEvaluator(volShift) {
+ * volShift moves the whole surface, in vol points, for the scenario table.
+ * `legs` is the active legs unless given: the chart draws each leg's own curve
+ * through here too, so the legs add up to the position.
+ *
+ * An option's entry is a premium paid or received today, so at tDays it counts
+ * with the interest it has carried since, at premiumRate(): a debit pays it and
+ * a credit earns it. A futures leg has no premium and carries nothing. */
+function pnlEvaluator(volShift, legs) {
   const mult = dollarMultiplier(currentCommodity());
-  const prepared = activeLegs().map(leg => ({
+  const rate = premiumRate();
+  const prepared = (legs || activeLegs()).map(leg => ({
     leg,
     weight: leg.side * leg.qty * mult,
     entry: legEntry(leg),
+    premium: leg.kind !== 'underlying',
     ratio: legRatio(leg),
     // Resolved once per sweep - the volatility, rate, carry and style. Only
     // the price and the time move from point to point, and they are written
@@ -760,17 +785,19 @@ function pnlEvaluator(volShift) {
     inputs: legPricingInputs(leg, { volShift: volShift })
   }));
   return function (P, tDays) {
+    const grown = Math.exp(rate * tDays / 365);
     let pnl = 0;
     for (const p of prepared) {
       p.inputs.S = P * p.ratio;
       p.inputs.T = Math.max(p.leg.days - tDays, 0) / 365;
-      pnl += p.weight * (valueFromInputs(p.inputs) - p.entry);
+      pnl += p.weight * (valueFromInputs(p.inputs) - (p.premium ? p.entry * grown : p.entry));
     }
     return pnl;
   };
 }
 
-/* Net P&L in currency at underlying price P, tDays from today. */
+/* Net P&L in currency at underlying price P, tDays from today, the premium's
+ * interest included. */
 function strategyPnl(P, tDays) {
   return pnlEvaluator()(P, tDays);
 }
@@ -784,6 +811,21 @@ function netCost() {
     c += leg.side * leg.qty * mult * legEntry(leg);
   }
   return c;
+}
+
+/* The interest the position's premiums carry from today to tDays, in dollars:
+ * what a net debit costs, or, below zero, what a net credit earns. It is what
+ * separates the P&L at that date from the nominal one. */
+function premiumInterest(tDays) {
+  return netCost() * Math.expm1(premiumRate() * tDays / 365);
+}
+
+/* How fast that interest grows at tDays, in dollars a day. It is the part of
+ * the P&L's daily change that is not the options' theta, which stays their
+ * own: what other tools quote, and what a desk compares. */
+function premiumInterestPerDay(tDays) {
+  const r = premiumRate();
+  return netCost() * r / 365 * Math.exp(r * tDays / 365);
 }
 
 /* The position's greeks today, delta and gamma per point of the reference
@@ -1335,6 +1377,8 @@ function renderInputs() {
   setField('vol', state.vol);
   setField('rate', state.rate);
   setField('yield', state.yield);
+  setField('financing', state.financing.mode);
+  setField('financingRate', state.financing.rate);
   setField('days', state.days);
   setField('size', state.size);
   setField('quote', state.quote);
@@ -1362,6 +1406,17 @@ function renderInputs() {
   $('yieldNote').textContent = isB76
     ? 'Not used in Black-76: the futures price already embeds carry and convenience yield.'
     : 'Net convenience yield (benefit of holding the physical, minus storage).';
+
+  const fin = state.financing.mode;
+  $('financingRate').disabled = fin !== 'custom';
+  $('financingNote').textContent = fin === 'none'
+    ? 'Nominal P&L: measured from the entry price alone, with no interest on the premium.'
+    : 'The premium paid today carries interest from today to the date the P&L is read, at ' +
+      (fin === 'custom'
+        ? 'your own rate, continuously compounded like the risk-free rate.'
+        : 'the risk-free rate above - the one that discounts the price - so a fairly priced ' +
+          'option breaks even on average.') +
+      ' A debit pays the interest and a credit earns it; a futures leg has no premium to carry.';
 
   $('styleNote').textContent = state.style === 'american'
     ? 'Barone-Adesi-Whaley approximation. Most listed commodity futures options are American, and on futures the early-exercise premium shows up on calls and puts alike.'
@@ -1512,6 +1567,12 @@ function renderResults() {
   const g = netGreeks();
   const cost = netCost();
   const c = currentCommodity();
+  // What the premium carries, which every P&L below a future date includes.
+  const carried = state.financing.mode !== 'none';
+  const ratePct = escapeHtml(fmt(premiumRate() * 100, 2));
+  const interest = carried
+    ? `<strong>${money(-premiumInterest(a.t))}</strong><small>to the horizon, at ${ratePct}%, ${state.financing.mode === 'custom' ? 'your rate' : 'the risk-free rate'}</small>`
+    : '<strong>Not charged</strong><small>nominal P&amp;L</small>';
 
   $('summary').innerHTML = `
     <div class="kpi"><span>Net ${cost >= 0 ? 'debit (paid)' : 'credit (received)'}</span><strong>${money(Math.abs(cost))}</strong></div>
@@ -1519,12 +1580,16 @@ function renderResults() {
     <div class="kpi"><span>Max loss</span><strong class="neg">${money(a.maxLoss)}</strong></div>
     <div class="kpi"><span>Breakeven${a.breakevens.length === 1 ? '' : 's'}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmtPrice(b)).join(' / ') : '-'}</strong></div>
     <div class="kpi"><span>Prob. of profit</span><strong>${(a.pop * 100).toFixed(1)}%</strong><small>risk-neutral, at ${escapeHtml(fmt(a.popVol * 100, 1))}% vol</small></div>
-    <div class="kpi"><span>Horizon</span><strong>${escapeHtml(a.t)} days</strong></div>`;
+    <div class="kpi"><span>Horizon</span><strong>${escapeHtml(a.t)} days</strong></div>
+    <div class="kpi"><span>Premium interest</span>${interest}</div>`;
 
   const mult = dollarMultiplier(c);
   // Once a leg prices off its own month, "a point" needs saying: a point of
   // the panel's contract, every month moving in proportion, as on the chart.
   const ownMonth = activeLegs().some(l => legRatio(l) !== 1);
+  // Theta stays the options' own; the interest is the rest of the P&L's change
+  // from one day to the next, so it is given beside it.
+  const perDay = carried ? premiumInterestPerDay(0) : 0;
   $('greeks').innerHTML = `
     <table class="greeks">
       <tr><th></th><th>Per unit</th><th>Position ($)</th><th>Meaning</th></tr>
@@ -1538,6 +1603,9 @@ function renderResults() {
       ? ' Delta and gamma are per point of the contract in the left panel, with each leg\'s own month ' +
         'moving in proportion, as on the chart; the Delta column in the legs table is against each ' +
         'leg\'s own month.'
+      : ''}${perDay
+      ? ' Theta is the options\' own decay. The P&amp;L also carries the premium\'s interest: ' +
+        money(-perDay) + ' a day at ' + ratePct + '%.'
       : ''}</p>`;
 
   $('tDays').max = Math.max(a.t, 1);
@@ -1616,13 +1684,13 @@ function chartConfig(a) {
     }
     if (state.chart.showLegs) {
       for (const leg of activeLegs()) {
-        const entry = legEntry(leg);
+        // The position's own P&L for this leg alone, the premium's interest
+        // included, so the legs add up to the solid line.
+        const pnl = pnlEvaluator(undefined, [leg]);
         datasets.push({
           label: (leg.side === 1 ? 'Long ' : 'Short ') + leg.qty + ' ' + leg.kind +
             (leg.kind === 'underlying' ? '' : ' ' + fmtPrice(leg.strike, true)),
-          data: a.xs.map(x => ({
-            x, y: leg.side * leg.qty * mult * (legValue(leg, x, a.t) - entry)
-          })),
+          data: a.xs.map(x => ({ x, y: pnl(x, a.t) })),
           borderColor: col.leg, borderWidth: 1, borderDash: [2, 3], pointRadius: 0, tension: 0
         });
       }
@@ -1744,7 +1812,10 @@ function renderScenarios() {
 
   const note = legs.length
     ? 'P&L at each date assumes the volatility shift happens immediately and holds. ' +
-      'The last column is the nearest expiry among your legs (' + s.horizon + ' days).'
+      'The last column is the nearest expiry among your legs (' + s.horizon + ' days). ' +
+      (state.financing.mode === 'none'
+        ? 'The P&L is nominal: the premium carries no interest.'
+        : 'Each date includes the premium\'s interest up to it, at ' + fmt(premiumRate() * 100, 2) + '%.')
     : 'Only the underlying is in the position, so volatility and time do nothing.';
 
   $('scenarios').innerHTML = panels + '<p class="note">' + escapeHtml(note) + '</p>';
@@ -1836,6 +1907,7 @@ function snapshot() {
     quote: state.quote, chart: state.chart,
     skew: { on: state.skew.on, rr: state.skew.rr, bf: state.skew.bf },
     scenario: { volShift: state.scenario.volShift, pricePct: state.scenario.pricePct },
+    financing: { mode: state.financing.mode, rate: state.financing.rate },
     legs: state.legs.map(l => ({
       on: l.on, side: l.side, kind: l.kind, qty: l.qty,
       strike: l.strike, days: l.days, vol: l.vol, under: l.under, entry: l.entry
@@ -1861,6 +1933,7 @@ const LEG_KINDS = ['call', 'put', 'underlying'];
 const MODELS = ['b76', 'bs'];
 const QUOTES = ['USD', 'cents'];
 const CHART_MODES = ['payoff', 'delta', 'gamma', 'vega', 'theta'];
+const FINANCING = ['rate', 'custom', 'none'];
 
 function isNum(x) {
   return typeof x === 'number' && isFinite(x);
@@ -1952,6 +2025,13 @@ function restore(o) {
     if (isNum(o.scenario.volShift)) state.scenario.volShift = o.scenario.volShift;
     if (isNum(o.scenario.pricePct)) state.scenario.pricePct = o.scenario.pricePct;
   }
+  // Like the exercise style and the skew: a scenario saved before the premium
+  // carried interest was read nominally, so restore it that way rather than move
+  // someone's recorded P&L. A first visit has nothing to restore and keeps the
+  // default, the risk-free rate.
+  const fin = o.financing && typeof o.financing === 'object' ? o.financing : {};
+  state.financing.mode = pick(fin.mode, FINANCING, 'none');
+  if (!inputProblem('financingRate', fin.rate)) state.financing.rate = fin.rate;
   if (Array.isArray(o.legs)) state.legs = o.legs.map(sanitizeLeg).filter(Boolean);
   return true;
 }
@@ -2494,6 +2574,10 @@ function bindInputs() {
     },
     rate: el => { typeMarketInput('rate', num(el, state.rate)); },
     yield: el => { typeMarketInput('yield', num(el, state.yield)); },
+    // The financing rate is the user's own, not a market input, and like any
+    // rate it may be negative.
+    financing: el => { state.financing.mode = el.value; },
+    financingRate: el => { state.financing.rate = num(el, state.financing.rate); },
     skewRr: el => { state.skew.rr = num(el, state.skew.rr); },
     skewBf: el => { state.skew.bf = num(el, state.skew.bf); },
     scenPct: el => { state.scenario.pricePct = num(el, state.scenario.pricePct); },

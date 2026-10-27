@@ -126,8 +126,8 @@ volatility on the curve gives that same delta back. That difference starts at or
 zero and ends at or below it, so bisection always finds such a point; the fixed-point
 iteration it replaced could stop over a tenth of a point off on steep wings — 180 of
 40,000 surfaces — and say nothing. Sixty steps cost about five times the old solve, and
-the chart's leg curves read each leg's skew at every grid point, so `skewVol()` caches by
-its inputs (`skewCache`): working out a skew-on chart got faster, not slower. A curve
+the chart's greek profiles read each leg's skew at every grid point, so `skewVol()` caches
+by its inputs (`skewCache`): working out a skew-on chart got faster, not slower. A curve
 steeper than its at-the-money level can go below zero at a strike or fit it at more than
 one volatility; `skewProblem()` says which, and `skewWarning()` names those strikes under
 the skew note.
@@ -165,6 +165,20 @@ here silently produces wrong maxima.
 
 **The horizon is the nearest expiry among active legs**, which is what makes calendar
 spreads read correctly — the far leg still holds time value there.
+
+**The P&L carries the premium's interest.** An option's entry is a premium paid or
+received today, so `pnlEvaluator()` reads it at `tDays` with the interest it has carried
+since, at `premiumRate()`: the risk-free rate by default, the user's own rate, or none for
+the nominal P&L (`state.financing`). A debit pays the interest and a credit earns it; a
+futures leg has no premium and carries none. Read nominally, a fairly priced option showed
+a profit it never had, `premium × (e^(rT) − 1)` — 8.3% of the premium on a two-year option
+at 4% — where at the risk-free rate its risk-neutral expected P&L is zero, which
+`test/financing.test.js` checks by quadrature. Everything that shows a P&L at a later date
+goes through `pnlEvaluator()`, the chart's per-leg curves included, so they add up to the
+position; today nothing has been carried. **Theta stays the options' own**, what other
+tools quote: the greeks note gives the interest per day beside it
+(`premiumInterestPerDay()`), and `test/leg-pricing.test.js` pins the two together to the
+chart's daily change. With None, every number is what it was before financing existed.
 
 **The probability of profit is measured at the position's own volatility.**
 `horizonVol()` takes the explicit volatility of the option nearest the money among those
@@ -364,9 +378,11 @@ Chrome removing an item reorders the rest and an index walk skipped entries.
 **Saved scenarios and share links go through `snapshot()` / `restore()`.** When adding
 a state field, add it to **both** — in `restore()` with its type checked, never copied
 raw — and decide explicitly what an old saved scenario without the field should mean.
-`restore()` defaults the exercise style to European for exactly that reason, so nobody's
-recorded numbers move under them. `test/restore.test.js` round-trips a full scenario;
-extend it when the field is new.
+`restore()` defaults the exercise style to European, and the premium's financing to None,
+for exactly that reason, so nobody's recorded numbers move under them. That makes
+`snapshot()` matter as much: a scenario saved without the field reopens nominal, even one
+saved on the default. `test/restore.test.js` round-trips a full scenario; extend it when
+the field is new.
 
 ## Verifying without a local toolchain
 
@@ -453,6 +469,10 @@ something is missing from the repo.
   outside what the curve can read; the page says so rather than guessing.
 - Contract expiries from the function are approximated to mid-month. Both
   contracts use the same convention, so the gap driving the carry stays accurate.
+- **The premium's interest runs from today**, continuously compounded: there is no trade
+  date, so a position opened earlier carries only what is still to come. Under
+  Black-Scholes an underlying leg stands for the physical, and the cost of funding it is
+  not in its P&L; only an option's premium carries interest.
 - **Prices must be above zero.** Black-76, Black-Scholes-Merton and BAW are all
   lognormal, so a price at or below zero cannot be priced: it is refused, a quote
   included — WTI settled at −37.63 in April 2020. Pricing one would take a normal

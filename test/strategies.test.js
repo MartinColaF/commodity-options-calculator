@@ -11,19 +11,30 @@ const { state, newLeg, applyStrategy, analyse, netCost, netGreeks,
 const near = (a, b, tol, msg) =>
   assert.ok(Math.abs(a - b) < tol, `${msg}: ${a} vs ${b} (tolerance ${tol})`);
 
+/* A premium paid today and read at the 30-day horizon counts with a month's
+ * interest at the 4% rate: what a debit owes and a credit has earned by then. */
+const carried = x => x * Math.exp(0.04 * 30 / 365);
+
 test('bull call spread matches its closed-form limits', () => {
   resetState(app);
   state.legs = [
     newLeg({ kind: 'call', side: 1, strike: 3900, days: 30 }),
     newLeg({ kind: 'call', side: -1, strike: 4100, days: 30 })
   ];
-  const a = analyse();
+  let a = analyse();
   const debit = netCost();
   assert.ok(debit > 0, 'a bull call spread is a debit: ' + debit);
-  near(a.maxProfit, (4100 - 3900) * 100 - debit, 1, 'max profit = width - debit');
-  near(a.maxLoss, -debit, 1, 'max loss = debit paid');
+  near(a.maxProfit, (4100 - 3900) * 100 - carried(debit), 1, 'max profit = width - debit, with its interest');
+  near(a.maxLoss, -carried(debit), 1, 'max loss = debit paid, with its interest');
   assert.strictEqual(a.breakevens.length, 1, 'one breakeven');
-  near(a.breakevens[0], 3900 + debit / 100, 1, 'breakeven = lower strike + debit per unit');
+  near(a.breakevens[0], 3900 + carried(debit) / 100, 1e-6, 'breakeven = lower strike + debit per unit');
+
+  // Read nominally, the debit carries nothing.
+  state.financing.mode = 'none';
+  a = analyse();
+  near(a.maxProfit, (4100 - 3900) * 100 - debit, 1, 'nominal max profit');
+  near(a.maxLoss, -debit, 1, 'nominal max loss');
+  near(a.breakevens[0], 3900 + debit / 100, 1e-6, 'nominal breakeven');
 });
 
 test('long straddle: unlimited upside, loss capped at the debit', () => {
@@ -31,7 +42,7 @@ test('long straddle: unlimited upside, loss capped at the debit', () => {
   applyStrategy('straddle');
   const a = analyse();
   assert.strictEqual(a.maxProfit, Infinity, 'unbounded upside');
-  near(a.maxLoss, -netCost(), 1, 'max loss = debit');
+  near(a.maxLoss, -carried(netCost()), 1, 'max loss = debit, with its interest');
   assert.strictEqual(a.breakevens.length, 2, 'two breakevens');
   assert.ok(a.breakevens[0] < state.S && a.breakevens[1] > state.S, 'straddles the spot');
 });
@@ -41,7 +52,7 @@ test('a naked short call has unlimited loss but a bounded credit', () => {
   applyStrategy('short-call');
   const a = analyse();
   assert.strictEqual(a.maxLoss, -Infinity, 'unbounded loss');
-  near(a.maxProfit, Math.abs(netCost()), 1, 'max profit = credit received');
+  near(a.maxProfit, carried(Math.abs(netCost())), 1, 'max profit = credit received, with its interest');
   assert.ok(a.pop > 0.5 && a.pop < 1, 'an out of the money short call usually expires worthless: ' + a.pop);
 });
 
@@ -53,12 +64,12 @@ test('put payoffs are bounded because the price cannot go below zero', () => {
   const strike = state.legs[0].strike;
   assert.ok(Number.isFinite(a.maxProfit), 'a long put cannot make unlimited money');
   near(a.maxProfit, strike * 100 - netCost(), strike * 100 * 0.02, 'max profit approaches strike x multiplier');
-  near(a.maxLoss, -netCost(), 1, 'max loss = debit');
+  near(a.maxLoss, -carried(netCost()), 1, 'max loss = debit, with its interest');
 
   applyStrategy('short-put');
   a = analyse();
   assert.ok(Number.isFinite(a.maxLoss), 'a short put has a bounded loss');
-  near(a.maxProfit, Math.abs(netCost()), 1, 'max profit = credit');
+  near(a.maxProfit, carried(Math.abs(netCost())), 1, 'max profit = credit, with its interest');
 });
 
 test('iron condor and butterfly are capped on both sides', () => {
@@ -217,6 +228,8 @@ test('an explicit entry price is used instead of the theoretical one', () => {
   const mult = dollarMultiplier(currentCommodity());
   near(netCost(), 2 * mult, 1e-9, 'net cost follows the entry override');
   // At expiry, at the strike, the option expires worthless and the loss is the
-  // premium actually paid.
-  near(app.strategyPnl(100, 180), -2 * mult, 1e-6, 'P&L is measured from the entry');
+  // premium actually paid, with the interest it carried for 180 days at 8%.
+  near(app.strategyPnl(100, 180), -2 * mult * Math.exp(0.08 * 180 / 365), 1e-6, 'P&L is measured from the entry');
+  state.financing.mode = 'none';
+  near(app.strategyPnl(100, 180), -2 * mult, 1e-6, 'and nominally from the entry alone');
 });

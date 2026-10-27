@@ -117,7 +117,8 @@ test('a legitimate scenario round-trips through a link unchanged', () => {
     commodity: 'cocoa', model: 'bs', style: 'american', quote: 'USD',
     S: 5560, vol: 42.5, rate: 3.9, yield: -3.59, days: 90, size: 10,
     skew: { on: true, rr: -6.5, bf: 1.25 },
-    scenario: { volShift: 8, pricePct: 35 }
+    scenario: { volShift: 8, pricePct: 35 },
+    financing: { mode: 'custom', rate: 6.25 }
   });
   state.chart = { mode: 'vega', tDays: 12, showLegs: false, range: 55 };
   state.legs = [
