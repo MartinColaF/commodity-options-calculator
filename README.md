@@ -83,6 +83,10 @@ Notes and limitations, stated plainly in the UI as well:
   with spot; that is not modelled. The risk reversal and butterfly are inputs you
   supply, not market data: the tool cannot see a real option chain.
 - Presets are long-run typical values, flagged in the UI as "not market data".
+- Every model here is lognormal, so **a price must be above zero**. A price, strike or
+  size at or below zero, or a negative volatility, is refused with the reason beside
+  the field, and a quote below zero — WTI settled at −37.63 in April 2020 — is reported
+  rather than used. Negative prices would need a normal (Bachelier) model.
 - Per-leg prices interpolate across the listed strip when it has been loaded, and
   otherwise fall back to the slope between two contracts. Either way the points are
   real quotes and everything between them is an estimate; past the last listed month
@@ -158,8 +162,12 @@ some browsers restrict cross-origin requests from `file://`.
   imported files: hostile fields rejected or retyped, ids never taken from the input,
   a legitimate scenario round-tripping unchanged, and the legs table escaping every
   value it renders.
+- `test/inputs.test.js` — what a number may be: a price, strike or size above zero and
+  a volatility not below it, refused in the panel, the legs table and a restored
+  scenario, with the reason beside the field until the user's next action.
 - `test/actions.test.js` — every market-data action against a fake network: the rate
-  read off a real Treasury response, the price switching to cents on a `USX` quote,
+  read off a real Treasury response, the price switching to cents on a `USX` quote, a
+  quote below zero refused with the reason,
   the Alpha Vantage fallback, the curve's convenience yield, leg prices from the slope
   and from the listed strip with their undo, all three reading one request for the
   curve, auto-fill carrying on past a failure, the

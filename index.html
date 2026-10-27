@@ -68,12 +68,14 @@
 
         <label for="spot"><span id="spotLabel">Futures price</span></label>
         <input type="number" id="spot" step="any" value="4000">
+        <p class="problem" id="spotProblem" role="alert"></p>
 
         <label for="days">Days to expiration (default for new legs)</label>
         <input type="number" id="days" min="0" step="1" value="30">
 
         <label for="vol">Volatility (% annualised)</label>
         <input type="number" id="vol" step="any" value="15">
+        <p class="problem" id="volProblem" role="alert"></p>
 
         <label for="rate">Risk-free rate (% continuous)</label>
         <input type="number" id="rate" step="any" value="4">
@@ -87,6 +89,7 @@
           <div>
             <label for="size">Units per contract</label>
             <input type="number" id="size" step="any" value="100">
+            <p class="problem" id="sizeProblem" role="alert"></p>
           </div>
           <div>
             <label for="quote">Price quoted in</label>
@@ -198,6 +201,7 @@
             <tbody id="legsBody"></tbody>
           </table>
         </div>
+        <p class="problem" id="legProblem" role="alert"></p>
         <p class="note">Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Under</strong> is that leg's own delivery month price &mdash; blank uses the contract on the left, and the <em>Leg prices</em> button below fills it from the real curve. <strong>Entry</strong> overrides the theoretical premium with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
         <div class="row tight">
           <button id="fillLegPrices" class="ghost">Fill leg prices from the futures curve</button>

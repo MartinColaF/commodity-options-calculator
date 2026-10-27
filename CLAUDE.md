@@ -256,6 +256,20 @@ rebuilds the whole tbody, so updating per keystroke fights with typing. A test t
 types into a leg field and reads the result without blurring sees a stale value — that
 is the design, not a bug.
 
+**`inputProblem()` is the one rule for what a number may be.** A price, strike or size
+must be above zero and a volatility not below it; any other key only has to be a number,
+since a rate or a yield may be negative. The panel, the legs table, `restore()` and the
+quote all ask it. Nothing checked before, and a price of −100 valued a 4000 put at
+4086.54. A refused number never reaches `state`: the field goes back to the value in use
+and the reason appears beside it, in `spotProblem`, `volProblem`, `sizeProblem` or
+`legProblem` — not on the status line, which sits a card away, out of sight. The reason
+lasts until the user's next edit, choice or button anywhere: a capture-phase listener on
+the document clears it before that action's own handler runs, so a refusal can set it
+again. Kept any longer, it would say "Still using 100" under the 1000 a new market set.
+A new input with a range goes through `inputProblem()` and gets its own reason element.
+`test/inputs.test.js` drives the page through `wired()` in the test loader, which runs
+listeners in the page's capture and bubble order.
+
 **Three layers, one direction.** The calculations (§1–§6) and the actions (§9) change
 `state` and never touch the page or ask for a redraw; the rendering (§7) draws `state` and
 never changes it; only the wiring (§10) reads the page, calls an action and then renders.
@@ -389,6 +403,10 @@ something is missing from the repo.
   move with spot; that is not modelled.
 - Contract expiries from the function are approximated to mid-month. Both
   contracts use the same convention, so the gap driving the carry stays accurate.
+- **Prices must be above zero.** Black-76, Black-Scholes-Merton and BAW are all
+  lognormal, so a price at or below zero cannot be priced: it is refused, a quote
+  included — WTI settled at −37.63 in April 2020. Pricing one would take a normal
+  (Bachelier) model.
 
 ## Before switching on ads
 

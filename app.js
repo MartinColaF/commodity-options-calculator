@@ -1695,16 +1695,40 @@ function pick(x, allowed, fallback) {
   return allowed.indexOf(x) !== -1 ? x : fallback;
 }
 
+/* What a number may be: '' when `v` will do for `key`, otherwise the reason,
+ * as a sentence to show beside the field. One rule for the panel, the legs
+ * table, a restored scenario and a quote. A price, strike or size at or below
+ * zero, or a negative volatility, used to go straight into the pricer: a
+ * negative price valued a put above its strike, and a negative size swapped
+ * profit and loss. Any other key only has to be a number - a rate or a yield
+ * may well be negative. */
+function inputProblem(key, v) {
+  if (!isNum(v)) return 'Enter a number.';
+  switch (key) {
+    case 'S':
+    case 'under':
+      return v > 0 ? '' : 'A price must be above zero: these models are lognormal and cannot price a contract at or below zero.';
+    case 'strike':
+      return v > 0 ? '' : 'A strike must be above zero.';
+    case 'size':
+      return v > 0 ? '' : 'Units per contract must be above zero.';
+    case 'vol':
+      return v >= 0 ? '' : 'Volatility cannot be negative.';
+    default:
+      return '';
+  }
+}
+
 /* One leg from untrusted input, or null when it cannot be a leg. The id is
  * never taken from the input: newLeg() assigns a fresh one, and an id from a
  * link would otherwise land in a data attribute. */
 function sanitizeLeg(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const kind = pick(raw.kind, LEG_KINDS, 'call');
-  // An option with no numeric strike is not a leg. Inventing one would put a
+  // An option with no valid strike is not a leg. Inventing one would put a
   // position on the screen that nobody chose.
-  if (kind !== 'underlying' && !isNum(raw.strike)) return null;
-  const optional = x => (isNum(x) ? x : null);
+  if (kind !== 'underlying' && inputProblem('strike', raw.strike)) return null;
+  const optional = (x, key) => (inputProblem(key, x) ? null : x);
   return newLeg({
     on: raw.on !== false,
     side: raw.side === -1 ? -1 : 1,
@@ -1712,9 +1736,9 @@ function sanitizeLeg(raw) {
     qty: isNum(raw.qty) && raw.qty >= 0 ? raw.qty : 1,
     strike: isNum(raw.strike) ? raw.strike : 0,
     days: isNum(raw.days) && raw.days >= 0 ? raw.days : state.days,
-    vol: optional(raw.vol),
-    under: optional(raw.under),
-    entry: optional(raw.entry)
+    vol: optional(raw.vol, 'vol'),
+    under: optional(raw.under, 'under'),
+    entry: optional(raw.entry, 'entry')
   });
 }
 
@@ -1729,7 +1753,7 @@ function restore(o) {
   state.model = pick(o.model, MODELS, state.model);
   state.quote = pick(o.quote, QUOTES, state.quote);
   ['S', 'vol', 'rate', 'yield', 'size'].forEach(k => {
-    if (isNum(o[k])) state[k] = o[k];
+    if (!inputProblem(k, o[k])) state[k] = o[k];
   });
   if (isNum(o.days) && o.days >= 0) state.days = o.days;
   // Scenarios saved before American exercise existed were priced as European,
@@ -1828,7 +1852,13 @@ function typeMarketInput(key, v) {
 
 async function applyFuturesPrice() {
   const q = await proxyGet('quote', state.commodity, 5 * 60e3);
-  if (!(q.price > 0)) throw new Error('no price returned');
+  if (!isNum(q.price) || q.price === 0) throw new Error('no price returned');
+  // A real quote can be below zero - WTI settled at -37.63 in April 2020 - and
+  // no model here can price one, so say that rather than "no price".
+  if (inputProblem('S', q.price)) {
+    throw new Error(`${q.name || q.symbol || 'the contract'} last ${fmt(q.price, 2)}, ` +
+      'below zero, which these lognormal models cannot price');
+  }
 
   // Yahoo reports USX for cents-quoted contracts. Trust it over our table:
   // getting this wrong scales the whole position P&L by 100.
@@ -2279,8 +2309,14 @@ function bindInputs() {
   const simple = {
     model: el => { state.model = el.value; },
     style: el => { state.style = el.value; },
-    spot: el => { typeMarketInput('S', num(el, state.S)); },
-    vol: el => { typeMarketInput('vol', num(el, state.vol)); },
+    spot: el => {
+      const v = num(el, state.S);
+      if (!inputProblem('S', v)) typeMarketInput('S', v);
+    },
+    vol: el => {
+      const v = num(el, state.vol);
+      if (!inputProblem('vol', v)) typeMarketInput('vol', v);
+    },
     rate: el => { typeMarketInput('rate', num(el, state.rate)); },
     yield: el => { typeMarketInput('yield', num(el, state.yield)); },
     skewRr: el => { state.skew.rr = num(el, state.skew.rr); },
@@ -2293,7 +2329,10 @@ function bindInputs() {
       // Keep legs that were on the old default expiry in sync.
       state.legs.forEach(l => { if (l.days === old) l.days = state.days; });
     },
-    size: el => { state.size = num(el, state.size); },
+    size: el => {
+      const v = num(el, state.size);
+      if (!inputProblem('size', v)) state.size = v;
+    },
     quote: el => { state.quote = el.value; }
   };
 
@@ -2301,6 +2340,32 @@ function bindInputs() {
     $(id).addEventListener('input', e => {
       simple[id](e.target);
       scheduleRender();
+    });
+  });
+
+  // Why a number was refused is shown beside its field, not on the status
+  // line, which is a card away. It lasts until the next thing the user does -
+  // an edit, a choice or a button anywhere - since that may change the field
+  // it is about: a size refused at 100 must not still say so once a new
+  // market has set 1000. Listening on the document, in the capture phase,
+  // clears it before that action's own handler runs, so a refusal can say
+  // why again.
+  const clearProblems = () => {
+    ['spotProblem', 'volProblem', 'sizeProblem', 'legProblem'].forEach(id => { $(id).textContent = ''; });
+  };
+  document.addEventListener('input', clearProblems, true);
+  document.addEventListener('change', clearProblems, true);
+  document.addEventListener('click', e => { if (e.target.closest('button')) clearProblems(); }, true);
+
+  // A number inputProblem() refuses never reaches the state while it is being
+  // typed - "0.45" passes through "0" on the way - so the reason is given once
+  // the field is committed, and the field goes back to the value in use.
+  [['spot', 'S', ''], ['vol', 'vol', '%'], ['size', 'size', '']].forEach(([id, key, unit]) => {
+    $(id).addEventListener('change', e => {
+      const problem = inputProblem(key, num(e.target, state[key]));
+      if (!problem) return;
+      $(id + 'Problem').textContent = problem + ' Still using ' + state[key] + unit + '.';
+      e.target.value = state[key];
     });
   });
 
@@ -2445,6 +2510,17 @@ function onLegEvent(e) {
   }
 
   const el = e.target;
+  // A number the pricer cannot take is refused, with the reason under the
+  // table, and drawing the table again puts the leg's value back in the field.
+  if (f === 'strike' || f === 'vol' || f === 'under') {
+    const v = parseFloat(el.value);
+    const problem = isFinite(v) ? inputProblem(f, v) : '';
+    if (problem) {
+      $('legProblem').textContent = problem + ' The leg keeps its previous value.';
+      renderAll();
+      return;
+    }
+  }
   switch (f) {
     case 'on': leg.on = el.checked; break;
     case 'side': leg.side = +el.value; break;

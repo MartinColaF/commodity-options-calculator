@@ -7,7 +7,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { loadApp, resetState } = require('./helpers/load-app.js');
+const { loadApp, resetState, wired } = require('./helpers/load-app.js');
 
 const HOUR = 3600e3;
 
@@ -115,29 +115,16 @@ test('a full quota no longer loses the scenario: the cache makes room', () => {
 
 /* ---- the Alpha Vantage key ---- */
 
-/* Stand-ins for every element the wiring binds, which record their listeners,
- * so bindInputs() runs as it does on the page. */
-function wired() {
-  const listeners = {};
-  const element = id => ({
-    value: '', checked: false,
-    addEventListener: (type, fn) => { listeners[id + ' ' + type] = fn; }
-  });
-  const made = {};
-  const elements = new Proxy({}, {
-    getOwnPropertyDescriptor: (t, id) => ({ value: made[id] || (made[id] = element(id)), configurable: true, enumerable: true }),
-    get: (t, id) => made[id] || (made[id] = element(id))
-  });
-  const app = loadApp({ elements, globals: { window: { matchMedia: () => ({ addEventListener() { } }) } } });
-  resetState(app);
-  app.bindInputs();
-  return { app, type: value => listeners['avKey input']({ target: { value } }) };
+/* The key field, typed into on a page wired as the real one is. */
+function keyField() {
+  const { app, fire } = wired();
+  return { app, type: value => fire('avKey', 'input', { value }) };
 }
 
 test('emptying the key field takes the key out of the browser, and nothing else', () => {
   // It used to be written on use and never removed: the field emptied, and
   // the next visit filled it in again from storage.
-  const { app, type } = wired();
+  const { app, type } = keyField();
   app.storage.set(app.KEY_STORE, 'OLD-KEY');
   app.storage.set(app.STORE_KEY, '{"S":4000}');
   app.storage.set('coc.cache.av.GLD', '{}');
