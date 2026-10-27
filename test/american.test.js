@@ -227,6 +227,55 @@ test('degenerate inputs fall back to intrinsic instead of NaN', () => {
   }
 });
 
+test('with no volatility an American option is exercised on its best date', () => {
+  // The forward is known, so the holder picks when: now, at expiry, or the one
+  // date in between at which the payoff's discounted value can turn. It used to
+  // be worth its intrinsic value always, as if exercised now, and jumped to the
+  // value of holding it at the smallest volatility above zero.
+  const best = (kind, S, K, T, r, b) => {
+    let v = 0;
+    for (let i = 0; i <= 100000; i++) {
+      const t = T * i / 100000, F = S * Math.exp(b * t);
+      v = Math.max(v, Math.exp(-r * t) * Math.max(kind === 'call' ? F - K : K - F, 0));
+    }
+    return v;
+  };
+  const cases = [
+    ['call', 100, 95, 0.5, 0.04, 0, 'a call on a future at a positive rate: exercised now'],
+    ['call', 100, 95, 0.5, -0.01, 0, 'at a negative rate: held'],
+    ['put', 95, 100, 0.5, -0.01, 0, 'a put at a negative rate: held'],
+    ['call', 4500, 4000, 0.5, 0.04, 0.05, 'carry above the rate: held'],
+    ['put', 3500, 4000, 0.5, 0.04, 0.05, 'a put with carry above the rate: exercised now'],
+    ['call', 19000, 4000, 2, 0.05, 0.04, 'deep in the money, carry under the rate: in between']
+  ];
+  for (const [kind, S, K, T, r, b, label] of cases) {
+    const v = americanPrice(kind, S, K, T, r, b, 0);
+    assert.ok(Math.abs(v - best(kind, S, K, T, r, b)) < 1e-9 * S, `${label}: ${v}`);
+  }
+  const held = americanPrice('call', 4500, 4000, 0.5, 0.04, 0.05, 0);
+  assert.ok(Math.abs(held - 601.761651) < 1e-6, 'it read 500');
+  assert.ok(Math.abs(held - americanPrice('call', 4500, 4000, 0.5, 0.04, 0.05, 1e-6)) < 1e-6,
+    'and meets the pricer just above zero volatility');
+
+  // Its greeks are those of the date it is exercised on: the price's own
+  // derivatives, in both carry conventions.
+  for (const [kind, S, K, T, r, b, label] of cases) {
+    for (const tracks of [false, true]) {
+      const g = americanGreeks(kind, S, K, T, r, b, 0, tracks);
+      const P = (s, t, rr, bb) => americanPrice(kind, s, K, t, rr, bb, 0);
+      const h = S * 1e-6, hR = 1e-7;
+      const fd = {
+        delta: (P(S + h, T, r, b) - P(S - h, T, r, b)) / (2 * h),
+        theta: (P(S, T - 1e-6, r, b) - P(S, T + 1e-6, r, b)) / 2e-6 / 365,
+        rho: (P(S, T, r + hR, tracks ? b + hR : b) - P(S, T, r - hR, tracks ? b - hR : b)) / (2 * hR) / 100
+      };
+      for (const k of Object.keys(fd)) {
+        assert.ok(Math.abs(g[k] - fd[k]) < 1e-6, `${label}, ${tracks ? 'cost of carry' : 'carry fixed'}: ${k} ${g[k]} vs ${fd[k]}`);
+      }
+    }
+  }
+});
+
 test('the strategy engine prices legs with the selected exercise style', () => {
   const mk = style => {
     const s = resetState(app, { style, S: 100, vol: 30, rate: 8, days: 365 });

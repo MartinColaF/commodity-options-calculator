@@ -80,6 +80,15 @@ generalised Black-Scholes-Merton: `b = 0` gives Black-76 on a futures price, `b 
 gives BSM on spot. There is no separate Black-76 code path — an earlier version had
 one and it was mispriced. Greek units are deliberate: vega per 1 vol point, theta per
 calendar day, rho per 1 rate point. Keep any new pricer consistent with that.
+**With no volatility or no time left, an option is one cash flow**, and
+`deterministicOption()` prices it and gives its greeks. Theta and rho used to be 0 there,
+where a 30-day call on a 100 future struck at 95, at 4%, carries +0.000546 a day and
+−0.004096 a point. An American option is then exercised on its best date
+(`deterministicAmerican()`): now, at expiry, or the one date between at which the
+payoff's discounted value can turn. It was its intrinsic value always, as if exercised
+now — 500 for a call worth 601.76 held — and jumped to the held value at the smallest
+volatility above zero. Both meet the pricers' own limits as the volatility goes to zero,
+and `legFarDelta()` and `tailGrid()` follow them.
 
 **American exercise goes through Barone-Adesi-Whaley, not a lattice**, because the
 payoff curve prices ~1200 grid points per leg. The exercise boundary and the premium

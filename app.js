@@ -49,6 +49,34 @@ function normCdf(x) {
   return x > 0 ? 1 - c : c;
 }
 
+/* An option on a price with no volatility, or no time, left: the forward is
+ * known, so the option is one cash flow - its payoff at the date t it is
+ * exercised, discounted - and so are its greeks, in gbs()'s units. Delta is the
+ * forward's, and there is no gamma or vega. Held to expiry (t = T) it drifts
+ * as expiry nears, which is its theta; exercised sooner, expiry no longer moves
+ * it. rho is per point, the carry following the rate under cost of carry. Its
+ * theta and rho used to be 0: a 30-day call on a 100 future struck at 95, at
+ * 4%, carries +0.000546 a day and -0.004096 a point. */
+function deterministicOption(kind, S, K, T, r, b, t, bTracksRate) {
+  const sign = kind === 'call' ? 1 : -1;
+  const fwd = S * Math.exp(b * t), disc = Math.exp(-r * t);
+  if (!(sign * (fwd - K) > 0)) return { price: 0, delta: 0, gamma: 0, vega: 0, theta: 0, rho: 0, d1: NaN, d2: NaN };
+  const price = sign * (fwd - K) * disc;
+  // How fast the payoff's value drifts as expiry nears, while it is held to it.
+  // At no rate and no carry it does not, and then a plain 0: -0 reads "-0.0000".
+  const drift = t === T && T > 0 ? (b - r) * fwd + r * K : 0;
+  return {
+    price,
+    delta: sign * Math.exp((b - r) * t),
+    gamma: 0,
+    vega: 0,
+    theta: drift === 0 ? 0 : -sign * drift * disc / 365,
+    // Nothing left to discount at t = 0, and a plain 0 there too.
+    rho: t > 0 ? (bTracksRate === true ? sign * K * t * disc : -t * price) / 100 : 0,
+    d1: NaN, d2: NaN
+  };
+}
+
 /* Generalised Black-Scholes-Merton.
  *   b = r - q  -> Black-Scholes-Merton on a spot underlying with carry
  *   b = 0      -> Black-76 on a futures price (discounting at r)
@@ -64,15 +92,9 @@ function normCdf(x) {
 function gbs(kind, S, K, T, r, b, sigma, bTracksRate) {
   const isCall = kind === 'call';
   if (!(T > 0) || !(sigma > 0) || !(S > 0) || !(K > 0)) {
-    const fwd = S * Math.exp(b * Math.max(T, 0));
-    const disc = Math.exp(-r * Math.max(T, 0));
-    const itm = isCall ? fwd > K : fwd < K;
-    const intrinsic = Math.max(isCall ? fwd - K : K - fwd, 0) * disc;
-    return {
-      price: intrinsic,
-      delta: itm ? (isCall ? 1 : -1) * Math.exp((b - r) * Math.max(T, 0)) : 0,
-      gamma: 0, vega: 0, theta: 0, rho: 0, d1: NaN, d2: NaN
-    };
+    // A European option cannot be exercised sooner: held to expiry.
+    const t = Math.max(T, 0);
+    return deterministicOption(kind, S, K, t, r, b, t, bTracksRate);
   }
 
   const sqrtT = Math.sqrt(T);
@@ -235,13 +257,37 @@ function americanCritical(kind, K, T, r, b, sigma) {
   return americanBoundary(kind, K, T, r, b, sigma).Si;
 }
 
+/* An American option on a price with no volatility left, exercised on its
+ * best date: now, at expiry, or the one date in between at which its payoff's
+ * discounted value can turn, where S e^(bt) = rK / (r - b). Its value and
+ * greeks are deterministicOption()'s on that date. It used to be its intrinsic
+ * value always, as if exercised now, which is right only when holding it is
+ * worth less: with carry at 5% over a 4% rate, a six-month call on 4,500 struck
+ * at 4,000 is worth 601.76 held, and read 500 - jumping to 601.76 at the
+ * smallest volatility above zero. */
+function deterministicAmerican(kind, S, K, T, r, b, bTracksRate) {
+  let best = deterministicOption(kind, S, K, T, r, b, 0, bTracksRate);
+  const dates = [T];
+  if (b !== 0 && r !== b) {
+    const turn = Math.log(r * K / ((r - b) * S)) / b;
+    if (turn > 0 && turn < T) dates.push(turn);
+  }
+  for (const t of dates) {
+    const o = deterministicOption(kind, S, K, T, r, b, t, bTracksRate);
+    if (o.price > best.price) best = o;
+  }
+  return best;
+}
+
 /* American price. Falls back to the European value whenever early exercise
  * cannot be worth anything, and is floored at intrinsic and at the European
  * price so a non-converged solve can never produce an arbitrageable number. */
 function americanPrice(kind, S, K, T, r, b, sigma) {
   const isCall = kind === 'call';
   const intrinsic = Math.max(isCall ? S - K : K - S, 0);
-  if (!(T > 0) || !(sigma > 0) || !(S > 0) || !(K > 0)) return intrinsic;
+  if (!(T > 0) || !(sigma > 0) || !(S > 0) || !(K > 0)) {
+    return deterministicAmerican(kind, S, K, Math.max(T, 0), r, b).price;
+  }
 
   const euro = gbs(kind, S, K, T, r, b, sigma).price;
   // Early exercise is worth nothing - and BAW, which would add a premium
@@ -270,11 +316,10 @@ function americanPrice(kind, S, K, T, r, b, sigma) {
  * price for each bumped parameter set is cached. Units match gbs(). */
 function americanGreeks(kind, S, K, T, r, b, sigma, bTracksRate) {
   const P = (s, t, rr, bb, sig) => americanPrice(kind, s, K, t, rr, bb, sig);
-  const price = P(S, T, r, b, sigma);
   if (!(T > 0) || !(sigma > 0) || !(S > 0) || !(K > 0)) {
-    const euro = gbs(kind, S, K, T, r, b, sigma);
-    return { price, delta: euro.delta, gamma: 0, vega: 0, theta: 0, rho: 0, d1: NaN, d2: NaN };
+    return deterministicAmerican(kind, S, K, Math.max(T, 0), r, b, bTracksRate);
   }
+  const price = P(S, T, r, b, sigma);
 
   const hS = Math.max(S * 1e-4, 1e-8);
   const up = P(S + hS, T, r, b, sigma);
@@ -932,14 +977,14 @@ function statsGrid() {
  * worth nothing up there. A European call is worth its forward's intrinsic,
  * discounted - gbs()'s line. An American call is worth the larger of that and
  * exercising, which is what americanPrice() returns past its exercise
- * boundary, or exercising alone with no time or volatility left. */
+ * boundary, and with no volatility left too, held or exercised on its best
+ * date. */
 function legFarDelta(leg, tDays) {
   if (leg.kind === 'underlying') return 1;
   if (leg.kind === 'put') return 0;
   const p = legPricingInputs(leg, { tDays: tDays });
   const forward = Math.exp((p.b - p.r) * p.T);
-  if (p.style !== 'american') return forward;
-  return p.T > 0 && p.sigma > 0 ? Math.max(forward, 1) : 1;
+  return p.style === 'american' ? Math.max(forward, 1) : forward;
 }
 
 /* The slope the position's P&L at tDays tends to as the reference contract
@@ -975,8 +1020,8 @@ function tailGrid(tDays, top) {
     if (leg.kind === 'underlying' || !(leg.days > tDays)) continue;
     const p = legPricingInputs(leg, { tDays: tDays });
     let settled = p.K * Math.exp(10 * p.sigma * Math.sqrt(p.T) + Math.abs(p.b) * p.T + 1);
-    if (p.style === 'american' && p.kind === 'call' && p.sigma > 0) {
-      if (!(p.b >= p.r && p.b >= 0)) {
+    if (p.style === 'american' && p.kind === 'call') {
+      if (p.sigma > 0 && !(p.b >= p.r && p.b >= 0)) {
         settled = Math.max(settled, 2 * americanCritical('call', p.K, p.T, p.r, p.b, p.sigma));
       }
       const fs = Math.exp((p.b - p.r) * p.T);

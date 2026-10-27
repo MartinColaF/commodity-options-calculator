@@ -180,6 +180,13 @@ test('with no volatility the verdict still follows the pricer', () => {
     near(a.upSlope, slope, 1e-6, style + ': the P&L\'s own slope');
     assert.strictEqual(Number.isFinite(a.maxProfit), Math.abs(slope) < 1e-7, style + ': bounded only if flat');
   }
+  // And the maxima: a diagonal whose far call is worth holding until its
+  // forward's line meets exercising, 62,830 at a 0.3% yield, only does its
+  // worst from there - the gap between the strikes and its debit with
+  // interest, which the grid, stopping at 16,000, read as $16,191.38.
+  resetState(app, { style: 'american', model: 'bs', vol: 0, rate: 4.5, yield: 0.3 });
+  state.legs = [newLeg({ kind: 'call', side: -1, strike: 4000, days: 45 }), newLeg({ kind: 'call', strike: 4200, days: 90 })];
+  near(analyse().maxLoss, (4000 - 4200) * 100 - netCost() * Math.exp(0.045 * 45 / 365), 1e-6, 'past the crossing');
 });
 
 test('legs on months that move in exact proportion add up flat, rounding aside', () => {
