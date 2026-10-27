@@ -41,6 +41,17 @@ test('every market with futures data names its contracts in a form the function 
   }
 });
 
+test('every market but custom gives the tick its prices are shown to', () => {
+  for (const key of Object.keys(TABLE)) {
+    const tick = TABLE[key].tick;
+    if (key === 'custom') {
+      assert.strictEqual(tick, null, 'custom: no tick, so its own price sets the decimals');
+      continue;
+    }
+    assert.ok(typeof tick === 'number' && tick > 0 && tick <= 1, `${key}: a tick in its quoting unit, got ${tick}`);
+  }
+});
+
 test('the custom market has no futures data and stays off the function', () => {
   assert.strictEqual(TABLE.custom.futures, null);
   assert.ok(!app.PROXY_COMMODITIES.includes('custom'));

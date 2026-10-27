@@ -1188,6 +1188,41 @@ function money(x) {
   return sign + '$' + fmt(Math.abs(x), 2);
 }
 
+/* How many decimals a price of the selected market is shown with: as many as
+ * its tick, so the screen never rounds away a step the market trades in, and
+ * never fewer than two. The table gives the tick in the market's own quoting
+ * unit; a price quoted in dollars rather than cents takes two decimals more,
+ * one in cents rather than dollars two fewer. A custom contract has no tick, so
+ * it shows five significant figures of the panel's price. Every price used to
+ * show two decimals, and a 30-day copper call worth 0.04204 read 0.04 - $50.98
+ * a contract short. */
+function priceDp() {
+  const meta = commodityMeta(state.commodity);
+  let dp;
+  if (meta.tick > 0) {
+    dp = decimalsOf(meta.tick);
+    if (state.quote !== meta.quote) dp += state.quote === 'USD' ? 2 : -2;
+  } else {
+    dp = state.S > 0 ? 4 - Math.floor(Math.log10(state.S)) : 2;
+  }
+  return Math.min(Math.max(dp, 2), 8);
+}
+
+/* The decimal places in a tick such as 0.0005 or 0.125. */
+function decimalsOf(x) {
+  let d = 0;
+  while (d < 8 && Math.abs(x * Math.pow(10, d) - Math.round(x * Math.pow(10, d))) > 1e-9) d++;
+  return d;
+}
+
+/* A price of the selected market, with priceDp() decimals. `trim` drops the
+ * trailing zeros, for a strike in a label: "K 4,100" rather than "K 4,100.00". */
+function fmtPrice(x, trim) {
+  const dp = priceDp();
+  if (!trim || !isFinite(x)) return fmt(x, dp);
+  return x.toLocaleString(undefined, { maximumFractionDigits: dp });
+}
+
 /* Never overwrite the field the user is typing in: doing so eats half-typed
  * values like "4000." and moves the caret. */
 function setField(id, value) {
@@ -1244,7 +1279,7 @@ function renderInputs() {
 
 function monthLabel(c) {
   const name = c.name || c.symbol;
-  return name + ' - ' + fmt(c.price, 2);
+  return name + ' - ' + fmtPrice(c.price);
 }
 
 /* Fill the picker from whatever the strip holds. The empty value is the
@@ -1311,9 +1346,9 @@ function legRowHtml(leg, mult) {
       <td><input type="number" data-f="strike" value="${isU ? '' : a(leg.strike)}" ${isU ? 'disabled' : ''} step="any"></td>
       <td><input type="number" data-f="days" value="${isU ? '' : a(leg.days)}" ${isU ? 'disabled' : ''} min="0" step="1"></td>
       <td><input type="number" data-f="vol" value="${a(leg.vol)}" placeholder="${a(fmt(legVolPct(leg), 1))}" ${isU ? 'disabled' : ''} step="any"></td>
-      <td><input type="number" data-f="under" value="${a(leg.under)}" placeholder="${a(fmt(state.S, 2))}" step="any" title="This leg's own contract price today. Blank uses the contract in the left panel."></td>
-      <td><input type="number" data-f="entry" value="${a(leg.entry)}" placeholder="${a(fmt(isU ? state.S : g.price, 2))}" step="any"></td>
-      <td class="num">${isU ? '-' : a(fmt(g.price, 2))}</td>
+      <td><input type="number" data-f="under" value="${a(leg.under)}" placeholder="${a(fmtPrice(state.S))}" step="any" title="This leg's own contract price today. Blank uses the contract in the left panel."></td>
+      <td><input type="number" data-f="entry" value="${a(leg.entry)}" placeholder="${a(fmtPrice(isU ? state.S : g.price))}" step="any"></td>
+      <td class="num">${isU ? '-' : a(fmtPrice(g.price))}</td>
       <td class="num">${a(fmt(g.delta * leg.side * leg.qty, 3))}</td>
       <td class="num">${a(fmt(leg.side * leg.qty * mult * (isU ? 0 : entry), 0))}</td>
       <td><button class="icon" data-f="iv" title="Solve implied volatility from the entry price" ${isU ? 'disabled' : ''}>IV</button>
@@ -1366,7 +1401,7 @@ function renderResults() {
     <div class="kpi"><span>Net ${cost >= 0 ? 'debit (paid)' : 'credit (received)'}</span><strong>${money(Math.abs(cost))}</strong></div>
     <div class="kpi"><span>Max profit</span><strong class="pos">${money(a.maxProfit)}</strong></div>
     <div class="kpi"><span>Max loss</span><strong class="neg">${money(a.maxLoss)}</strong></div>
-    <div class="kpi"><span>Breakeven${a.breakevens.length === 1 ? '' : 's'}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmt(b, 2)).join(' / ') : '-'}</strong></div>
+    <div class="kpi"><span>Breakeven${a.breakevens.length === 1 ? '' : 's'}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmtPrice(b)).join(' / ') : '-'}</strong></div>
     <div class="kpi"><span>Prob. of profit</span><strong>${(a.pop * 100).toFixed(1)}%</strong><small>risk-neutral, at ${escapeHtml(fmt(a.popVol * 100, 1))}% vol</small></div>
     <div class="kpi"><span>Horizon</span><strong>${escapeHtml(a.t)} days</strong></div>`;
 
@@ -1468,7 +1503,7 @@ function chartConfig(a) {
         const entry = legEntry(leg);
         datasets.push({
           label: (leg.side === 1 ? 'Long ' : 'Short ') + leg.qty + ' ' + leg.kind +
-            (leg.kind === 'underlying' ? '' : ' ' + fmt(leg.strike, 2)),
+            (leg.kind === 'underlying' ? '' : ' ' + fmtPrice(leg.strike, true)),
           data: a.xs.map(x => ({
             x, y: leg.side * leg.qty * mult * (legValue(leg, x, a.t) - entry)
           })),
@@ -1497,7 +1532,7 @@ function chartConfig(a) {
   // is not the strike itself once a leg trades on its own delivery month.
   const lines = activeLegs()
     .filter(l => l.kind !== 'underlying')
-    .map(l => ({ value: strikeOnAxis(l), color: col.strike, label: 'K ' + fmt(l.strike, 0) }));
+    .map(l => ({ value: strikeOnAxis(l), color: col.strike, label: 'K ' + fmtPrice(l.strike, true) }));
   lines.push({ value: state.S, color: col.spot, label: 'Now', dash: [2, 2] });
 
   const cfg = {
@@ -1527,7 +1562,7 @@ function chartConfig(a) {
         markers: { lines },
         tooltip: {
           callbacks: {
-            title: items => 'Price ' + fmt(items[0].parsed.x, 2),
+            title: items => 'Price ' + fmtPrice(items[0].parsed.x),
             label: item => item.dataset.label + ': ' + money(item.parsed.y)
           }
         }
@@ -1575,7 +1610,7 @@ function renderScenarios() {
     const head = s.days.map(d =>
       '<th class="num">' + (d === 0 ? 'Today' : d + 'd') + '</th>').join('');
     const rows = panel.rows.slice().reverse().map(r => {
-      const label = fmt(r.price, 2) +
+      const label = fmtPrice(r.price) +
         ' <span class="muted">(' + (r.pct >= 0 ? '+' : '') + fmt(r.pct * 100, 0) + '%)</span>';
       const cells = r.cells.map(c =>
         '<td class="num"' + shade(c) + '>' + money(c) + '</td>').join('');
@@ -1880,7 +1915,7 @@ async function applyFuturesPrice() {
   // A real quote can be below zero - WTI settled at -37.63 in April 2020 - and
   // no model here can price one, so say that rather than "no price".
   if (inputProblem('S', q.price)) {
-    throw new Error(`${q.name || q.symbol || 'the contract'} last ${fmt(q.price, 2)}, ` +
+    throw new Error(`${q.name || q.symbol || 'the contract'} last ${fmtPrice(q.price)}, ` +
       'below zero, which these lognormal models cannot price');
   }
 
@@ -1896,11 +1931,11 @@ async function applyFuturesPrice() {
   // The continuous front month, so no listed month is picked any more.
   setReferencePrice(q.price, {
     live: true,
-    text: `${q.name || q.symbol} last ${fmt(q.price, 2)}` +
+    text: `${q.name || q.symbol} last ${fmtPrice(q.price)}` +
       (q.currency ? ` ${q.currency}` : '') +
       (q.asOf ? `, ${q.asOf.slice(0, 16).replace('T', ' ')} UTC` : '') + unitNote
   }, '');
-  return { message: `${q.name || q.symbol} at ${fmt(q.price, 2)}${unitNote}` };
+  return { message: `${q.name || q.symbol} at ${fmtPrice(q.price)}${unitNote}` };
 }
 
 /* Realised vol from the real futures series, falling back to Alpha Vantage's
@@ -1970,8 +2005,8 @@ async function applyCurveYield() {
   state.yield = +y.toFixed(3);
   state.sources.yield = {
     live: true,
-    text: `implied by the futures curve: ${near.name || near.symbol} ${fmt(near.price, 2)} vs ` +
-      `${far.name || far.symbol} ${fmt(far.price, 2)}, ${days}d apart (expiries approximated to ` +
+    text: `implied by the futures curve: ${near.name || near.symbol} ${fmtPrice(near.price)} vs ` +
+      `${far.name || far.symbol} ${fmtPrice(far.price)}, ${days}d apart (expiries approximated to ` +
       `mid-month), r=${state.rate}% -> y=${y.toFixed(3)}%`
   };
   // The working, for the manual carry boxes, so the number is auditable.
@@ -2017,7 +2052,7 @@ function useContractMonth(symbol) {
   }
   setReferencePrice(hit.price, {
     live: true,
-    text: `${hit.name || hit.symbol} ${fmt(hit.price, 2)} ${hit.currency || ''}`.trim() +
+    text: `${hit.name || hit.symbol} ${fmtPrice(hit.price)} ${hit.currency || ''}`.trim() +
       (hit.asOf ? `, ${hit.asOf.slice(0, 10)}` : '') +
       ' - one listed contract, not the continuous series'
   }, hit.symbol);
@@ -2113,8 +2148,8 @@ function fillLegsFromStrip(opts) {
   return {
     live: true,
     text: `legs interpolated across ${strip.length} listed contracts, ` +
-      `${first.name || first.symbol} ${fmt(first.price, 2)} to ` +
-      `${last.name || last.symbol} ${fmt(last.price, 2)}${tail}`
+      `${first.name || first.symbol} ${fmtPrice(first.price)} to ` +
+      `${last.name || last.symbol} ${fmtPrice(last.price)}${tail}`
   };
 }
 
@@ -2153,9 +2188,9 @@ async function applyLegPrices() {
     : '';
   state.sources.legs = {
     live: true,
-    text: `from ${fmt(state.S, 2)} in the panel, priced along the curve at ` +
-      `${pct}%/yr from ${near.name || near.symbol} ${fmt(near.price, 2)} vs ` +
-      `${far.name || far.symbol} ${fmt(far.price, 2)}${beyond}`
+    text: `from ${fmtPrice(state.S)} in the panel, priced along the curve at ` +
+      `${pct}%/yr from ${near.name || near.symbol} ${fmtPrice(near.price)} vs ` +
+      `${far.name || far.symbol} ${fmtPrice(far.price)}${beyond}`
   };
   return { message: `leg prices from a ${pct}%/yr curve` };
 }
@@ -2191,7 +2226,7 @@ function applyCarryYield(S, F, days) {
   state.yield = +y.toFixed(3);
   state.sources.yield = {
     live: true,
-    text: `implied by carry: F=${fmt(F, 2)}, S=${fmt(S, 2)}, ${days}d, r=${state.rate}% -> y=${y.toFixed(3)}%`
+    text: `implied by carry: F=${fmtPrice(F)}, S=${fmtPrice(S)}, ${days}d, r=${state.rate}% -> y=${y.toFixed(3)}%`
   };
   return { message: 'Convenience yield implied from the spot/futures basis: ' + y.toFixed(3) + '%.' };
 }

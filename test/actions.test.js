@@ -146,8 +146,9 @@ test('the price comes from the front month, and a USX quote switches to cents', 
   const r = await app.applyFuturesPrice();
   assert.strictEqual(state.S, 431.25);
   assert.strictEqual(state.quote, 'cents', 'getting this wrong scales P&L by 100');
-  assert.match(r.message, /Corn Dec 26 at 431\.25, quoting switched to cents/);
-  assert.match(state.sources.price.text, /Corn Dec 26 last 431\.25 USX, 2026-10-24 18:20 UTC/);
+  // Corn options move in eighths of a cent, so its prices show three decimals.
+  assert.match(r.message, /Corn Dec 26 at 431\.250, quoting switched to cents/);
+  assert.match(state.sources.price.text, /Corn Dec 26 last 431\.250 USX, 2026-10-24 18:20 UTC/);
 });
 
 test('the proxy\'s answers are cached, so a second click makes no request', async () => {

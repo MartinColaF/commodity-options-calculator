@@ -37,7 +37,7 @@ test('the payoff chart shows the horizon, today and every leg', () => {
   const sets = app.chartConfig(a).data.datasets;
   assert.deepStrictEqual(Array.from(sets, d => d.label), [
     'At horizon (30d)', 'Today (mark to market)',
-    'Long 1 put 3,500.00', 'Short 1 put 3,750.00', 'Short 1 call 4,250.00', 'Long 1 call 4,500.00'
+    'Long 1 put 3,500', 'Short 1 put 3,750', 'Short 1 call 4,250', 'Long 1 call 4,500'
   ]);
   // The horizon series is the analysis itself, point for point.
   assert.deepStrictEqual(Array.from(sets[0].data, p => p.x), Array.from(a.xs));
