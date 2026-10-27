@@ -94,6 +94,46 @@ function loadApp(opts) {
   return app;
 }
 
+/* The app with a stand-in for every element the page has, bound by
+ * bindInputs() as the page binds them. `fire(id, type, target)` dispatches an
+ * event at that element in the order a page would: the document's
+ * capture-phase listeners, the element's own, then the document's bubbling
+ * ones, each in the order they were added. `target` is the event's target,
+ * the stand-in itself unless given, and `el(id)` is the stand-in, holding what
+ * the wiring wrote into it. A redraw is real when the wiring asks for one with
+ * renderAll(); one scheduled for the next frame never comes, since there are
+ * no frames. */
+function wired(opts) {
+  const listeners = {};
+  const listen = on => (type, fn, capture) => {
+    const key = on + ' ' + type + (capture ? ' capture' : '');
+    (listeners[key] = listeners[key] || []).push(fn);
+  };
+  const made = {};
+  const element = id => ({
+    value: '', checked: false, textContent: '', innerHTML: '', dataset: {},
+    addEventListener: listen(id),
+    closest: () => null
+  });
+  const el = id => made[id] || (made[id] = element(id));
+  const app = loadApp(Object.assign({}, opts, {
+    globals: Object.assign({
+      document: { addEventListener: listen('document'), getElementById: el, documentElement: {} },
+      window: { matchMedia: () => ({ addEventListener() { } }) },
+      requestAnimationFrame: () => { }
+    }, opts && opts.globals)
+  }));
+  resetState(app);
+  app.bindInputs();
+  const fire = (id, type, target) => {
+    const e = { target: target || el(id) };
+    for (const key of ['document ' + type + ' capture', id + ' ' + type + ' capture', id + ' ' + type, 'document ' + type]) {
+      (listeners[key] || []).forEach(fn => fn(e));
+    }
+  };
+  return { app, el, fire };
+}
+
 /* Reset the shared state object to a known contract before each test. */
 function resetState(app, over) {
   Object.assign(app.state, {
@@ -111,4 +151,4 @@ function resetState(app, over) {
   return app.state;
 }
 
-module.exports = { loadApp, resetState };
+module.exports = { loadApp, resetState, wired };

@@ -173,6 +173,22 @@ test('a failed price leaves the old one, and the user is told why', async () => 
   }
 });
 
+test('a quote below zero is refused with the reason, not taken as a missing price', async () => {
+  // WTI's May 2020 contract settled at -37.63 on 20 April 2020, and no model
+  // here prices a contract below zero.
+  const cases = [
+    [{ symbol: 'CL=F', name: 'Crude Oil May 20', price: -37.63 }, /Crude Oil May 20 last -37\.63, below zero/],
+    [{ price: -5 }, /the contract last -5\.00, below zero, which these lognormal models cannot price/]
+  ];
+  for (const [body, why] of cases) {
+    fresh({ commodity: 'wti', S: 60 });
+    handler = serve({ 'fn=quote&commodity=wti': ok(body) });
+    await assert.rejects(app.applyFuturesPrice(), why);
+    assert.strictEqual(state.S, 60);
+    assert.strictEqual(state.sources.price, null);
+  }
+});
+
 test('the proxy is not tried from file://, nor for a market it does not serve', async () => {
   let asked = 0;
   const local = loadApp({ protocol: 'file:', fetch: async () => { asked++; throw new Error('no'); } });

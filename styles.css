@@ -137,6 +137,9 @@ button.icon.danger { background: var(--neg); color: #fff; }
 .row.tight { gap: 6px; margin-top: 8px; }
 
 .note, .small { font-size: .78rem; color: var(--muted); margin: 4px 0 0; }
+/* why a number typed into a field above was refused; empty, it takes no room */
+.problem { font-size: .78rem; color: var(--neg); margin: 4px 0 0; }
+.problem:empty { margin: 0; }
 .muted { color: var(--muted); }
 
 .status {
