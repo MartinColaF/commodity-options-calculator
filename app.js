@@ -308,16 +308,26 @@ function priceOption(kind, S, K, T, r, b, sigma, style, bTracksRate) {
     : gbs(kind, S, K, T, r, b, sigma, bTracksRate);
 }
 
+/* The time value, as a share of the underlying, at or below which a premium
+ * implies no volatility. Below about a hundred-millionth the solver returned
+ * wherever it happened to stop; a millionth leaves room, and is still far
+ * under a tick of time value in every market here - silver's, the smallest,
+ * is two hundred-thousandths of its price. */
+const NO_TIME_VALUE = 1e-6;
+
 /* Implied volatility: Newton with vega, bisection fallback. Inverts whichever
  * exercise style priced the option, so an American entry price does not come
- * back as an inflated European volatility. */
+ * back as an inflated European volatility. NaN when no volatility gives the
+ * premium, and when the premium has no time value to give one from: every
+ * volatility up to some level prices it the same, and the solver used to
+ * return its 30% starting point or its 0.01% floor for it. */
 function impliedVol(kind, target, S, K, T, r, b, style) {
   if (!(target > 0) || !(T > 0)) return NaN;
   const px = sigma => style === 'american'
     ? americanPrice(kind, S, K, T, r, b, sigma)
     : gbs(kind, S, K, T, r, b, sigma).price;
 
-  if (target < px(1e-8) - 1e-8) return NaN;
+  if (!(target - px(1e-8) > NO_TIME_VALUE * S)) return NaN;
 
   if (style !== 'american') {
     let sigma = 0.3;
@@ -645,6 +655,15 @@ function legAxisGreeks(leg, opts) {
 function legImpliedVol(leg, premium) {
   const p = legPricingInputs(leg);
   return impliedVol(p.kind, premium, p.S, p.K, p.T, p.r, p.b, p.style);
+}
+
+/* Whether `premium` is this leg's value at zero volatility, give or take
+ * NO_TIME_VALUE of its underlying: a premium with no time value, from which
+ * impliedVol() can find no volatility. */
+function legNoTimeValue(leg, premium) {
+  const p = legPricingInputs(leg);
+  p.sigma = 1e-8;
+  return Math.abs(premium - valueFromInputs(p)) <= NO_TIME_VALUE * p.S;
 }
 
 function activeLegs() {
@@ -2570,7 +2589,11 @@ function onLegEvent(e) {
     }
     const iv = legImpliedVol(leg, target);
     if (!isFinite(iv)) {
-      setStatus('No implied volatility solves that premium (check the price and the strike).', 'err');
+      setStatus(legNoTimeValue(leg, target)
+        ? 'That premium has no time value - it is what the option is worth at zero volatility - so ' +
+          'every volatility up to some level prices it alike and none can be implied. The leg keeps ' +
+          'its volatility.'
+        : 'No implied volatility solves that premium (check the price and the strike).', 'err');
       return;
     }
     leg.vol = +(iv * 100).toFixed(2);

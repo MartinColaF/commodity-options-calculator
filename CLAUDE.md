@@ -121,6 +121,15 @@ explicit per-leg number, else the skew curve, else the global figure.
 `legPricingInputs()` calls it, so nothing else needs to — the greek-profile chart once
 bypassed it and silently ignored the skew.
 
+**No volatility is implied from a premium without time value.** Within `NO_TIME_VALUE` —
+a millionth of the underlying — of the option's value at zero volatility, every
+volatility up to some level gives the same premium, so `impliedVol()` returns NaN. It
+used to return wherever the solver stopped, its 30% starting point or its 0.01% floor,
+and the IV button wrote that into the leg as implied. The button now writes nothing and
+says why, telling that apart from a premium no volatility reaches with
+`legNoTimeValue()`. The line sits a hundred times above where the solver was measured to
+go wrong, and far under one tick of time value in every market here.
+
 **Dollar multiplier = `size × (quote === 'cents' ? 0.01 : 1)`.** Getting the quoting
 convention wrong rescales the whole position P&L by 100. Grains and softs quote in
 cents; **copper quotes in USD per pound**, which is a trap because CME describes it in

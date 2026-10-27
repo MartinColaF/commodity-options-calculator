@@ -90,6 +90,28 @@ test('BSM rho stays BSM\'s when the yield equals the rate and the carry is zero'
   near(app.legGreeks(leg).rho, -0.0414, 1e-4, 'the same call under Black-76');
 });
 
+test('a premium with no time value implies no volatility, and one with a little still does', () => {
+  // REVISION_2_LOGICA.md, L9: a put 1.6 hours from expiry and 26.77 in the
+  // money is worth the same at 30% as at 297.7%. The solver handed back its
+  // 30% starting point for it, or its 0.01% floor under American exercise.
+  const t = 1.6 / 24 / 365;
+  near(gbs('put', 100, 126.77, t, 0.04, 0, 0.3).price, gbs('put', 100, 126.77, t, 0.04, 0, 2.977).price, 1e-8,
+    'the premium does not depend on the volatility');
+  assert.ok(Number.isNaN(impliedVol('put', gbs('put', 100, 126.77, t, 0.04, 0, 2.977).price, 100, 126.77, t, 0.04, 0)),
+    'European');
+  const am = app.americanPrice('put', 100, 126.77, t, 0.04, 0, 2.977);
+  assert.ok(Number.isNaN(impliedVol('put', am, 100, 126.77, t, 0.04, 0, 'american')), 'American');
+
+  // The line is a millionth of the underlying: a call 22% out of the money,
+  // its premium four millionths of the price, gives its 20% back; one 25% out,
+  // at 0.7 of a millionth, gives none.
+  const T = 30 / 365;
+  near(impliedVol('call', gbs('call', 100, 122, T, 0.04, 0, 0.2).price, 100, 122, T, 0.04, 0), 0.2, 1e-6,
+    'just above the line');
+  assert.ok(Number.isNaN(impliedVol('call', gbs('call', 100, 125, T, 0.04, 0, 0.2).price, 100, 125, T, 0.04, 0)),
+    'just below it');
+});
+
 test('implied volatility round trips', () => {
   for (const kind of ['call', 'put']) {
     for (const vol of [0.05, 0.15, 0.42, 0.9, 2.0]) {

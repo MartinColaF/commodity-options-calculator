@@ -39,6 +39,9 @@ open `index.html` or serve the folder.
   volatility, 25-delta risk reversal, 25-delta butterfly) and legs with a blank
   volatility take the curve for their own strike, instead of typing one per leg.
 - **Implied volatility** — type the premium you paid in the Entry column, press `IV`.
+  A premium with no time value — what the option is worth at zero volatility, as a
+  deep in-the-money option close to expiry can be — implies no volatility, and the
+  button says so rather than writing one in.
 - **Share and save** — inputs persist in local storage, plus a shareable URL and
   JSON export/import.
 
@@ -145,7 +148,8 @@ some browsers restrict cross-origin requests from `file://`.
 
 - `test/pricing.test.js` — put-call parity in both models, a textbook reference
   value, all five greeks against finite differences, rho in each model's own
-  convention even when BSM's carry is zero, implied-volatility round trips,
+  convention even when BSM's carry is zero, implied-volatility round trips and none
+  from a premium with no time value,
   the volatility estimators against a series of known volatility, curve
   interpolation and the carry inversion.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
@@ -168,9 +172,10 @@ some browsers restrict cross-origin requests from `file://`.
   the tree finds no early-exercise value, never below the European price anywhere.
 - `test/leg-pricing.test.js` — every path that prices a leg agreeing with the others:
   the implied volatility of a leg's own premium is its own volatility, a position marked
-  today at today's price shows no P&L, value and greeks report the same price, and
+  today at today's price shows no P&L, value and greeks report the same price,
   every net greek and greek profile is the matching derivative of the chart's P&L,
-  with legs on other months.
+  with legs on other months, and the IV button writing nothing for a premium with no
+  time value.
 - `test/restore.test.js` — the trust boundary for shared links, saved state and
   imported files: hostile fields rejected or retyped, ids never taken from the input,
   a legitimate scenario round-tripping unchanged, and the legs table escaping every
