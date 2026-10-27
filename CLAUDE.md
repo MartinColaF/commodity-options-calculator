@@ -81,9 +81,9 @@ gives BSM on spot. There is no separate Black-76 code path — an earlier versio
 one and it was mispriced. Greek units are deliberate: vega per 1 vol point, theta per
 calendar day, rho per 1 rate point. Keep any new pricer consistent with that.
 **With no volatility or no time left, an option is one cash flow**, and
-`deterministicOption()` prices it and gives its greeks, theta and rho included: they were
-0 there, where a 30-day call on a 100 future struck at 95, at 4%, carries +0.000546 a day
-and −0.004096 a point. An American option is then exercised on its best date
+`deterministicOption()` prices it and gives its greeks. Theta and rho used to be 0 there,
+where a 30-day call on a 100 future struck at 95, at 4%, carries +0.000546 a day and
+−0.004096 a point. An American option is then exercised on its best date
 (`deterministicAmerican()`): now, at expiry, or the one date between at which the
 payoff's discounted value can turn. It was its intrinsic value always, as if exercised
 now — 500 for a call worth 601.76 held — and jumped to the held value at the smallest

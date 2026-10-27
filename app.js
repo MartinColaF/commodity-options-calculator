@@ -54,9 +54,9 @@ function normCdf(x) {
  * exercised, discounted - and so are its greeks, in gbs()'s units. Delta is the
  * forward's, and there is no gamma or vega. Held to expiry (t = T) it drifts
  * as expiry nears, which is its theta; exercised sooner, expiry no longer moves
- * it. rho is per point, the carry following the rate under cost of carry. These
- * used to be 0 throughout: a 30-day call on a 100 future struck at 95, at 4%,
- * showed no theta or rho where it carries +0.000546 a day and -0.004096 a point. */
+ * it. rho is per point, the carry following the rate under cost of carry. Its
+ * theta and rho used to be 0: a 30-day call on a 100 future struck at 95, at
+ * 4%, carries +0.000546 a day and -0.004096 a point. */
 function deterministicOption(kind, S, K, T, r, b, t, bTracksRate) {
   const sign = kind === 'call' ? 1 : -1;
   const fwd = S * Math.exp(b * t), disc = Math.exp(-r * t);
@@ -258,13 +258,13 @@ function americanCritical(kind, K, T, r, b, sigma) {
 }
 
 /* An American option on a price with no volatility left, exercised on its
- * best date: now, at expiry, or where its payoff's discounted value stops
- * rising - where S e^(bt) = rK / (r - b), the one date in between at which it
- * can turn. Its value and greeks are deterministicOption()'s on that date. It
- * used to be its intrinsic value always, as if exercised now, which is what it
- * is worth only when holding it is not: at a negative rate, or with carry above
- * the rate, a six-month call on 4,500 struck at 4,000 is worth 601.76 held, and
- * read 500 - with a jump to 601.76 at the smallest volatility above zero. */
+ * best date: now, at expiry, or the one date in between at which its payoff's
+ * discounted value can turn, where S e^(bt) = rK / (r - b). Its value and
+ * greeks are deterministicOption()'s on that date. It used to be its intrinsic
+ * value always, as if exercised now, which is right only when holding it is
+ * worth less: with carry at 5% over a 4% rate, a six-month call on 4,500 struck
+ * at 4,000 is worth 601.76 held, and read 500 - jumping to 601.76 at the
+ * smallest volatility above zero. */
 function deterministicAmerican(kind, S, K, T, r, b, bTracksRate) {
   let best = deterministicOption(kind, S, K, T, r, b, 0, bTracksRate);
   const dates = [T];
