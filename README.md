@@ -121,10 +121,11 @@ Notes and limitations, stated plainly in the UI as well:
   worth exercising early unless its carry is positive, nor a call unless its carry is
   negative, and both price exactly as European; where early exercise still pays at
   negative rates, the error stays under **0.4%** on two-year contracts.
-- Max profit and max loss are searched up to four times the price, or 2.5 times the
-  highest strike. An American call kept past the horizon under Black-Scholes with a small
-  yield may be exercised only beyond that, and then reads Unlimited at the rate it grows
-  within that range.
+- Max profit and max loss are searched on a grid up to four times the price, and further
+  while an option outlives the horizon; whether one is unlimited is decided by how the
+  position behaves as the price rises without bound. Between two grid points a curved
+  P&L, as in a ratio calendar, can dip a little further than the grid finds: $12.84 at
+  most on a −$24,768 loss, in 1,000 random American diagonals.
 - The premium's interest runs from today, continuously compounded, since the tool has
   no trade date: a position opened earlier carries only what is still to come. A futures
   leg has no premium and carries none; under Black-Scholes an underlying leg stands for
@@ -174,8 +175,11 @@ some browsers restrict cross-origin requests from `file://`.
   interpolation and the carry inversion.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
   butterflies, financed and nominal; bounded put payoffs; the rate an unlimited maximum
-  grows at, a European calendar's against an American one's and a naked call's;
-  contract multipliers including cents-quoted markets; every preset and every commodity.
+  grows at, a European calendar's against an American one's and a naked call's; the
+  verdict decided where the price has no bound, in calendars whose far call is
+  exercised far past the grid or never, a diagonal doing its worst past the grid, legs on
+  their own months and random American calendars against their own P&L; contract
+  multipliers including cents-quoted markets; every preset and every commodity.
 - `test/financing.test.js` — the premium's interest: a debit paying it and a credit
   earning it up to the date the P&L is read, a fairly priced option breaking even on
   average at the risk-free rate (by quadrature, a calendar's far leg included), a rate

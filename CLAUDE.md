@@ -161,10 +161,18 @@ that shows a price uses `fmtPrice()`; `test/prices.test.js` pins both.
 scans from a price near zero to well past the highest strike. That is why a long put
 reports a bounded maximum profit and a short put a bounded loss: the underlying cannot
 go below zero. Only the upside is ever "unlimited". Reusing the chart's zoom range
-here silently produces wrong maxima. An unlimited maximum comes with the slope at the
-top of that grid, in dollars per point (`upSlope`): a European call calendar's far leg is
-worth its discounted intrinsic there and loses $0.33 a point, a naked call $100, and
-"Unlimited" alone read the same for both.
+here silently produces wrong maxima. **Whether a maximum is unlimited is decided at
+infinity, not at the top of the grid.** `farSlope()` adds each leg's `legFarDelta()` — the
+slope its value tends to as its price rises without bound, read off the pricers' own
+limits — and an unlimited maximum shows that rate (`upSlope`): a European call
+calendar's far leg is worth its discounted intrinsic up there and loses $0.33 a point, a
+naked call $100. The top of the grid was not far enough: a far American call held over
+the horizon can be exercised well past it, or never, and of 2,000 random American
+calendars 196 read Unlimited though bounded, 30 with the sign reversed and one bounded
+though not. For the same reason `tailGrid()` carries the search on, geometrically, while
+an option outlives the horizon, to where every leg has settled: a diagonal under
+Black-Scholes with a small yield does its worst from 31,383, where the grid stopped at
+16,000 and read $9,177.49 of a $15,234.29 loss.
 
 **The horizon is the nearest expiry among active legs**, which is what makes calendar
 spreads read correctly — the far leg still holds time value there.
@@ -472,13 +480,10 @@ something is missing from the repo.
   outside what the curve can read; the page says so rather than guessing.
 - Contract expiries from the function are approximated to mid-month. Both
   contracts use the same convention, so the gap driving the carry stays accurate.
-- **"Unlimited" is decided at the top of the statistics grid**, four times the price or
-  2.5 times the highest strike, not at infinity. An American call held past the horizon
-  under Black-Scholes with a small yield is exercised only far beyond it: in a 45/90-day
-  call calendar on a 4,000 contract, at 22% vol, a 4.5% rate and a 0.3% yield, the far
-  call is exercised at 63,372. So the calendar reads Unlimited at the rate it bleeds
-  within the grid, $0.04 a point, although its loss stops at −$6,144.72 there. Under
-  Black-76 the same call is exercised at 4,803 and the loss reads bounded.
+- **The maxima are read off a grid**, 1,200 points up to four times the price. Where a leg
+  still alive at the horizon curves the P&L between two of them, as in a ratio calendar,
+  the true extreme can sit between: in 1,000 random American diagonals and ratio
+  calendars, by $12.84 at most, on a −$24,768 loss.
 - **The premium's interest runs from today**, continuously compounded: there is no trade
   date, so a position opened earlier carries only what is still to come. Under
   Black-Scholes an underlying leg stands for the physical, and the cost of funding it is

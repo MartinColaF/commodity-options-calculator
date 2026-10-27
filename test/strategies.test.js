@@ -111,6 +111,131 @@ test('an unlimited maximum comes with how fast it grows: a calendar bleeds where
   near(analyse().upSlope, 50, 1e-6, 'corn, per cent: its $50 multiplier');
 });
 
+test('an American calendar is unlimited only where its far call is never exercised', () => {
+  // Whether a maximum was unlimited used to be read off the slope at the top
+  // of the statistics grid, 16,000 on a 4,000 contract. A far American call
+  // held over the horizon can be exercised well past that, or never, so the
+  // slope there was not the slope at infinity, and each case below read wrong.
+  const calendar = (over, K, nearDays, farDays) => {
+    resetState(app, Object.assign({ style: 'american' }, over));
+    state.legs = [newLeg({ kind: 'call', side: -1, strike: K, days: nearDays }), newLeg({ kind: 'call', strike: K, days: farDays })];
+    return analyse();
+  };
+  const owed = nearDays => -netCost() * Math.exp(state.rate / 100 * nearDays / 365);
+
+  // Exercised far past the grid - a small yield under Black-Scholes, a high
+  // volatility and a long far leg under Black-76. The far call is never worth
+  // less than exercising it, so the calendar cannot lose more than its debit
+  // with the interest on it. Both read as an unlimited loss.
+  let a = calendar({ model: 'bs', vol: 22, rate: 4.5, yield: 0.3 }, 4000, 45, 90);
+  near(a.maxLoss, owed(45), 1e-6, 'Black-Scholes at a 0.3% yield: the debit with its interest');
+  assert.strictEqual(a.upSlope, 0);
+  a = calendar({ model: 'b76', vol: 75, rate: 1 }, 4500, 160, 510);
+  near(a.maxLoss, owed(160), 1e-6, 'Black-76 at 75%, a 350-day far leg');
+
+  // Never exercised, its forward rising faster than the near leg pays: at a
+  // negative rate under Black-76, or with carry between a negative rate and
+  // zero under Black-Scholes. The first read as an unlimited loss, the second
+  // as bounded.
+  a = calendar({ model: 'b76', vol: 80, rate: -0.5 }, 4000, 120, 540);
+  assert.strictEqual(a.maxProfit, Infinity);
+  near(a.upSlope, 100 * (Math.exp(0.005 * 420 / 365) - 1), 1e-9, 'its forward, per point');
+  near(a.maxLoss, owed(120), 1e-6, 'and its loss is still the debit');
+  a = calendar({ model: 'bs', vol: 25, rate: -0.5, yield: -0.1 }, 3400, 50, 140);
+  assert.strictEqual(a.maxProfit, Infinity);
+  near(a.upSlope, 100 * (Math.exp(0.001 * 90 / 365) - 1), 1e-9, 'its forward, per point');
+});
+
+test('a diagonal can do its worst far past the grid, and a calendar on two months grows by their gap', () => {
+  // A short near call under a long far one at a higher strike, opened for a
+  // credit. Under Black-Scholes with a small yield the far call is exercised
+  // only from 31,383, past the grid's 16,000, and from there the position has
+  // lost the gap between the strikes, less its credit with interest. Searched
+  // up to 16,000 only, the loss read $9,177.49 instead of $15,234.29.
+  resetState(app, { style: 'american', model: 'bs', vol: 12, rate: 4, yield: 0.5 });
+  state.legs = [newLeg({ kind: 'call', side: -1, strike: 3400, days: 90 }), newLeg({ kind: 'call', strike: 3600, days: 450 })];
+  let a = analyse();
+  assert.ok(netCost() < 0, 'a credit');
+  near(a.maxLoss, (3400 - 3600) * 100 - netCost() * Math.exp(0.04 * 90 / 365), 1e-6,
+    'the strike gap, less the credit and its 90 days of interest');
+
+  // A calendar whose far month trades 3% over the near one: once its call is
+  // exercised, that month gains 1.03 points for each the near leg loses.
+  resetState(app, { style: 'american', model: 'bs', vol: 22, rate: 4.5, yield: 0.3 });
+  state.legs = [newLeg({ kind: 'call', side: -1, strike: 4000, days: 45 }), newLeg({ kind: 'call', strike: 4000, days: 90, under: 4120 })];
+  a = analyse();
+  assert.strictEqual(a.maxProfit, Infinity);
+  near(a.upSlope, (1.03 - 1) * 100, 1e-9, '$3 a point');
+});
+
+test('with no volatility the verdict still follows the pricer', () => {
+  // americanPrice() takes a call with no volatility at its intrinsic value, so
+  // past the strikes an American calendar on one is flat, where a European one
+  // rides its forward up: carry above the rate here.
+  for (const style of ['american', 'european']) {
+    resetState(app, { style, model: 'bs', vol: 0, rate: 4, yield: -1 });
+    applyStrategy('calendar');
+    const a = analyse(), pnl = app.pnlEvaluator();
+    const slope = (pnl(8e7, a.t) - pnl(4e7, a.t)) / 4e7;
+    near(a.upSlope, slope, 1e-6, style + ': the P&L\'s own slope');
+    assert.strictEqual(Number.isFinite(a.maxProfit), Math.abs(slope) < 1e-7, style + ': bounded only if flat');
+  }
+});
+
+test('legs on months that move in exact proportion add up flat, rounding aside', () => {
+  // Calls on months at a tenth, a fifth and three tenths of the panel's price:
+  // the two long ones gain what the short one loses, although 0.1 + 0.2 is not
+  // 0.3 in floating point. One unit a contract, so no multiplier rounds the
+  // difference away first.
+  resetState(app, { style: 'european', commodity: 'custom', size: 1, quote: 'USD', S: 4000 });
+  state.legs = [
+    newLeg({ kind: 'call', strike: 300, under: 400 }),
+    newLeg({ kind: 'call', strike: 600, under: 800 }),
+    newLeg({ kind: 'call', side: -1, strike: 900, under: 1200 })
+  ];
+  const a = analyse();
+  assert.ok(Number.isFinite(a.maxProfit) && Number.isFinite(a.maxLoss), 'bounded');
+  assert.strictEqual(a.upSlope, 0);
+});
+
+test('across random American calendars, the verdict, its rate and the maxima are the P&L\'s own', () => {
+  // The truth is the P&L itself: read at two prices far past where the far
+  // call is exercised, where it is a straight line, and scanned densely from
+  // near zero out to there. On main, 196 of 2,000 such calendars read
+  // Unlimited though bounded, 30 with the sign reversed and one bounded
+  // though not.
+  let seed = 7;
+  const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  for (let i = 0; i < 80; i++) {
+    const model = rand() < 0.5 ? 'b76' : 'bs';
+    const over = { style: 'american', model, vol: 10 + rand() * 70, rate: -1 + rand() * 9, yield: model === 'bs' ? -2 + rand() * 7 : 0.3 };
+    const nearDays = Math.round(7 + rand() * 173), farDays = Math.round(nearDays * (1.5 + rand() * 2.5));
+    const K = Math.round(4000 * (0.8 + rand() * 0.4));
+    resetState(app, over);
+    state.legs = [newLeg({ kind: 'call', side: -1, strike: K, days: nearDays }), newLeg({ kind: 'call', strike: K, days: farDays })];
+    const a = analyse(), pnl = app.pnlEvaluator(), t = a.t;
+    const r = state.rate / 100, b = app.carry(), tau = (farDays - t) / 365;
+    const boundary = b >= r && b >= 0 ? 0 : app.americanCritical('call', K, tau, r, b, state.vol / 100);
+    const far = Math.max(4 * boundary, 4e7);
+    const slope = (pnl(2 * far, t) - pnl(far, t)) / far;
+    const label = JSON.stringify(Object.assign({ K, nearDays, farDays }, over));
+    if (Math.abs(slope) > 1e-7) {
+      assert.strictEqual(slope > 0 ? a.maxProfit : a.maxLoss, slope > 0 ? Infinity : -Infinity, label);
+      near(a.upSlope, slope, 1e-6 * Math.abs(slope), label + ': the rate');
+    } else {
+      assert.ok(Number.isFinite(a.maxProfit) && Number.isFinite(a.maxLoss), label + ': bounded');
+    }
+    let lo = Infinity, hi = -Infinity;
+    for (let k = 0; k <= 2000; k++) {
+      const y = pnl(4 * Math.pow(far / 2, k / 2000), t);
+      if (y < lo) lo = y;
+      if (y > hi) hi = y;
+    }
+    if (Number.isFinite(a.maxLoss)) assert.ok(a.maxLoss <= lo + 0.01, `${label}: no loss past ${a.maxLoss}, scanned ${lo}`);
+    if (Number.isFinite(a.maxProfit)) assert.ok(a.maxProfit >= hi - 0.01, `${label}: no profit past ${a.maxProfit}, scanned ${hi}`);
+  }
+});
+
 test('the summary gives that rate under an unlimited maximum, and nothing under a bounded one', () => {
   const { app: page, el } = wired();
   const summary = () => { page.renderResults(); return el('summary').innerHTML; };

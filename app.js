@@ -926,6 +926,72 @@ function statsGrid() {
   return gridBetween(state.S * 1e-6, hi, 1200);
 }
 
+/* How many points one unit of a leg moves per point of its own contract once
+ * that price has risen without bound, tDays from today: the slope of the
+ * straight line its value tends to, read off the pricers' own limits. A put is
+ * worth nothing up there. A European call is worth its forward's intrinsic,
+ * discounted - gbs()'s line. An American call is worth the larger of that and
+ * exercising, which is what americanPrice() returns past its exercise
+ * boundary, or exercising alone with no time or volatility left. */
+function legFarDelta(leg, tDays) {
+  if (leg.kind === 'underlying') return 1;
+  if (leg.kind === 'put') return 0;
+  const p = legPricingInputs(leg, { tDays: tDays });
+  const forward = Math.exp((p.b - p.r) * p.T);
+  if (p.style !== 'american') return forward;
+  return p.T > 0 && p.sigma > 0 ? Math.max(forward, 1) : 1;
+}
+
+/* The slope the position's P&L at tDays tends to as the reference contract
+ * rises without bound, in dollars per point, or 0 when it is zero but for
+ * rounding. It says whether a maximum is unlimited, and how fast it grows. Read
+ * at the top of the statistics grid instead, it was only where the curve
+ * happened to be heading there: of 2,000 random American calendars, 196 read
+ * Unlimited though bounded, 30 read it with the sign reversed and one read
+ * bounded though it was not. */
+function farSlope(tDays) {
+  const mult = dollarMultiplier(currentCommodity());
+  let slope = 0, gross = 0;
+  for (const leg of activeLegs()) {
+    const s = leg.side * leg.qty * mult * legRatio(leg) * legFarDelta(leg, tDays);
+    slope += s;
+    gross += Math.abs(s);
+  }
+  return Math.abs(slope) > 1e-12 * gross ? slope : 0;
+}
+
+/* Prices past `top`, the end of statsGrid(), out to where every leg has
+ * settled on its far line, for the statistics to search as well. There are
+ * none unless an option outlives the horizon: past the highest strike an
+ * expired one is a straight line already. One still alive has settled once its
+ * delta stops moving, ten standard deviations of its remaining time into the
+ * money, and an American call also once it is past where it is exercised and
+ * past where its forward's line and exercising cross. Under Black-Scholes with
+ * a small yield that can be many times the price: 63,372 on a 4,000 contract at
+ * a 0.3% yield, where the grid stops at 16,000. */
+function tailGrid(tDays, top) {
+  let far = 0;
+  for (const leg of activeLegs()) {
+    if (leg.kind === 'underlying' || !(leg.days > tDays)) continue;
+    const p = legPricingInputs(leg, { tDays: tDays });
+    let settled = p.K * Math.exp(10 * p.sigma * Math.sqrt(p.T) + Math.abs(p.b) * p.T + 1);
+    if (p.style === 'american' && p.kind === 'call' && p.sigma > 0) {
+      if (!(p.b >= p.r && p.b >= 0)) {
+        settled = Math.max(settled, 2 * americanCritical('call', p.K, p.T, p.r, p.b, p.sigma));
+      }
+      const fs = Math.exp((p.b - p.r) * p.T);
+      const cross = fs !== 1 ? (p.K * Math.exp(-p.r * p.T) - p.K) / (fs - 1) : 0;
+      if (cross > 0) settled = Math.max(settled, 2 * cross);
+    }
+    far = Math.max(far, settled / legRatio(leg));
+  }
+  far = Math.min(far, top * 1e9);
+  if (!(far > top)) return [];
+  const out = [], step = Math.pow(far / top, 1 / 240);
+  for (let i = 1, x = top; i <= 240; i++) out.push(x *= step);
+  return out;
+}
+
 /* Scenario table: position P&L across price, volatility and elapsed time.
  *
  * This is the grid a trader reads before putting a position on, so the three
@@ -984,6 +1050,10 @@ function analyse() {
   const ys = xs.map(p => pnl(p, t));
 
   const wx = statsGrid();
+  // Past its top, a leg that outlives the horizon may still be bending, so the
+  // search goes on to where every leg has settled.
+  const tail = tailGrid(t, wx[wx.length - 1]);
+  for (const x of tail) wx.push(x);
   const wy = wx.map(p => pnl(p, t));
   const n = wy.length;
 
@@ -1001,15 +1071,15 @@ function analyse() {
   }
 
   // Only the upside is open ended: the underlying cannot fall below zero, so
-  // whatever the payoff is at a price of ~0 is a real, attainable bound.
-  const slopeHi = wy[n - 1] - wy[n - 2];
-  const unlimitedProfit = slopeHi > 1e-9;
-  const unlimitedLoss = slopeHi < -1e-9;
-  // How fast it goes there, in dollars per point of the reference contract.
-  // "Unlimited" alone said the same of a naked call, losing $100 a point, and a
-  // European call calendar, whose far leg is worth its discounted intrinsic up
-  // there and so bleeds $0.33 a point.
-  const upSlope = slopeHi / (wx[n - 1] - wx[n - 2]);
+  // whatever the payoff is at a price of ~0 is a real, attainable bound. Above,
+  // the slope the P&L tends to decides, in dollars per point of the reference
+  // contract - which also says how fast an unlimited maximum grows. "Unlimited"
+  // alone said the same of a naked call, losing $100 a point, and a European
+  // call calendar, whose far leg is worth its discounted intrinsic up there and
+  // so bleeds $0.33 a point.
+  const upSlope = farSlope(t);
+  const unlimitedProfit = upSlope > 0;
+  const unlimitedLoss = upSlope < 0;
 
   // Risk-neutral probability of profit at the horizon: the reference contract
   // lognormal at the position's own volatility, integrated between the points
