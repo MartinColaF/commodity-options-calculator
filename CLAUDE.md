@@ -117,6 +117,16 @@ cents; **copper quotes in USD per pound**, which is a trap because CME describes
 cents. Yahoo reports `USX` for cents-quoted contracts and the client trusts that over
 the local table.
 
+**A price shows as many decimals as its market's tick.** `priceDp()` takes them from the
+`tick` in `commodities.js` — the smallest step an option premium moves in, 1/8 of a cent
+for the grains — two more when a cent-quoted market is switched to dollars, two fewer the
+other way, and never fewer than two; a custom contract shows five significant figures of
+its price. Every price on the page goes through `fmtPrice()`: the legs table, the
+breakevens, the scenario grid, the chart's labels and every source line. They all used to
+show two decimals, so a 30-day copper call worth 0.04204 read 0.04, $50.98 a contract
+short, and a 4.70 strike was marked "K 5". A new market needs its tick, and a new place
+that shows a price uses `fmtPrice()`; `test/prices.test.js` pins both.
+
 **Strategy statistics use an economic price grid, not the chart window.** `analyse()`
 scans from a price near zero to well past the highest strike. That is why a long put
 reports a bounded maximum profit and a short put a bounded loss: the underlying cannot

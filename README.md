@@ -13,6 +13,9 @@ open `index.html` or serve the folder.
   `b = 0` the early-exercise premium is real on calls and puts alike.
 - **Greeks** — delta, gamma, vega, theta, rho, both per unit and in dollars for the
   position (contract size and cents-vs-dollars quoting are handled).
+- **Prices to the tick** — every price shows as many decimals as the market's option
+  tick: four for copper, three for gas, silver, cattle and the grains (an eighth of a
+  cent), two elsewhere. Nothing on screen is rounded past a step the market trades in.
 - **Multi-leg strategies** — any mix of calls, puts and the underlying. 16 presets
   (spreads, straddles, butterflies, iron condor, collar, calendar, ratio).
   Per-leg volatility (skew), per-leg expiry (calendars) and **per-leg underlying
@@ -109,8 +112,9 @@ Notes and limitations, stated plainly in the UI as well:
 
 - `index.html` — markup
 - `styles.css` — styling, light and dark
-- `commodities.js` — the table of markets: contract specs, presets and futures
-  symbols. The page and the function both read it, so adding a market is one entry.
+- `commodities.js` — the table of markets: contract specs and ticks, presets and
+  futures symbols. The page and the function both read it, so adding a market is one
+  entry.
 - `app.js` — pricing engine, strategy analytics, data providers, rendering
 - `api/market.js` — serverless futures data proxy (Vercel)
 - `privacy.html` — privacy policy
@@ -178,8 +182,13 @@ some browsers restrict cross-origin requests from `file://`.
   presets, and every source line staying true: a price, rate, volatility or yield typed
   by hand is the user's own, and the month picker follows the price.
 - `test/commodities.test.js` — the page and the function reading one table: the
-  markets the page sends to the function are exactly those with futures data, and
-  every contract entry is in a form the function can build symbols from.
+  markets the page sends to the function are exactly those with futures data, every
+  contract entry is in a form the function can build symbols from, and every market but
+  custom gives its tick.
+- `test/prices.test.js` — every price shown to its market's tick: the decimals per
+  market and per quoting unit, the review's copper, gas, silver and gold premiums within
+  half a tick, and the same decimals in the breakevens, the strike marks, the scenario
+  grid, the month picker and every source line.
 - `test/page.test.js` — the page's one third-party script: pinned by its hash, an
   exact version of a file the package publishes, and a Content-Security-Policy that
   allows that file and nothing broader.
