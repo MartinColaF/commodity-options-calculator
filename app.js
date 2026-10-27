@@ -611,6 +611,23 @@ function legGreeks(leg) {
   return greeksFromInputs(legPricingInputs(leg));
 }
 
+/* Greeks of one unit of a leg against the reference contract - the one price
+ * axis the chart, the scenario grid and the statistics sweep - at the
+ * scenario in `opts`, as legPricingInputs() takes it. The leg's own month
+ * moves `ratio` points for each point of the reference (legScenario()), so
+ * its delta counts ratio times and its gamma ratio squared; vega, theta and
+ * rho do not depend on the price. Anything that adds deltas or gammas across
+ * legs adds these. Adding legGreeks() assumed every month moves the same
+ * dollars: a call calendar whose far month sat 2.5% above the near one showed
+ * $0.49 of delta beside a chart sloping $1.78 per $1. */
+function legAxisGreeks(leg, opts) {
+  const g = leg.kind === 'underlying'
+    ? { delta: 1, gamma: 0, vega: 0, theta: 0, rho: 0 }
+    : greeksFromInputs(legPricingInputs(leg, opts));
+  const ratio = legRatio(leg);
+  return { delta: g.delta * ratio, gamma: g.gamma * ratio * ratio, vega: g.vega, theta: g.theta, rho: g.rho };
+}
+
 /* The volatility, as a decimal, at which this leg is worth `premium` - or NaN
  * when none is. Solved against the leg's own inputs, so a volatility found
  * here reprices the leg to the premium it came from. */
@@ -675,11 +692,14 @@ function netCost() {
   return c;
 }
 
+/* The position's greeks today, delta and gamma per point of the reference
+ * contract - the slope and the curvature of the chart's mark-to-market curve
+ * at today's price. */
 function netGreeks() {
   const mult = dollarMultiplier(currentCommodity());
   const acc = { delta: 0, gamma: 0, vega: 0, theta: 0, rho: 0 };
   for (const leg of activeLegs()) {
-    const g = legGreeks(leg);
+    const g = legAxisGreeks(leg);
     const w = leg.side * leg.qty;
     acc.delta += w * g.delta;
     acc.gamma += w * g.gamma;
@@ -1351,6 +1371,9 @@ function renderResults() {
     <div class="kpi"><span>Horizon</span><strong>${escapeHtml(a.t)} days</strong></div>`;
 
   const mult = dollarMultiplier(c);
+  // Once a leg prices off its own month, "a point" needs saying: a point of
+  // the panel's contract, every month moving in proportion, as on the chart.
+  const ownMonth = activeLegs().some(l => legRatio(l) !== 1);
   $('greeks').innerHTML = `
     <table class="greeks">
       <tr><th></th><th>Per unit</th><th>Position ($)</th><th>Meaning</th></tr>
@@ -1360,7 +1383,11 @@ function renderResults() {
       <tr><td>Theta</td><td class="num">${fmt(g.unit.theta, 4)}</td><td class="num">${money(g.money.theta)}</td><td class="muted">$ per calendar day</td></tr>
       <tr><td>Rho</td><td class="num">${fmt(g.unit.rho, 4)}</td><td class="num">${money(g.money.rho)}</td><td class="muted">$ per +1 rate point</td></tr>
     </table>
-    <p class="muted small">Position column = per-unit greek x quantity x $${fmt(mult, 2)} multiplier.</p>`;
+    <p class="muted small">Position column = per-unit greek x quantity x $${fmt(mult, 2)} multiplier.${ownMonth
+      ? ' Delta and gamma are per point of the contract in the left panel, with each leg\'s own month ' +
+        'moving in proportion, as on the chart; the Delta column in the legs table is against each ' +
+        'leg\'s own month.'
+      : ''}</p>`;
 
   $('tDays').max = Math.max(a.t, 1);
   $('tDays').value = state.chart.tDays;
@@ -1457,10 +1484,7 @@ function chartConfig(a) {
     const data = a.xs.map(x => {
       let v = 0;
       for (const leg of activeLegs()) {
-        const w = leg.side * leg.qty;
-        if (leg.kind === 'underlying') { if (which === 'delta') v += w; continue; }
-        const g = greeksFromInputs(legPricingInputs(leg, { P: x, tDays: tOff }));
-        v += w * g[which];
+        v += leg.side * leg.qty * legAxisGreeks(leg, { P: x, tDays: tOff })[which];
       }
       return { x, y: v * mult };
     });

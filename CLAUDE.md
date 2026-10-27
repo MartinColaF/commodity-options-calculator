@@ -141,7 +141,14 @@ moves each month in proportion and `strikeOnAxis()` converts a strike into a poi
 that shared axis. Anything that reasons about strikes against the price axis — grid
 kinks, the stats range, the chart's strike marks — must use `strikeOnAxis()`, not
 `leg.strike`. Getting this wrong puts the payoff kink in the wrong place and lets
-`statsGrid()` miss a bound.
+`statsGrid()` miss a bound. **Greeks follow the same axis.** A leg's month moves
+`legRatio()` points per point of the reference, so anything that adds deltas or gammas
+across legs — the greeks table, the chart's greek profiles — adds `legAxisGreeks()`,
+which scales delta by the ratio and gamma by its square. `legGreeks()` stays on the leg's
+own month: that is the legs table's Delta column, and what a desk hedges that leg with.
+Added unscaled, a call calendar with its months 2.5% apart showed $0.49 of delta beside a
+chart sloping $1.78 per $1. `test/leg-pricing.test.js` pins every net greek and every
+profile to the matching derivative of the chart's P&L.
 
 **Hoist per-leg work out of grid sweeps.** `legEntry()` prices an option, and under
 American exercise that is eleven valuations. Calling it inside a 1200-point sweep once
