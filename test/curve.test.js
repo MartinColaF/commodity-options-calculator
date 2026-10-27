@@ -216,9 +216,13 @@ test('the strip interpolates log-linearly between two real quotes', () => {
 
 test('a date lands on the contract that quotes it', () => {
   setStrip([['DEC', 5000, 45], ['MAR', 4900, 136], ['JUL', 4800, 258]]);
-  near(app.forwardFromStrip(45), 5000, 1, 'December');
-  near(app.forwardFromStrip(136), 4900, 1, 'March');
-  near(app.forwardFromStrip(258), 4800, 1, 'July');
+  // Each contract's own date, measured as the code measures it. Asking at a
+  // whole 45.0 days instead drifted towards the next contract as the UTC day
+  // went on - the date truncates to midnight - and failed every evening from
+  // about 21:30 UTC, when the drift passed the old tolerance of 1.
+  near(app.forwardFromStrip(app.daysUntil(iso(45))), 5000, STRIP_TOL, 'December');
+  near(app.forwardFromStrip(app.daysUntil(iso(136))), 4900, STRIP_TOL, 'March');
+  near(app.forwardFromStrip(app.daysUntil(iso(258))), 4800, STRIP_TOL, 'July');
 });
 
 test('outside the strip it extends the nearest real segment', () => {
