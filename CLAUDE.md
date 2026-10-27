@@ -88,9 +88,19 @@ coefficient do not depend on the underlying, so `americanBoundary()` caches them
 `test/american.test.js` carries an independent CRR binomial tree and pins the two
 together — reach for that tree when a price looks wrong. Accuracy is worst for
 long-dated high-volatility contracts; the measured envelope is in that file.
+**BAW is not asked where early exercise is worth nothing**, because it adds a premium
+anyway: a call with carry at least both the rate and zero, and a put with rate and carry
+both at most zero, return the European price — one rule, mapped across by put-call
+symmetry. The zeros only matter at negative rates, where the put's half was missing and
+the call's stopped at `b >= r`. Below zero BAW can also put its boundary on the wrong
+side of the price, so past the boundary the price is floored at the European one as well
+as the intrinsic; it once returned 0 for a put the European formula values at 15.18.
 
 `carryTracksRate()` exists because `b = 0` is both "Black-76" and a legitimate carry
-value, and the rho bump has to tell them apart.
+value, and rho has to tell them apart. Both rhos take it as `bTracksRate`: the American
+bump and `gbs()`'s closed form, which `priceOption()` hands it to. `gbs()` used to guess
+from `b`, and a BSM call whose yield equalled its rate got Black-76's rho, −0.0414
+instead of +0.2244. Left out, the flag means the carry is fixed.
 
 `legPricingInputs()` is the single place that assembles what a pricer needs for one
 leg — its own underlying, strike, time, rate, carry, volatility and exercise style.
@@ -408,7 +418,9 @@ something is missing from the repo.
   Measured against a 3000-step CRR tree over 300 contracts, the error is a median
   0.008% of the underlying and 0.58% at its worst, on two-year 60%-vol contracts.
   Switching to European prices early exercise at zero, which is wrong by up to 2.6%
-  over the same set.
+  over the same set. At negative rates, where early exercise is still worth something
+  (a put with positive carry, a call with carry below zero), BAW is off the tree by up
+  to 0.39% of the underlying on two-year contracts.
 - **The curve moves in parallel.** Each leg can hold its own price, but the payoff
   chart shifts every month in proportion, so each month's basis to the reference stays
   fixed as the price moves. Real curves also change shape; that is not modelled.

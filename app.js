@@ -56,8 +56,12 @@ function normCdf(x) {
  *   vega  per 1 vol point (1%)
  *   theta per calendar day
  *   rho   per 1 rate point (1%)
+ * bTracksRate says whether b moves with r, as b = r - q does, which only rho
+ * depends on - the same flag americanGreeks() takes. It used to be guessed
+ * from b, and b = 0 is also what BSM gives when the yield equals the rate:
+ * such a call got Black-76's rho, -0.0414 instead of +0.2244.
  */
-function gbs(kind, S, K, T, r, b, sigma) {
+function gbs(kind, S, K, T, r, b, sigma, bTracksRate) {
   const isCall = kind === 'call';
   if (!(T > 0) || !(sigma > 0) || !(S > 0) || !(K > 0)) {
     const fwd = S * Math.exp(b * Math.max(T, 0));
@@ -100,13 +104,11 @@ function gbs(kind, S, K, T, r, b, sigma) {
   }
   theta /= 365;
 
-  let rho;
-  if (Math.abs(b) < 1e-12) {
-    // Black-76: r only enters through discounting.
-    rho = -T * price / 100;
-  } else {
-    rho = (isCall ? K * T * er * nd2 : -K * T * er * normCdf(-d2)) / 100;
-  }
+  // With b fixed - Black-76, or any carry that does not follow the rate - r
+  // only discounts, and the rate bump moves nothing else.
+  const rho = bTracksRate === true
+    ? (isCall ? K * T * er * nd2 : -K * T * er * normCdf(-d2)) / 100
+    : -T * price / 100;
 
   return { price, delta, gamma, vega, theta, rho, d1, d2 };
 }
@@ -242,13 +244,22 @@ function americanPrice(kind, S, K, T, r, b, sigma) {
   if (!(T > 0) || !(sigma > 0) || !(S > 0) || !(K > 0)) return intrinsic;
 
   const euro = gbs(kind, S, K, T, r, b, sigma).price;
-  // A call is never exercised early when carry pays at least the rate, which
-  // covers Black-Scholes with a convenience yield below the risk-free rate.
-  if (isCall && b >= r) return Math.max(euro, intrinsic);
+  // Early exercise is worth nothing - and BAW, which would add a premium
+  // anyway, must not be asked - when the European price beats exercising at
+  // every price: for a call whose carry is at least both the rate and zero,
+  // and, by put-call symmetry, for a put whose rate and carry are both at most
+  // zero. Above zero the call's rule is the familiar b >= r. At negative rates
+  // the put's rule was missing, so a put on a 100 future at r = -1% carried a
+  // premium the binomial tree does not find, and the call's stopped at b >= r,
+  // pricing a two-year call at r = b = -2% at its European value, 0.82 short.
+  if (isCall ? b >= r && b >= 0 : r <= 0 && b <= 0) return Math.max(euro, intrinsic);
 
   const { Si, q, A } = americanBoundary(kind, K, T, r, b, sigma);
   if (!(Si > 0) || !isFinite(Si)) return Math.max(euro, intrinsic);
-  if (isCall ? S >= Si : S <= Si) return intrinsic;
+  // Past the boundary BAW says exercise, which is worth the intrinsic value -
+  // unless the boundary is wrong, as it can be at negative rates, where this
+  // returned 0 for a put the European formula values at 15.18.
+  if (isCall ? S >= Si : S <= Si) return Math.max(euro, intrinsic);
 
   const price = euro + A * Math.pow(S / Si, q);
   return isFinite(price) ? Math.max(price, euro, intrinsic) : Math.max(euro, intrinsic);
@@ -294,7 +305,7 @@ function americanGreeks(kind, S, K, T, r, b, sigma, bTracksRate) {
 function priceOption(kind, S, K, T, r, b, sigma, style, bTracksRate) {
   return style === 'american'
     ? americanGreeks(kind, S, K, T, r, b, sigma, bTracksRate)
-    : gbs(kind, S, K, T, r, b, sigma);
+    : gbs(kind, S, K, T, r, b, sigma, bTracksRate);
 }
 
 /* Implied volatility: Newton with vega, bisection fallback. Inverts whichever

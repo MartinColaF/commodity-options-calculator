@@ -249,3 +249,77 @@ test('a shared scenario without an exercise style restores as European', () => {
   assert.ok(app.restore({ S: 100, style: 'american' }));
   assert.strictEqual(app.state.style, 'american');
 });
+
+/* ---- negative rates ----
+ * Early exercise is worth nothing when the European price beats exercising at
+ * every price: a call whose carry is at least the rate and at least zero, a
+ * put whose rate and carry are both at most zero. Put-call symmetry maps one
+ * rule onto the other. Below zero, BAW is only right where those rules leave
+ * it some early-exercise value, and even its boundary can land on the wrong
+ * side of the price: a put on a 100 future at r = -1% and 40% vol came out at
+ * its intrinsic 20.00, below its European 22.20. */
+
+const intrinsicOf = (kind, S, K) => Math.max(kind === 'call' ? S - K : K - S, 0);
+const treePremium = (...c) => crr(...c, 400, true) - crr(...c, 400, false);
+
+test('a put with its rate and carry at or below zero is worth the European price, as the tree says', () => {
+  for (const r of [-0.01, -0.005, 0]) {
+    for (const b of [0, r, -0.02]) {
+      for (const [K, T, sigma] of [[120, 0.25, 0.2], [120, 0.25, 0.4], [100, 1, 0.3], [80, 2, 0.4]]) {
+        const c = ['put', 100, K, T, r, b, sigma];
+        const label = `put K=${K} T=${T} r=${r} b=${b} vol=${sigma}`;
+        assert.strictEqual(americanPrice(...c), Math.max(gbs(...c).price, intrinsicOf('put', 100, K)), label);
+        assert.ok(treePremium(...c) < 1e-9, `${label}: the tree finds early-exercise value`);
+      }
+    }
+  }
+  // REVISION_2_LOGICA.md, L5, and the worst case measured with it.
+  assert.ok(Math.abs(americanPrice('put', 100, 120, 0.25, -0.01, 0, 0.2) - 20.1978) < 1e-4, 'was 20.2217');
+  assert.ok(Math.abs(americanPrice('put', 100, 120, 0.25, -0.01, 0, 0.4) - 22.2027) < 1e-4, 'was 20.0000');
+});
+
+test('at negative rates a put with positive carry keeps its early-exercise value', () => {
+  // The carry lifts the underlying while the put waits, so exercising can pay
+  // even though the strike earns nothing: the tree puts 0.84 on this one.
+  const c = ['put', 100, 120, 1, -0.01, 0.03, 0.2];
+  const euro = gbs(...c).price;
+  const tree = 2 * crr(...c, 800, true) - crr(...c, 400, true);
+  assert.ok(tree - euro > 0.8, `the tree's premium: ${tree - euro}`);
+  assert.ok(americanPrice(...c) > euro + 0.5, 'not collapsed onto the European price');
+  assert.ok(Math.abs(americanPrice(...c) - tree) < 0.2, 'BAW, within its envelope');
+});
+
+test('at negative rates a call is European only once its carry is at least zero', () => {
+  for (const [r, b] of [[-0.01, 0], [-0.01, 0.03], [0, 0], [-0.005, 0.01]]) {
+    const c = ['call', 120, 100, 1, r, b, 0.3];
+    assert.strictEqual(americanPrice(...c), Math.max(gbs(...c).price, 20), `r=${r} b=${b}`);
+    assert.ok(treePremium(...c) < 1e-9, `r=${r} b=${b}: the tree finds early-exercise value`);
+  }
+  // A carry between the rate and zero clears b >= r, which was the whole test,
+  // and the call was priced European: 0.82 short of the tree on this one.
+  const c = ['call', 100, 80, 2, -0.02, -0.02, 0.2];
+  const euro = gbs(...c).price;
+  const tree = 2 * crr(...c, 800, true) - crr(...c, 400, true);
+  assert.ok(tree - euro > 0.8, `the tree's premium: ${tree - euro}`);
+  assert.ok(Math.abs(americanPrice(...c) - tree) < 0.2, 'BAW, within its envelope');
+});
+
+test('at negative rates no American price falls below the European one or below exercising', () => {
+  // Past a misplaced boundary BAW returned the intrinsic value alone: a put
+  // the European formula values at 103.03 came out at 100.
+  for (const kind of ['call', 'put']) {
+    for (const r of [-0.02, -0.005]) {
+      for (const b of [-0.02, 0.01, 0.03]) {
+        for (const [S, K] of [[50, 150], [100, 100], [200, 60]]) {
+          for (const [T, sigma] of [[0.25, 0.4], [2, 0.2]]) {
+            const c = [kind, S, K, T, r, b, sigma];
+            const am = americanPrice(...c);
+            const label = `${kind} S=${S} K=${K} T=${T} r=${r} b=${b} vol=${sigma}`;
+            assert.ok(am >= gbs(...c).price - 1e-9, `${label}: ${am} below European ${gbs(...c).price}`);
+            assert.ok(am >= intrinsicOf(kind, S, K) - 1e-9, `${label}: ${am} below intrinsic`);
+          }
+        }
+      }
+    }
+  }
+});

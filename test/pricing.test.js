@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { loadApp } = require('./helpers/load-app.js');
+const { loadApp, resetState } = require('./helpers/load-app.js');
 
 const app = loadApp();
 const { gbs, normCdf, impliedVol, realisedVol, rateForTenor, impliedConvenienceYield } = app;
@@ -40,11 +40,12 @@ test('Black-76 reproduces a textbook value', () => {
 test('greeks agree with finite differences, both models and both types', () => {
   const central = (f, x, h) => (f(x + h) - f(x - h)) / (2 * h);
 
-  for (const b of [0, r - q]) {
+  // Black-76 pins the carry at 0; BSM moves it with the rate.
+  for (const [b, tracks] of [[0, false], [r - q, true]]) {
     for (const kind of ['call', 'put']) {
       const label = `${kind} b=${b.toFixed(3)}`;
       const price = x => gbs(kind, x, K, T, r, b, sigma).price;
-      const g = gbs(kind, S, K, T, r, b, sigma);
+      const g = gbs(kind, S, K, T, r, b, sigma, tracks);
 
       near(central(price, S, 0.01), g.delta, 1e-6, `delta ${label}`);
 
@@ -58,12 +59,35 @@ test('greeks agree with finite differences, both models and both types', () => {
       near(thetaFd, g.theta, 1e-5, `theta ${label}`);
 
       // Under BSM the rate also moves the carry term; under Black-76 it does not.
-      const rhoFd = b === 0
-        ? central(rr => gbs(kind, S, K, T, rr, 0, sigma).price, r, 1e-6) / 100
-        : central(rr => gbs(kind, S, K, T, rr, rr - q, sigma).price, r, 1e-6) / 100;
+      const rhoFd = tracks
+        ? central(rr => gbs(kind, S, K, T, rr, rr - q, sigma).price, r, 1e-6) / 100
+        : central(rr => gbs(kind, S, K, T, rr, 0, sigma).price, r, 1e-6) / 100;
       near(rhoFd, g.rho, 1e-5, `rho ${label}`);
     }
   }
+});
+
+test('BSM rho stays BSM\'s when the yield equals the rate and the carry is zero', () => {
+  // REVISION_2_LOGICA.md, L4: b = r - q is 0 here, which is also Black-76's
+  // b, and the rho used to be chosen by looking at b.
+  const central = (f, x, h) => (f(x + h) - f(x - h)) / (2 * h);
+  const t = 182.5 / 365;
+  for (const kind of ['call', 'put']) {
+    const bsm = central(rr => gbs(kind, 100, 100, t, rr, rr - 0.04, 0.3).price, 0.04, 1e-6) / 100;
+    near(gbs(kind, 100, 100, t, 0.04, 0, 0.3, true).rho, bsm, 1e-6, `${kind}, BSM`);
+    const b76 = central(rr => gbs(kind, 100, 100, t, rr, 0, 0.3).price, 0.04, 1e-6) / 100;
+    near(gbs(kind, 100, 100, t, 0.04, 0, 0.3, false).rho, b76, 1e-6, `${kind}, Black-76`);
+    near(gbs(kind, 100, 100, t, 0.04, 0, 0.3).rho, b76, 1e-6,
+      `${kind}, unstated: the carry is taken as fixed, as americanGreeks() takes it`);
+  }
+  near(gbs('call', 100, 100, t, 0.04, 0, 0.3, true).rho, 0.2244, 1e-4, 'the review\'s figure');
+
+  // And through the app, which states the model rather than leaving it to b.
+  resetState(app, { model: 'bs', style: 'european', S: 100, rate: 4, yield: 4, vol: 30, days: 182.5 });
+  const leg = app.newLeg({ kind: 'call', strike: 100, days: 182.5 });
+  near(app.legGreeks(leg).rho, 0.2244, 1e-4, 'a BSM call with the yield at the rate');
+  resetState(app, { model: 'b76', style: 'european', S: 100, rate: 4, vol: 30, days: 182.5 });
+  near(app.legGreeks(leg).rho, -0.0414, 1e-4, 'the same call under Black-76');
 });
 
 test('implied volatility round trips', () => {
