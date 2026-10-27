@@ -87,7 +87,10 @@ Notes and limitations, stated plainly in the UI as well:
 - The skew is read once per leg, at today's price and the leg's full tenor, and held
   as the scenario price moves — sticky strike, not sticky delta. Real surfaces shift
   with spot; that is not modelled. The risk reversal and butterfly are inputs you
-  supply, not market data: the tool cannot see a real option chain.
+  supply, not market data: the tool cannot see a real option chain. A risk reversal
+  or butterfly larger than the at-the-money level can take the curve below zero at a
+  strike, or let it fit one strike at more than one volatility; the note under the
+  skew names those strikes.
 - Presets are long-run typical values, flagged in the UI as "not market data".
 - Every model here is lognormal, so **a price must be above zero**. A price, strike or
   size at or below zero, or a negative volatility, is refused with the reason beside
@@ -159,8 +162,10 @@ some browsers restrict cross-origin requests from `file://`.
   either tail and between breakevens, measured at the volatility of the option nearest
   the money at the horizon, and the summary naming that volatility.
 - `test/skew.test.js` — the skew curve reproducing the 25-delta quotes it was built
-  from, the wings under a butterfly, the clamp on an extreme risk reversal, and the
-  scenario grid's shape, ordering and response to volatility and time.
+  from, the wings under a butterfly, the clamp on an extreme risk reversal, every
+  strike read where the curve and its delta agree, the note naming strikes a curve too
+  steep to read, and the scenario grid's shape, ordering and response to volatility
+  and time.
 - `test/curve.test.js` — per-leg underlying prices: a flat curve reproducing the
   shared-price behaviour exactly, the payoff kink landing on the shared axis,
   contango raising a calendar spread, and the zero-price guards.

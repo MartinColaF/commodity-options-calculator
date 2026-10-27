@@ -121,6 +121,16 @@ explicit per-leg number, else the skew curve, else the global figure.
 `legPricingInputs()` calls it, so nothing else needs to — the greek-profile chart once
 bypassed it and silently ignored the skew.
 
+**The skew is read by bisection on delta, and cached.** `skewVol()` finds the delta whose
+volatility on the curve gives that same delta back. That difference starts at or above
+zero and ends at or below it, so bisection always finds such a point; the fixed-point
+iteration it replaced could stop over a tenth of a point off on steep wings — 180 of
+40,000 surfaces — and say nothing. Sixty steps cost several times the old solve, and the
+chart's leg curves read each leg's skew at every grid point, so `skewVol()` caches by its
+inputs (`skewCache`): skew-on redraws got faster, not slower. A curve steeper than its
+at-the-money level can go below zero at a strike or fit it at more than one volatility;
+`skewProblem()` says which, and `skewWarning()` names those strikes under the skew note.
+
 **No volatility is implied from a premium without time value.** Within `NO_TIME_VALUE` —
 a millionth of the underlying — of the option's value at zero volatility, every
 volatility up to some level gives the same premium, so `impliedVol()` returns NaN. It
@@ -438,7 +448,8 @@ something is missing from the repo.
   fixed by the at-the-money level, the 25-delta risk reversal and the 25-delta
   butterfly. The curve is read **once**, at today's price and the leg's full tenor,
   and held as the scenario moves: sticky strike, not sticky delta. Real surfaces also
-  move with spot; that is not modelled.
+  move with spot; that is not modelled. A wing steeper than the at-the-money level is
+  outside what the curve can read; the page says so rather than guessing.
 - Contract expiries from the function are approximated to mid-month. Both
   contracts use the same convention, so the gap driving the carry stays accurate.
 - **Prices must be above zero.** Black-76, Black-Scholes-Merton and BAW are all
