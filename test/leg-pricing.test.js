@@ -187,3 +187,41 @@ test('the greeks table says what a point is once a leg prices off its own month'
   page.renderResults();
   assert.match(el('greeks').innerHTML, explained);
 });
+
+test('the IV button writes nothing for a premium without time value, and says why', () => {
+  const { app: page, el, fire } = wired();
+  Object.assign(page.state, { S: 100, vol: 30, rate: 4, style: 'european' });
+  const press = leg => fire('legsBody', 'click', {
+    dataset: { f: 'iv' }, matches: () => true,
+    closest: sel => (sel === 'tr' ? { dataset: { id: String(leg.id) } } : {})
+  });
+
+  // REVISION_2_LOGICA.md, L9: 1.6 hours from expiry, 26.77 in the money.
+  const deep = page.newLeg({ kind: 'put', strike: 126.77, days: 1.6 / 24 });
+  page.state.legs = [deep];
+  deep.entry = page.legGreeks(deep).price;
+  press(deep);
+  assert.strictEqual(deep.vol, null, 'no volatility written into the leg - it used to get 30%');
+  assert.match(el('dataStatus').textContent, /^That premium has no time value/);
+
+  deep.entry = 20;
+  press(deep);
+  assert.strictEqual(deep.vol, null);
+  assert.match(el('dataStatus').textContent, /^No implied volatility solves that premium/,
+    'a premium below the value at zero volatility has no volatility at all');
+
+  // Not only deep in the money: any premium no higher than the value at zero
+  // volatility - the discounted forward intrinsic for a European - has none.
+  const itm = page.newLeg({ kind: 'call', strike: 95, days: 30 });
+  page.state.legs = [itm];
+  itm.entry = page.gbs('call', 100, 95, 30 / 365, 0.04, 0, 1e-8).price;
+  press(itm);
+  assert.strictEqual(itm.vol, null);
+  assert.match(el('dataStatus').textContent, /^That premium has no time value/);
+
+  const call = page.newLeg({ kind: 'call', strike: 105, days: 30 });
+  page.state.legs = [call];
+  call.entry = page.legGreeks(call).price;
+  press(call);
+  assert.strictEqual(call.vol, 30, 'a premium with time value still gives its volatility back');
+});
