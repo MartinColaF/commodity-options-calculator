@@ -569,7 +569,7 @@ function skewVol(S, K, T, b, atm, rr, bf) {
   if (!(atm > 0)) return atm;
   // A leg reads the curve at today's price and its full tenor, so every point
   // of a sweep asks the same question; sixty bisection steps for each of them
-  // made a chart with the skew on three times slower to draw.
+  // made working out a chart with the skew on two to four times slower.
   const key = S + '|' + K + '|' + T + '|' + b + '|' + atm + '|' + rr + '|' + bf;
   const hit = skewCache.get(key);
   if (hit !== undefined) return hit;

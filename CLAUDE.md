@@ -125,11 +125,12 @@ bypassed it and silently ignored the skew.
 volatility on the curve gives that same delta back. That difference starts at or above
 zero and ends at or below it, so bisection always finds such a point; the fixed-point
 iteration it replaced could stop over a tenth of a point off on steep wings — 180 of
-40,000 surfaces — and say nothing. Sixty steps cost several times the old solve, and the
-chart's leg curves read each leg's skew at every grid point, so `skewVol()` caches by its
-inputs (`skewCache`): skew-on redraws got faster, not slower. A curve steeper than its
-at-the-money level can go below zero at a strike or fit it at more than one volatility;
-`skewProblem()` says which, and `skewWarning()` names those strikes under the skew note.
+40,000 surfaces — and say nothing. Sixty steps cost about five times the old solve, and
+the chart's leg curves read each leg's skew at every grid point, so `skewVol()` caches by
+its inputs (`skewCache`): working out a skew-on chart got faster, not slower. A curve
+steeper than its at-the-money level can go below zero at a strike or fit it at more than
+one volatility; `skewProblem()` says which, and `skewWarning()` names those strikes under
+the skew note.
 
 **No volatility is implied from a premium without time value.** Within `NO_TIME_VALUE` —
 a millionth of the underlying — of the option's value at zero volatility, every
