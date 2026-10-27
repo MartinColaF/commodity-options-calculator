@@ -542,22 +542,74 @@ function forwardDelta(S, K, T, b, sigma) {
   return normCdf((Math.log(S / K) + (b + sigma * sigma / 2) * T) / vt);
 }
 
-/* Volatility for one strike off the skew curve. The delta that selects the
- * point depends on the volatility being solved for, so iterate: starting from
- * the at-the-money level this settles in a handful of passes. */
+/* The lowest volatility the curve hands the pricer. A risk reversal wider
+ * than the at-the-money level takes a wing below zero, and the pricer cannot
+ * take that. */
+const SKEW_FLOOR = 1e-4;
+
+const skewCache = new Map();
+const SKEW_CACHE_MAX = 256;
+
+/* The curve at forward delta d, floored. */
+function skewCurve(d, atm, rr, bf) {
+  const x = d - 0.5;
+  return Math.max(atm - 2 * rr * x + 16 * bf * x * x, SKEW_FLOOR);
+}
+
+/* Volatility for one strike off the skew curve. The delta that picks the point
+ * depends on the volatility being read, so the point is where the two agree:
+ * the delta d whose volatility on the curve, put back into forwardDelta(),
+ * gives d again. That difference starts at or above zero at d = 0 and ends at
+ * or below it at d = 1, so bisection on d always finds such a point. A
+ * fixed-point iteration from the at-the-money level used to look for it, and on
+ * a wing steeper than half the at-the-money level it could spend its 40 steps
+ * oscillating and return wherever it stopped - over a tenth of a point off in
+ * 180 of 40,000 surfaces, with nothing said. */
 function skewVol(S, K, T, b, atm, rr, bf) {
   if (!(atm > 0)) return atm;
-  let sigma = atm;
-  for (let i = 0; i < 40; i++) {
-    const d = forwardDelta(S, K, T, b, sigma) - 0.5;
-    let next = atm - 2 * rr * d + 16 * bf * d * d;
-    // A wide risk reversal can push the far wing negative; clamp rather than
-    // hand a non-positive volatility to the pricer.
-    if (!(next > 1e-4)) next = 1e-4;
-    if (Math.abs(next - sigma) < 1e-10) return next;
-    sigma = next;
+  // A leg reads the curve at today's price and its full tenor, so every point
+  // of a sweep asks the same question; sixty bisection steps for each of them
+  // made working out a chart with the skew on two to four times slower.
+  const key = S + '|' + K + '|' + T + '|' + b + '|' + atm + '|' + rr + '|' + bf;
+  const hit = skewCache.get(key);
+  if (hit !== undefined) return hit;
+
+  const gap = d => forwardDelta(S, K, T, b, skewCurve(d, atm, rr, bf)) - d;
+  let sigma;
+  if (gap(1) >= 0) {
+    // The delta rounds to 1 at d = 1 itself - deep in the money, or with the
+    // wing on the floor there - so that end fits, and it is the one taken.
+    sigma = skewCurve(1, atm, rr, bf);
+  } else {
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      if (gap(mid) >= 0) lo = mid; else hi = mid;
+    }
+    sigma = skewCurve((lo + hi) / 2, atm, rr, bf);
   }
+  if (skewCache.size >= SKEW_CACHE_MAX) skewCache.clear();
+  skewCache.set(key, sigma);
   return sigma;
+}
+
+/* Why the curve gives a strike no one volatility, or '' when it does: 'floor'
+ * when the point it lands on is below zero, so the strike prices at
+ * SKEW_FLOOR, and otherwise 'several' when more than one delta agrees with its
+ * own volatility, so the strike could be read at either. Both take a wing
+ * steeper than the at-the-money level, which no real surface has: of 40,000
+ * surfaces drawn at random, 127 and 3 respectively, all past that line. */
+function skewProblem(S, K, T, b, atm, rr, bf) {
+  if (!(atm > 0)) return '';
+  if (skewVol(S, K, T, b, atm, rr, bf) <= SKEW_FLOOR) return 'floor';
+  const above = d => forwardDelta(S, K, T, b, skewCurve(d, atm, rr, bf)) - d >= 0;
+  let crossings = 0, was = above(0);
+  for (let i = 1; i <= 200; i++) {
+    const is = above(i / 200);
+    if (is !== was) crossings++;
+    was = is;
+  }
+  return crossings > 1 ? 'several' : '';
 }
 
 /* The volatility one leg prices at, in percent.
@@ -570,8 +622,20 @@ function skewVol(S, K, T, b, atm, rr, bf) {
 function legVolPct(leg) {
   if (leg.vol != null) return leg.vol;
   if (!state.skew.on) return state.vol;
-  return skewVol(legUnder(leg), leg.strike, leg.days / 365, carry(),
-    state.vol / 100, state.skew.rr / 100, state.skew.bf / 100) * 100;
+  return skewVol(...legSkewInputs(leg)) * 100;
+}
+
+/* Where a leg reads the skew curve: its own month's price today, its strike
+ * and its full tenor, against the panel's three quotes. */
+function legSkewInputs(leg) {
+  return [legUnder(leg), leg.strike, leg.days / 365, carry(),
+    state.vol / 100, state.skew.rr / 100, state.skew.bf / 100];
+}
+
+/* skewProblem() for a leg that takes its volatility from the curve, or ''. */
+function legSkewProblem(leg) {
+  if (!state.skew.on || leg.vol != null || leg.kind === 'underlying') return '';
+  return skewProblem(...legSkewInputs(leg));
 }
 
 /* Everything a pricer needs for one leg, assembled in one place.
@@ -1289,6 +1353,9 @@ function renderInputs() {
       'how far both wings sit above the at-the-money level, which is the Volatility field.'
     : 'Off: every leg with a blank Vol uses the single Volatility number above. Turn it on ' +
       'to quote a surface as three points instead of typing a volatility per leg.';
+  const warning = skewWarning();
+  // Written only when it changes: it is a live region, re-read on every change.
+  if ($('skewWarning').textContent !== warning) $('skewWarning').textContent = warning;
 
   const isB76 = state.model === 'b76';
   $('yield').disabled = isB76;
@@ -1305,6 +1372,25 @@ function renderInputs() {
   $('multInfo').textContent = '1 contract = ' + fmt(c.size, 0) + ' ' + c.unit +
     (c.quote === 'cents' ? ' (quoted in cents)' : '') +
     ' - P&L multiplier $' + fmt(dollarMultiplier(c), 2) + ' per point';
+}
+
+/* The strikes the skew curve gives no one volatility, as a sentence, or ''
+ * when every leg that reads the curve gets one. */
+function skewWarning() {
+  const floor = [], several = [];
+  for (const leg of activeLegs()) {
+    const problem = legSkewProblem(leg);
+    const list = problem === 'floor' ? floor : problem === 'several' ? several : null;
+    const strike = fmtPrice(leg.strike, true);
+    if (list && list.indexOf(strike) === -1) list.push(strike);
+  }
+  if (!floor.length && !several.length) return '';
+  const at = list => 'At the ' +
+    (list.length > 1 ? list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1] + ' strikes' : list[0] + ' strike');
+  return 'This curve is steeper than its at-the-money level allows. ' +
+    (floor.length ? at(floor) + ' it goes below zero, so the leg prices at the 0.01% floor. ' : '') +
+    (several.length ? at(several) + ' more than one volatility fits it. ' : '') +
+    'Narrow the risk reversal or the butterfly, or type a Vol for those legs.';
 }
 
 function monthLabel(c) {

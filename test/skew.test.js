@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { loadApp, resetState } = require('./helpers/load-app.js');
+const { loadApp, resetState, wired } = require('./helpers/load-app.js');
 
 const app = loadApp();
 const { state, newLeg, normCdf, forwardDelta, skewVol, legVolPct,
@@ -82,6 +82,93 @@ test('an extreme risk reversal clamps instead of going negative', () => {
     const v = skewVol(100, K, 1, 0, 0.20, 0.90, -0.30);
     assert.ok(v > 0 && isFinite(v), `K=${K} produced ${v}`);
   }
+});
+
+/* ---- reading the curve at a strike ----
+ * A strike's volatility is where the curve and the delta agree: the delta d
+ * whose volatility on the curve gives d back through forwardDelta(). A
+ * fixed-point iteration used to look for it, and on steep wings it could stop
+ * on a volatility the curve does not give at that strike's delta. */
+
+/* How far v is from what the curve gives at v's own delta: zero when v is read
+ * off the curve correctly. */
+const gap = (K, T, atm, rr, bf, v) => Math.abs(app.skewCurve(forwardDelta(100, K, T, 0, v), atm, rr, bf) - v);
+
+test('a strike is read where the curve and the delta agree', () => {
+  // REVISION_2_LOGICA.md, L10: of 40,000 surfaces the fixed point stopped over
+  // a tenth of a point off in 180. These four, every wing under the
+  // at-the-money level, it left 0.19 to 0.75 of a point off - at 32.98%, for
+  // the first, a volatility 1.5 points from the curve's at its own delta.
+  for (const [K, T, atm, rr, bf] of [[164.3, 1.4246, 0.158, 0.042, 0.077], [168.66, 1.7734, 0.2, -0.137, 0.099],
+    [130.87, 1.2623, 0.207, 0.191, 0.095], [187.68, 1.9219, 0.205, -0.125, 0.098]]) {
+    const v = skewVol(100, K, T, 0, atm, rr, bf);
+    assert.ok(gap(K, T, atm, rr, bf, v) < 1e-12, `K=${K}: ${v} is not on the curve`);
+    assert.strictEqual(app.skewProblem(100, K, T, 0, atm, rr, bf), '');
+  }
+  near(skewVol(100, 164.3, 1.4246, 0, 0.158, 0.042, 0.077), 0.337324, 1e-6, 'the first, where it was 0.329806');
+
+  // Every realistic surface: one volatility per strike, read exactly.
+  for (const atm of [0.15, 0.3, 0.6]) {
+    for (const rr of [-0.08, 0, 0.05]) {
+      for (const bf of [0, 0.01, 0.03]) {
+        for (const K of [50, 80, 100, 125, 200]) {
+          for (const T of [7 / 365, 0.5, 2]) {
+            const v = skewVol(100, K, T, 0, atm, rr, bf);
+            const label = `atm ${atm} rr ${rr} bf ${bf} K ${K} T ${T}`;
+            assert.ok(gap(K, T, atm, rr, bf, v) < 1e-12, label);
+            assert.strictEqual(app.skewProblem(100, K, T, 0, atm, rr, bf), '', label);
+          }
+        }
+      }
+    }
+  }
+});
+
+test('a curve steeper than its at-the-money level says where it cannot be read', () => {
+  // A risk reversal of 30 points against an at-the-money 20 takes the put wing
+  // below zero: those strikes price at the floor.
+  for (const K of [60, 80]) assert.strictEqual(app.skewProblem(100, K, 1, 0, 0.2, 0.3, 0), 'floor', `K=${K}`);
+  near(skewVol(100, 80, 1, 0, 0.2, 0.3, 0), 1e-4, 1e-12, 'the floor itself');
+  for (const K of [100, 120]) assert.strictEqual(app.skewProblem(100, K, 1, 0, 0.2, 0.3, 0), '', `K=${K}`);
+  // This one, from the same 40,000, fits its strike at three volatilities.
+  assert.strictEqual(app.skewProblem(100, 102.653, 1.6444, 0, 0.1272, -0.1517, 0.0006), 'several');
+});
+
+test('the skew note names the strikes the curve cannot read, and only those', () => {
+  const { app: page, el } = wired();
+  Object.assign(page.state, { S: 100, vol: 20, rate: 4, days: 365 });
+  page.state.skew = { on: true, rr: 30, bf: 0 };
+  page.state.legs = [
+    page.newLeg({ kind: 'put', strike: 60, days: 365 }),
+    page.newLeg({ kind: 'put', strike: 80, days: 365 }),
+    page.newLeg({ kind: 'call', strike: 80, days: 365 }),
+    page.newLeg({ kind: 'put', strike: 70, days: 365, vol: 25 }),
+    page.newLeg({ kind: 'call', strike: 100, days: 365 })
+  ];
+  page.renderInputs();
+  assert.strictEqual(el('skewWarning').textContent,
+    'This curve is steeper than its at-the-money level allows. At the 60 and 80 strikes it goes below zero, ' +
+    'so the leg prices at the 0.01% floor. Narrow the risk reversal or the butterfly, or type a Vol for those legs.',
+    'each strike once, and not the leg with a Vol of its own');
+
+  Object.assign(page.state, { vol: 12.72 });
+  page.state.skew = { on: true, rr: -15.17, bf: 0.06 };
+  page.state.legs = [page.newLeg({ kind: 'call', strike: 102.653, days: 1.6444 * 365 })];
+  page.renderInputs();
+  assert.match(el('skewWarning').textContent, /At the 102\.65 strike more than one volatility fits it\./);
+
+  page.state.skew = { on: true, rr: -5, bf: 1 };
+  page.renderInputs();
+  assert.strictEqual(el('skewWarning').textContent, '', 'a realistic surface reads everywhere');
+
+  Object.assign(page.state, { vol: 20 });
+  page.state.skew = { on: true, rr: 30, bf: 0 };
+  page.state.legs = [page.newLeg({ kind: 'put', strike: 80, days: 365 })];
+  page.renderInputs();
+  assert.notStrictEqual(el('skewWarning').textContent, '');
+  page.state.skew.on = false;
+  page.renderInputs();
+  assert.strictEqual(el('skewWarning').textContent, '', 'with the skew off there is no curve to read');
 });
 
 test('legs take the curve only when the skew is on and their vol is blank', () => {
