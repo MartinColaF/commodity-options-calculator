@@ -169,10 +169,10 @@ some browsers restrict cross-origin requests from `file://`.
 
 - `test/pricing.test.js` — put-call parity in both models, a textbook reference
   value, all five greeks against finite differences, rho in each model's own
-  convention even when BSM's carry is zero, implied-volatility round trips and none
-  from a premium with no time value,
-  the volatility estimators against a series of known volatility, curve
-  interpolation and the carry inversion.
+  convention even when BSM's carry is zero, theta and rho with no volatility left,
+  equal to their limits just above it, implied-volatility round trips and none from a
+  premium with no time value, the volatility estimators against a series of known
+  volatility, curve interpolation and the carry inversion.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
   butterflies, financed and nominal; bounded put payoffs; the rate an unlimited maximum
   grows at, a European calendar's against an American one's and a naked call's; the
@@ -200,8 +200,10 @@ some browsers restrict cross-origin requests from `file://`.
   Barone-Adesi-Whaley pricer checked against it: the approximation envelope, the
   no-arbitrage bounds, the early-exercise premium on both sides of a futures
   option, the exercise boundary, greeks by finite difference, the
-  style-aware implied-volatility solver, and negative rates: European exactly where
-  the tree finds no early-exercise value, never below the European price anywhere.
+  style-aware implied-volatility solver, negative rates: European exactly where the
+  tree finds no early-exercise value, never below the European price anywhere, and
+  with no volatility, exercise on the best date — now, at expiry or in between — with
+  that date's greeks.
 - `test/leg-pricing.test.js` — every path that prices a leg agreeing with the others:
   the implied volatility of a leg's own premium is its own volatility, a position marked
   today at today's price shows no P&L, value and greeks report the same price,

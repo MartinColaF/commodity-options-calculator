@@ -136,6 +136,35 @@ test('degenerate inputs return intrinsic value instead of NaN', () => {
   }
 });
 
+test('with no volatility an option keeps the theta and rho of its one cash flow', () => {
+  // REVISION_2_LOGICA.md, L14 (T16): a 30-day call on a 100 future struck at
+  // 95, at 4%, with no volatility, is worth its forward's intrinsic,
+  // discounted. The price was right; it showed no theta and no rho.
+  const g = gbs('call', 100, 95, 30 / 365, 0.04, 0, 0);
+  near(g.price, 5 * Math.exp(-0.04 * 30 / 365), 1e-12, 'the price');
+  near(g.theta, 0.000546, 5e-7, 'it accretes towards its payoff');
+  near(g.theta, 0.04 * g.price / 365, 1e-15, 'r V a day');
+  near(g.rho, -0.004096, 5e-7, 'and is discounted');
+  near(g.rho, -(30 / 365) * g.price / 100, 1e-15, '-T V a point');
+  // The closed form a hair above zero volatility gives the same greeks, in
+  // both models, calls and puts, in and out of the money.
+  for (const tracks of [false, true]) {
+    const b = tracks ? 0.02 : 0;
+    for (const [kind, k] of [['call', 90], ['call', 110], ['put', 90], ['put', 110]]) {
+      const z = gbs(kind, 100, k, 0.5, 0.04, b, 0, tracks), lim = gbs(kind, 100, k, 0.5, 0.04, b, 1e-7, tracks);
+      for (const key of ['price', 'delta', 'gamma', 'vega', 'theta', 'rho']) {
+        near(z[key], lim[key], 1e-9, `${kind} ${k}, ${tracks ? 'cost of carry' : 'Black-76'}: ${key}`);
+      }
+    }
+  }
+  // Expired, there is nothing left to carry; with no rate and no carry,
+  // nothing drifts. A plain 0 each time - -0 would read "-0.0000".
+  const x = gbs('call', 4300, 4200, 0, r, 0, sigma);
+  assert.strictEqual(x.theta, 0);
+  assert.strictEqual(x.rho, 0);
+  assert.strictEqual(gbs('call', 100, 95, 0.5, 0, 0, 0).theta, 0);
+});
+
 test('deep in and out of the money behave sensibly', () => {
   const deepItm = gbs('call', 8000, 4200, T, r, 0, sigma);
   near(deepItm.delta, Math.exp(-r * T), 1e-4, 'deep ITM call delta approaches the discount factor');
