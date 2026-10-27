@@ -141,7 +141,8 @@ some browsers restrict cross-origin requests from `file://`.
 `node --test`, no framework:
 
 - `test/pricing.test.js` — put-call parity in both models, a textbook reference
-  value, all five greeks against finite differences, implied-volatility round trips,
+  value, all five greeks against finite differences, rho in each model's own
+  convention even when BSM's carry is zero, implied-volatility round trips,
   the volatility estimators against a series of known volatility, curve
   interpolation and the carry inversion.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and

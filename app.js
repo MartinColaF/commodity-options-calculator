@@ -56,8 +56,12 @@ function normCdf(x) {
  *   vega  per 1 vol point (1%)
  *   theta per calendar day
  *   rho   per 1 rate point (1%)
+ * bTracksRate says whether b moves with r, as b = r - q does, which only rho
+ * depends on - the same flag americanGreeks() takes. It used to be guessed
+ * from b, and b = 0 is also what BSM gives when the yield equals the rate:
+ * such a call got Black-76's rho, -0.0414 instead of +0.2244.
  */
-function gbs(kind, S, K, T, r, b, sigma) {
+function gbs(kind, S, K, T, r, b, sigma, bTracksRate) {
   const isCall = kind === 'call';
   if (!(T > 0) || !(sigma > 0) || !(S > 0) || !(K > 0)) {
     const fwd = S * Math.exp(b * Math.max(T, 0));
@@ -100,13 +104,11 @@ function gbs(kind, S, K, T, r, b, sigma) {
   }
   theta /= 365;
 
-  let rho;
-  if (Math.abs(b) < 1e-12) {
-    // Black-76: r only enters through discounting.
-    rho = -T * price / 100;
-  } else {
-    rho = (isCall ? K * T * er * nd2 : -K * T * er * normCdf(-d2)) / 100;
-  }
+  // With b fixed - Black-76, or any carry that does not follow the rate - r
+  // only discounts, and the rate bump moves nothing else.
+  const rho = bTracksRate === true
+    ? (isCall ? K * T * er * nd2 : -K * T * er * normCdf(-d2)) / 100
+    : -T * price / 100;
 
   return { price, delta, gamma, vega, theta, rho, d1, d2 };
 }
@@ -294,7 +296,7 @@ function americanGreeks(kind, S, K, T, r, b, sigma, bTracksRate) {
 function priceOption(kind, S, K, T, r, b, sigma, style, bTracksRate) {
   return style === 'american'
     ? americanGreeks(kind, S, K, T, r, b, sigma, bTracksRate)
-    : gbs(kind, S, K, T, r, b, sigma);
+    : gbs(kind, S, K, T, r, b, sigma, bTracksRate);
 }
 
 /* Implied volatility: Newton with vega, bisection fallback. Inverts whichever

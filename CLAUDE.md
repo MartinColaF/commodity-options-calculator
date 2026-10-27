@@ -90,7 +90,10 @@ together — reach for that tree when a price looks wrong. Accuracy is worst for
 long-dated high-volatility contracts; the measured envelope is in that file.
 
 `carryTracksRate()` exists because `b = 0` is both "Black-76" and a legitimate carry
-value, and the rho bump has to tell them apart.
+value, and rho has to tell them apart. Both rhos take it as `bTracksRate`: the American
+bump and `gbs()`'s closed form, which `priceOption()` hands it to. `gbs()` used to guess
+from `b`, and a BSM call whose yield equalled its rate got Black-76's rho, −0.0414
+instead of +0.2244. Left out, the flag means the carry is fixed.
 
 `legPricingInputs()` is the single place that assembles what a pricer needs for one
 leg — its own underlying, strike, time, rate, carry, volatility and exercise style.
