@@ -2632,6 +2632,14 @@ function setStatus(msg, kind) {
   el.className = 'status ' + (kind || '');
 }
 
+/* What a share or an import did, under the buttons that did it. On a phone the
+ * market-data status line is 3,400px above them, out of sight. */
+function setSaveStatus(msg, kind) {
+  const el = $('saveStatus');
+  el.textContent = msg || '';
+  el.className = kind === 'err' ? 'problem' : kind === 'ok' ? 'note pos' : 'note';
+}
+
 /* What the volatility panel holds, as applyVol() takes it. */
 function volInputs() {
   return {
@@ -2869,14 +2877,29 @@ function bindInputs() {
   $('implyYield').addEventListener('click', actionImplyYield);
   $('usePreset').addEventListener('click', actionApplyPreset);
 
+  // Where the system share sheet exists - phones, and some desktops - it reaches
+  // LinkedIn, WhatsApp or mail in one tap; elsewhere the link is copied.
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  if (canShare) $('share').textContent = 'Share link';
   $('share').addEventListener('click', async () => {
     const url = shareLink();
     location.hash = url.split('#')[1];
+    setSaveStatus('');
+    if (canShare) {
+      try {
+        await navigator.share({ title: document.title, url });
+        return;
+      } catch (e) {
+        // Closing the sheet is not a failure. Anything else falls back to the
+        // clipboard, which needs no sheet.
+        if (e && e.name === 'AbortError') return;
+      }
+    }
     try {
       await navigator.clipboard.writeText(url);
-      setStatus('Shareable link copied to the clipboard.', 'ok');
+      setSaveStatus('Shareable link copied to the clipboard.', 'ok');
     } catch (e) {
-      setStatus('Link is in the address bar - copy it from there.', 'ok');
+      setSaveStatus('Link is in the address bar - copy it from there.');
     }
   });
 
@@ -2897,9 +2920,9 @@ function bindInputs() {
       try {
         restore(JSON.parse(fr.result));
         renderAll();
-        setStatus('Strategy loaded.', 'ok');
+        setSaveStatus('Strategy loaded.', 'ok');
       } catch (err) {
-        setStatus('That file is not a valid strategy export.', 'err');
+        setSaveStatus('That file is not a valid strategy export.', 'err');
       }
     };
     fr.readAsText(file);

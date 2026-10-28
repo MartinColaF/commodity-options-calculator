@@ -12,8 +12,29 @@
        script-src names the one Chart.js file, not the CDN: jsDelivr serves any
        package on npm, so allowing the whole host would allow anyone's script. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js; style-src 'self' file: 'unsafe-inline'; connect-src 'self' https://home.treasury.gov https://www.alphavantage.co; object-src 'none'; base-uri 'self'; form-action 'self'">
-  <meta name="description" content="Free commodity options calculator: Black-76 and Black-Scholes pricing, greeks, multi-leg strategy payoff charts and live risk-free rates.">
+  <meta name="description" content="Free commodity options calculator: Black-76 and Black-Scholes pricing, greeks, multi-leg strategy payoff charts and daily US Treasury rates.">
   <title>Commodity Options Calculator</title>
+  <!-- What LinkedIn, X and messaging apps show for a shared link. Their crawlers
+       run no script, so all of it is here in the markup, and the URLs are
+       absolute because they do not resolve relative ones. After changing any of
+       it, run the URL through linkedin.com/post-inspector to refresh LinkedIn's
+       copy. og.png is a capture of this page's own chart: keep it free of
+       anything that reads as a live quote. -->
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Commodity Options Calculator">
+  <meta property="og:url" content="https://commodity-options-calculator.vercel.app/">
+  <meta property="og:title" content="Commodity Options Calculator: price, greeks and payoff for options on futures">
+  <meta property="og:description" content="Free Black-76 and Barone-Adesi-Whaley pricing, greeks, multi-leg payoff charts and scenario grids for 14 futures markets: metals, energy, grains, softs and cattle. Futures prices and the daily US Treasury curve fetched at a click.">
+  <meta property="og:image" content="https://commodity-options-calculator.vercel.app/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="627">
+  <meta property="og:image:alt" content="Payoff chart of a bull call spread on gold futures, from the calculator">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
   <!-- The file Chart.js publishes, pinned by its hash: the browser refuses it if the
        CDN serves anything else. Not chart.umd.min.js - the package does not ship
@@ -284,6 +305,7 @@
             <input type="file" id="importJson" accept="application/json">
           </label>
         </div>
+        <p class="note" id="saveStatus" role="status"></p>
         <p class="note">Your inputs are also saved automatically in this browser.</p>
       </div>
 

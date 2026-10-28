@@ -25,7 +25,12 @@ function needed() {
   const local = Array.from(page.matchAll(/\b(?:src|href)="([^"#?]+)"/g), m => m[1])
     .filter(u => !/^(https?:)?\/\//.test(u) && !u.startsWith('mailto:'))
     .map(u => u.replace(/^\//, ''));
-  return Array.from(new Set(local.concat(['index.html', 'api/market.js', 'commodities.js', 'package.json'])));
+  // The preview image is named by an absolute URL, since crawlers resolve no
+  // other kind, so it is mapped back to its file on this site.
+  const site = (page.match(/<link rel="canonical" href="([^"]+)"/) || [])[1];
+  const own = site ? Array.from(page.matchAll(/\bcontent="([^"]+)"/g), m => m[1])
+    .filter(u => u.startsWith(site) && u.length > site.length).map(u => u.slice(site.length)) : [];
+  return Array.from(new Set(local.concat(own, ['index.html', 'api/market.js', 'commodities.js', 'package.json'])));
 }
 
 test('.vercelignore uses only plain root-anchored paths', () => {
@@ -37,6 +42,7 @@ test('.vercelignore uses only plain root-anchored paths', () => {
 test('nothing the page or the market function needs is left out of the deployment', () => {
   const files = needed();
   assert.ok(files.includes('app.js') && files.includes('styles.css') && files.includes('privacy.html'));
+  assert.ok(files.includes('og.png') && files.includes('favicon.ico'), 'the preview image and the icons too');
   for (const f of files) {
     assert.ok(fs.existsSync(path.join(ROOT, f)), `${f} exists`);
     assert.ok(!ignored(f), `${f} is needed by the site but .vercelignore drops it`);
