@@ -47,6 +47,8 @@ open `index.html` or serve the folder.
   volatility, 25-delta risk reversal, 25-delta butterfly) and legs with a blank
   volatility take the curve for their own strike, instead of typing one per leg.
 - **Implied volatility** — type the premium you paid in the Entry column, press `IV`.
+  The leg keeps the exact volatility, so it is worth its premium and a position just
+  entered shows no P&L; the table shows it to two decimals and the message to four.
   A premium with no time value — what the option is worth at zero volatility, as a
   deep in-the-money option close to expiry can be — implies no volatility, and the
   button says so rather than writing one in.
@@ -208,8 +210,9 @@ some browsers restrict cross-origin requests from `file://`.
   the implied volatility of a leg's own premium is its own volatility, a position marked
   today at today's price shows no P&L, value and greeks report the same price,
   every net greek and greek profile is the matching derivative of the chart's P&L,
-  with legs on other months and theta beside the premium's interest per day, and the IV
-  button writing nothing for a premium with no time value.
+  with legs on other months and theta beside the premium's interest per day, the IV
+  button writing nothing for a premium with no time value and the exact volatility
+  for one with it, and volatility fields rounding what they show, not what is used.
 - `test/restore.test.js` — the trust boundary for shared links, saved state and
   imported files: hostile fields rejected or retyped, ids never taken from the input,
   a legitimate scenario, its financing included, round-tripping unchanged, and the legs
@@ -220,7 +223,8 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/actions.test.js` — every market-data action against a fake network: the rate
   read off a real Treasury response, the price switching to cents on a `USX` quote, a
   quote below zero refused with the reason,
-  the Alpha Vantage fallback, the curve's convenience yield, leg prices from the slope
+  the Alpha Vantage fallback, realised volatility kept as measured, the curve's
+  convenience yield, leg prices from the slope
   and from the listed strip with their undo, all three reading one request for the
   curve, auto-fill carrying on past a failure, the
   presets, and every source line staying true: a price, rate, volatility or yield typed

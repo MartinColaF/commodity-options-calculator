@@ -1479,6 +1479,17 @@ function fmtPrice(x, trim) {
   return x.toLocaleString(undefined, { maximumFractionDigits: dp });
 }
 
+/* A volatility as its input field shows it: rounded to `dp` decimals, without
+ * trailing zeros. The number in use stays exact - what the IV button solves,
+ * what a realised estimator measures - so a leg priced at its own implied
+ * volatility is worth its premium. Both were stored rounded to 0.01, and a
+ * 30-day gold call implied at 20.031317% was revalued $0.60 a contract under
+ * its premium. The legs table's Vol column holds two decimals; the panel's
+ * field has room for four, so a number typed there with three shows as typed. */
+function volField(v, dp) {
+  return typeof v === 'number' ? String(+v.toFixed(dp)) : v;
+}
+
 /* Never overwrite the field the user is typing in: doing so eats half-typed
  * values like "4000." and moves the caret. */
 function setField(id, value) {
@@ -1494,7 +1505,7 @@ function renderInputs() {
   // The picker shows the month the price belongs to, so it follows the price
   // when the front month or a typed number replaces it.
   setField('contractMonth', state.contractMonth);
-  setField('vol', state.vol);
+  setField('vol', volField(state.vol, 4));
   setField('rate', state.rate);
   setField('yield', state.yield);
   setField('financing', state.financing.mode);
@@ -1636,7 +1647,7 @@ function legRowHtml(leg, mult) {
       <td><input type="number" data-f="qty" value="${a(leg.qty)}" min="0" step="1"></td>
       <td><input type="number" data-f="strike" value="${isU ? '' : a(leg.strike)}" ${isU ? 'disabled' : ''} step="any"></td>
       <td><input type="number" data-f="days" value="${isU ? '' : a(leg.days)}" ${isU ? 'disabled' : ''} min="0" step="1"></td>
-      <td><input type="number" data-f="vol" value="${a(leg.vol)}" placeholder="${a(fmt(legVolPct(leg), 1))}" ${isU ? 'disabled' : ''} step="any"></td>
+      <td><input type="number" data-f="vol" value="${a(volField(leg.vol, 2))}" placeholder="${a(fmt(legVolPct(leg), 1))}" ${isU ? 'disabled' : ''} step="any"></td>
       <td><input type="number" data-f="under" value="${a(leg.under)}" placeholder="${a(fmtPrice(state.S))}" step="any" title="This leg's own contract price today. Blank uses the contract in the left panel."></td>
       <td><input type="number" data-f="entry" value="${a(leg.entry)}" placeholder="${a(fmtPrice(isU ? state.S : g.price))}" step="any"></td>
       <td class="num">${isU ? '-' : a(fmtPrice(g.price))}</td>
@@ -2275,7 +2286,7 @@ async function applyVol(opts) {
     const chosen = rv[est];
     if (!(chosen > 0)) throw new Error('estimator unavailable for this series');
 
-    state.vol = +chosen.toFixed(2);
+    state.vol = chosen;
     state.sources.vol = {
       live: true,
       text: `${est} realised vol, ${rv.days}d window on ${h.symbol} ` +
@@ -2283,7 +2294,7 @@ async function applyVol(opts) {
         `close-to-close ${rv.close.toFixed(1)}% / EWMA ${rv.ewma.toFixed(1)}%` +
         (rv.parkinson ? ` / Parkinson ${rv.parkinson.toFixed(1)}%` : '')
     };
-    return { message: `volatility ${state.vol}% from ${h.symbol}` };
+    return { message: `volatility ${volField(state.vol, 4)}% from ${h.symbol}` };
   } catch (proxyErr) {
     if (!opts.avKey) throw proxyErr;
     return applyVolFromAlphaVantage(opts);
@@ -2308,14 +2319,14 @@ async function applyVolFromAlphaVantage(opts) {
   const isDefaultProxy = symbol === (meta.priceSymbol || '').toUpperCase();
   const proxyText = isDefaultProxy && meta.proxy ? meta.proxy : 'symbol entered by you';
 
-  state.vol = +chosen.toFixed(2);
+  state.vol = chosen;
   state.sources.vol = {
     live: true,
     text: `${est} realised vol, ${rv.days}d window on ${symbol} (${proxyText}), ` +
       `last close ${rv.last}. close-to-close ${rv.close.toFixed(1)}% / EWMA ${rv.ewma.toFixed(1)}%` +
       (rv.parkinson ? ` / Parkinson ${rv.parkinson.toFixed(1)}%` : '')
   };
-  return { message: `volatility ${state.vol}% from ${symbol} (ETF proxy)` };
+  return { message: `volatility ${volField(state.vol, 4)}% from ${symbol} (ETF proxy)` };
 }
 
 /* Convenience yield from the real futures curve: two listed contracts give
@@ -2750,8 +2761,10 @@ function bindInputs() {
     $(id).addEventListener('change', e => {
       const problem = inputProblem(key, num(e.target, state[key]));
       if (!problem) return;
-      $(id + 'Problem').textContent = problem + ' Still using ' + state[key] + unit + '.';
-      e.target.value = state[key];
+      // The value in use, as renderInputs() shows it.
+      const shown = key === 'vol' ? volField(state.vol, 4) : state[key];
+      $(id + 'Problem').textContent = problem + ' Still using ' + shown + unit + '.';
+      e.target.value = shown;
     });
   });
 
@@ -2893,8 +2906,10 @@ function onLegEvent(e) {
         : 'No implied volatility solves that premium (check the price and the strike).', 'err');
       return;
     }
-    leg.vol = +(iv * 100).toFixed(2);
-    setStatus('Implied volatility for that leg: ' + leg.vol + '%.', 'ok');
+    // Kept exact, so the leg is worth its premium; the table shows two decimals.
+    leg.vol = iv * 100;
+    setStatus('Implied volatility for that leg: ' + volField(leg.vol, 4) + '%. The table shows it ' +
+      'to two decimals; the leg is priced at the exact figure, so it is worth its premium.', 'ok');
     renderAll();
     return;
   }
