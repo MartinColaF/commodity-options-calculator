@@ -96,7 +96,12 @@ coefficient do not depend on the underlying, so `americanBoundary()` caches them
 `(kind, K, T, r, b, sigma)` and the grid sweep reuses them. BAW is an approximation:
 `test/american.test.js` carries an independent CRR binomial tree and pins the two
 together — reach for that tree when a price looks wrong. Accuracy is worst for
-long-dated high-volatility contracts; the measured envelope is in that file.
+long-dated high-volatility contracts; the measured envelope is in that file. Its greeks
+are central differences of that price, and theta's step is a thousandth of a day, so it
+is the price's rate of change, as `gbs()`'s is. With a day's step it read a short
+option's decay off a curve bending under it, 3.5% off for a two-day put at the money,
+and gave a decay to an option already worth exercising, whose value expiry no longer
+moves.
 **BAW is not asked where early exercise is worth nothing**, because it adds a premium
 anyway: a call with carry at least both the rate and zero, and a put with rate and carry
 both at most zero, return the European price — one rule, mapped across by put-call

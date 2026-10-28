@@ -120,11 +120,12 @@ function acrossMonths(c) {
 
 /* The derivatives of the chart's P&L at P, tDays out, by central
  * differences. American greeks are central differences themselves, so they
- * take its steps - 0.01% of the price, 0.05 of a vol point and one day - and
- * the two agree to rounding; European greeks are exact, so a fine step. */
+ * take its steps - 0.01% of the price, 0.05 of a vol point and a thousandth of
+ * a day - and the two agree to rounding; European greeks are exact, so a fine
+ * step. */
 function derivatives(P, tDays) {
   const am = state.style === 'american';
-  const dv = am ? 0.05 : 0.01, dt = am ? 1 : 0.01;
+  const dv = am ? 0.05 : 0.01, dt = am ? 0.001 : 0.01;
   const pnl = pnlEvaluator();
   const h = P * 1e-4;
   const up = pnl(P + h, tDays), mid = pnl(P, tDays), dn = pnl(P - h, tDays);
