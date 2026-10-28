@@ -229,3 +229,60 @@ test('the IV button writes nothing for a premium without time value, and says wh
   press(call);
   assert.strictEqual(call.vol, 30, 'a premium with time value still gives its volatility back');
 });
+
+test('the IV button keeps the volatility it solves, so the leg is worth its premium', () => {
+  // REVISION_2_LOGICA.md, L15: a 30-day American gold call at the money, its
+  // premium 91.37, implies 20.031317%. That was stored as 20.03, and the leg
+  // revalued at 91.3640 - $0.60 a contract under its premium, so a position
+  // just entered showed a loss.
+  const { app: page, el, fire } = wired();
+  Object.assign(page.state, { style: 'american', S: 4000, rate: 4 });
+  const leg = page.newLeg({ kind: 'call', strike: 4000, days: 30 });
+  page.state.legs = [leg];
+  leg.entry = 91.37;
+  fire('legsBody', 'click', {
+    dataset: { f: 'iv' }, matches: () => true,
+    closest: sel => (sel === 'tr' ? { dataset: { id: String(leg.id) } } : {})
+  });
+  near(leg.vol, 20.031317, 5e-7, 'the volatility solved, not its rounding');
+  near(page.legGreeks(leg).price, 91.37, 1e-9, 'the leg is worth its premium');
+  near(page.pnlEvaluator()(4000, 0), 0, 1e-6, 'and shows no P&L today');
+  assert.match(el('legsBody').innerHTML, /data-f="vol" value="20\.03"/, 'the table shows two decimals');
+  assert.match(el('dataStatus').textContent, /^Implied volatility for that leg: 20\.0313%\. /,
+    'the message four');
+
+  // Stored as before, it was not worth its premium.
+  leg.vol = 20.03;
+  near((page.legGreeks(leg).price - 91.37) * 100, -0.60, 0.005, 'what rounding cost a contract');
+});
+
+test('a volatility field shows its number rounded and leaves the number alone', () => {
+  const { app: page, el, fire } = wired();
+  // A realised estimate, exact: the panel has room for four decimals.
+  page.state.vol = 18.47213595499958;
+  page.renderInputs();
+  assert.strictEqual(el('vol').value, '18.4721');
+  assert.strictEqual(page.state.vol, 18.47213595499958, 'drawing it does not round it');
+
+  // A number typed with three decimals shows as typed, and is used as typed.
+  el('vol').value = '15.125';
+  fire('vol', 'input');
+  page.renderInputs();
+  assert.strictEqual(page.state.vol, 15.125);
+  assert.strictEqual(el('vol').value, '15.125');
+
+  // Refused, the field goes back to the number in use, shown the same way.
+  page.state.vol = 18.47213595499958;
+  el('vol').value = '-5';
+  fire('vol', 'change');
+  assert.strictEqual(el('volProblem').textContent, 'Volatility cannot be negative. Still using 18.4721%.');
+  assert.strictEqual(el('vol').value, '18.4721');
+
+  // The legs table's Vol column holds two; a blank one still shows the
+  // volatility it falls back to as its placeholder.
+  const leg = page.newLeg({ kind: 'call', strike: 4000, days: 30, vol: 22.375 });
+  assert.match(page.legRowHtml(leg, 100), /data-f="vol" value="22\.38"/);
+  assert.strictEqual(leg.vol, 22.375);
+  assert.match(page.legRowHtml(page.newLeg({ kind: 'call', strike: 4000, days: 30 }), 100),
+    /data-f="vol" value="" placeholder="18\.5"/);
+});

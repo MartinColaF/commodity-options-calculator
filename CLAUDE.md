@@ -150,6 +150,15 @@ says why, telling that apart from a premium no volatility reaches with
 `legNoTimeValue()`. The line sits a hundred times above where the solver was measured to
 go wrong, and far under one tick of time value in every market here.
 
+**A volatility is stored exact and shown rounded.** The IV button writes what it solves
+and the realised-volatility actions what the estimator measures; only what a field
+shows is rounded, by `volField()`: two decimals in the legs table, which is what its Vol
+column holds, and up to four in the panel, so a number typed there with three shows as
+typed. Both were stored rounded to 0.01, and a 30-day American gold call whose premium
+of 91.37 implies 20.031317% was revalued at 91.3640, $0.60 a contract under it: a
+position just entered showed a loss. Write the number itself into the state, and show it
+through `volField()` — the panel's refusal note too, which says what is still in use.
+
 **Dollar multiplier = `size × (quote === 'cents' ? 0.01 : 1)`.** Getting the quoting
 convention wrong rescales the whole position P&L by 100. Grains and softs quote in
 cents; **copper quotes in USD per pound**, which is a trap because CME describes it in

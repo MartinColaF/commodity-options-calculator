@@ -210,8 +210,9 @@ test('volatility comes from the futures series, with the chosen window and estim
     app.storage.clear();
     const r = await app.applyVol({ window, estimator, avKey: '', symbol: '' });
     const expected = app.realisedVol(s, window)[estimator];
-    assert.strictEqual(state.vol, +expected.toFixed(2), `${estimator} over ${window}d`);
-    assert.match(r.message, /from GC=F$/);
+    // What the estimator measured, not its rounding to 0.01 (REVISION_2_LOGICA.md, L15).
+    assert.strictEqual(state.vol, expected, `${estimator} over ${window}d`);
+    assert.strictEqual(r.message, `volatility ${+expected.toFixed(4)}% from GC=F`, 'four decimals of it');
     assert.match(state.sources.vol.text, new RegExp('^' + estimator + ' realised vol, ' + window + 'd window'));
   }
 });
@@ -232,8 +233,9 @@ test('when the function fails, volatility falls back to Alpha Vantage and keeps 
   assert.match(av, /symbol=GLD/, 'the preset ETF');
   assert.match(av, /apikey=my-key/);
   assert.strictEqual(app.storage.get(app.KEY_STORE), 'my-key');
-  assert.strictEqual(state.vol, +app.realisedVol(s, 20).close.toFixed(2));
-  assert.match(r.message, /from GLD \(ETF proxy\)$/);
+  const close = app.realisedVol(s, 20).close;
+  assert.strictEqual(state.vol, close);
+  assert.strictEqual(r.message, `volatility ${+close.toFixed(4)}% from GLD (ETF proxy)`);
   assert.match(state.sources.vol.text, /SPDR Gold Shares/, 'names the proxy it used');
 
   // A ticker typed by hand is used instead, and not described as the preset.
