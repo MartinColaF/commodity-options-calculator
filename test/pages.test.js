@@ -28,7 +28,7 @@ function shape(html) {
   const body = html.slice(html.indexOf('<body>'), html.indexOf('</body>'))
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/<p class="lang-switch">[\s\S]*?<\/p>/, '')
-    .replace('<script src="words.js"></script>', '');
+    .replace('<script src="../es/words.js"></script>', '');
   const tags = [], texts = [];
   for (const m of body.matchAll(/<(\/?)([a-z0-9]+)\b([^>]*)>([^<]*)/gi)) {
     const attrs = Array.from(m[3].matchAll(/([\w-]+)(?:="([^"]*)")?/g), a => {
@@ -87,11 +87,20 @@ test('the same policy, the same Chart.js and the same scripts, one folder down',
   assert.strictEqual(chartjs(es), chartjs(en));
   const scripts = html => Array.from(html.matchAll(/<script src="([^h][^"]*)"><\/script>/g), m => m[1]);
   assert.deepStrictEqual(scripts(en), ['commodities.js', 'i18n.js', 'app.js']);
-  assert.deepStrictEqual(scripts(es), ['../commodities.js', '../i18n.js', 'words.js', '../app.js'],
+  assert.deepStrictEqual(scripts(es), ['../commodities.js', '../i18n.js', '../es/words.js', '../app.js'],
     'its words load after i18n.js and before app.js');
   for (const f of Array.from(es.matchAll(/\b(?:src|href)="([^"#:]+)"/g), m => m[1])) {
     const file = f.startsWith('/') ? path.join(ROOT, f, f.endsWith('/') ? 'index.html' : '') : path.join(ROOT, 'es', f);
     assert.ok(fs.existsSync(file), `${f} is there`);
+  }
+});
+
+test('the Spanish page finds its files at /es and at /es/ alike', () => {
+  // Vercel serves the page at both, and the browser reads a relative path from
+  // the folder the address ends in: from /es, words.js was /words.js, a 404,
+  // and every word app.js writes came out in English.
+  for (const f of Array.from(es.matchAll(/\b(?:src|href)="([^"#:]+)"/g), m => m[1])) {
+    assert.strictEqual(new URL(f, SITE + 'es').href, new URL(f, SITE + 'es/').href, f);
   }
 });
 
