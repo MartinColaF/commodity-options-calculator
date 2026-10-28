@@ -190,6 +190,13 @@ show two decimals, so a 30-day copper call worth 0.04204 read 0.04, $50.98 a con
 short, and a 4.70 strike was marked "K 5". A new market needs its tick, and a new place
 that shows a price uses `fmtPrice()`; `test/prices.test.js` pins both.
 
+**Numbers are written in `NUMBER_LOCALE`, en-US, whatever the browser's language.**
+`fmt()`, `fmtPrice()` and the chart's ticks all ask for it. With the browser's own, a
+Spanish browser showed "4.211,30" and "0,1325" beside "11.2%", which goes through
+`toFixed()`, on an English page whose fields take a decimal point. A page in another
+language decides its own. `test/locale.test.js` runs the formatting in a child process
+started in Spanish.
+
 **Strategy statistics use an economic price grid, not the chart window.** `analyse()`
 scans from a price near zero to well past the highest strike. That is why a long put
 reports a bounded maximum profit and a short put a bounded loss: the underlying cannot

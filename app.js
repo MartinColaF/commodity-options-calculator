@@ -1467,9 +1467,15 @@ function currentCommodity() {
   return c;
 }
 
+/* Numbers are written as the page's language and the markets write them,
+ * whatever the browser's: a browser set to Spanish showed "4.211,30" beside
+ * "11.2%" and "0,1325" on an English page whose fields take a point. A Spanish
+ * page, if there is one, decides its own. */
+const NUMBER_LOCALE = 'en-US';
+
 function fmt(x, dp) {
   if (!isFinite(x)) return x > 0 ? '∞' : '-∞';
-  return x.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+  return x.toLocaleString(NUMBER_LOCALE, { minimumFractionDigits: dp, maximumFractionDigits: dp });
 }
 
 function money(x) {
@@ -1511,7 +1517,7 @@ function decimalsOf(x) {
 function fmtPrice(x, trim) {
   const dp = priceDp();
   if (!trim || !isFinite(x)) return fmt(x, dp);
-  return x.toLocaleString(undefined, { maximumFractionDigits: dp });
+  return x.toLocaleString(NUMBER_LOCALE, { maximumFractionDigits: dp });
 }
 
 /* A volatility as its input field shows it: rounded to `dp` decimals, without
@@ -1916,6 +1922,8 @@ function chartConfig(a) {
     type: 'line',
     data: { datasets },
     options: {
+      // Chart.js formats its ticks in the browser's language otherwise.
+      locale: NUMBER_LOCALE,
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
