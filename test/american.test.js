@@ -372,3 +372,30 @@ test('at negative rates no American price falls below the European one or below 
     }
   }
 });
+
+test('where BAW finds no exercise boundary, it adds no premium', () => {
+  // At negative rates a put with carry above zero, or a call with carry below
+  // it, can leave BAW's boundary equation without a root: no price matches
+  // exercising with holding. Newton wandered and stopped anywhere - a third of
+  // such contracts got a boundary that matched nothing - and now and then on
+  // one whose premium does not exist.
+  for (const [c, before] of [
+    [['put', 100, 105, 1, -0.01, 0.015, 0.45], 24.5986],
+    [['put', 110, 100, 10, -0.05, 0.02, 3], 6066.65]   // a put on a 100 strike pays at most 164.87 here
+  ]) {
+    const label = JSON.stringify(c);
+    assert.ok(Number.isNaN(americanCritical(c[0], c[2], c[3], c[4], c[5], c[6])), `${label}: no boundary`);
+    assert.strictEqual(americanPrice(...c), Math.max(gbs(...c).price, intrinsicOf(c[0], c[1], c[2])),
+      `${label}: the European price, floored at intrinsic`);
+    const tree = 2 * crr(...c, 800, true) - crr(...c, 400, true);
+    assert.ok(Math.abs(americanPrice(...c) - tree) < 0.06, `${label}: ${americanPrice(...c)} against the tree's ${tree}; it read ${before}`);
+  }
+  // Nor does the price jump as the tenor moves: the first one read 24.60 at a
+  // year, and 20.36 and 20.40 a day either side.
+  let prev = null;
+  for (let i = 0; i <= 400; i++) {
+    const v = americanPrice('put', 100, 105, (364 + 2 * i / 400) / 365, -0.01, 0.015, 0.45);
+    if (prev !== null) assert.ok(Math.abs(v - prev) < 1e-3, `a step of ${v - prev} at ${364 + 2 * i / 400} days`);
+    prev = v;
+  }
+});
