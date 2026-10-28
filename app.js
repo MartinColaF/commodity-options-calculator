@@ -468,7 +468,10 @@ const state = {
   legs: [],
   skew: { on: false, rr: 0, bf: 0 },
   scenario: { volShift: 5, pricePct: 20 },
-  chart: { mode: 'payoff', tDays: 0, showLegs: true, range: 40 },
+  // Each leg's own curve is off until asked for: with several legs it ran far
+  // past the position's P&L and, before the axis followed the position, set
+  // the scale.
+  chart: { mode: 'payoff', tDays: 0, showLegs: false, range: 40 },
   // Where each market input came from; null = typed or preset. `legs` is the
   // fill from the curve, shown on its own line only while legs carry it.
   sources: { price: null, rate: null, vol: null, yield: null, legs: null },
@@ -1099,14 +1102,19 @@ function scenarioTable() {
     };
   });
 
-  let worst = 0;
+  // The largest gain and the largest loss, each the reference for its own
+  // colour.
+  let best = 0, worstLoss = 0;
   for (const panel of panels) {
     for (const row of panel.rows) {
-      for (const c of row.cells) if (Math.abs(c) > worst) worst = Math.abs(c);
+      for (const c of row.cells) {
+        if (c > best) best = c;
+        if (-c > worstLoss) worstLoss = -c;
+      }
     }
   }
 
-  return { horizon: t, days: cols, panels, worst };
+  return { horizon: t, days: cols, panels, best, worstLoss };
 }
 
 function analyse() {
@@ -1822,6 +1830,8 @@ const markerPlugin = {
     const opts = c.options.plugins.markers;
     if (!opts || !opts.lines) return;
     const { ctx, chartArea, scales } = c;
+    const family = (c.options.font && c.options.font.family) || 'sans-serif';
+    const marks = [];
     for (const m of opts.lines) {
       const x = scales.x.getPixelForValue(m.value);
       if (x < chartArea.left || x > chartArea.right) continue;
@@ -1833,15 +1843,44 @@ const markerPlugin = {
       ctx.moveTo(x, chartArea.top);
       ctx.lineTo(x, chartArea.bottom);
       ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = m.color;
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(m.label, x, chartArea.top + 10);
       ctx.restore();
+      marks.push({ x, m });
     }
+    ctx.save();
+    ctx.font = '11px ' + family;
+    ctx.textAlign = 'center';
+    const rows = labelRows(marks.map(k => ({ x: k.x, width: ctx.measureText(k.m.label).width, first: !!k.m.first })));
+    marks.forEach((k, i) => {
+      if (rows[i] < 0) return;
+      ctx.fillStyle = k.m.labelColor || k.m.color;
+      ctx.fillText(k.m.label, k.x, chartArea.top + 11 + rows[i] * 13);
+    });
+    ctx.restore();
   }
 };
+
+/* Which row each mark's label goes in, 0 or 1, or -1 for none. Strikes 250 apart
+ * on a phone sat 14px apart, and their labels ran into one grey smear. Today's
+ * price is placed first; each label then takes the first row where it clears the
+ * labels already there by 4px, and is left out when neither row has room - its
+ * line still shows where it is. */
+function labelRows(labels) {
+  const order = labels.map((l, i) => i)
+    .sort((p, q) => (labels[q].first ? 1 : 0) - (labels[p].first ? 1 : 0) || labels[p].x - labels[q].x);
+  const taken = [[], []];
+  const rows = labels.map(() => -1);
+  for (const i of order) {
+    const lo = labels[i].x - labels[i].width / 2, hi = labels[i].x + labels[i].width / 2;
+    for (let r = 0; r < 2; r++) {
+      if (taken[r].every(s => hi + 4 <= s.lo || lo >= s.hi + 4)) {
+        taken[r].push({ lo, hi });
+        rows[i] = r;
+        break;
+      }
+    }
+  }
+  return rows;
+}
 
 /* The chart's colours are the --chart-* variables in styles.css, which also
  * switches them for the dark scheme, so the page and the chart keep their
@@ -1849,8 +1888,8 @@ const markerPlugin = {
 function themeColors() {
   const css = getComputedStyle(document.documentElement);
   const col = {};
-  for (const k of ['grid', 'zero', 'text', 'net', 'now', 'leg', 'spot', 'strike']) {
-    col[k] = css.getPropertyValue('--chart-' + k).trim();
+  for (const k of ['grid', 'zero', 'text', 'net', 'now', 'leg', 'spot', 'strike', 'strike-label']) {
+    col[k.replace(/-(\w)/g, (m, c) => c.toUpperCase())] = css.getPropertyValue('--chart-' + k).trim();
   }
   return col;
 }
@@ -1869,7 +1908,7 @@ function chartConfig(a) {
     datasets.push({
       label: 'At horizon (' + a.t + 'd)',
       data: a.xs.map((x, i) => ({ x, y: a.ys[i] })),
-      borderColor: col.net, borderWidth: 2, pointRadius: 0, tension: 0
+      borderColor: col.net, borderWidth: 2, pointRadius: 0, tension: STRAIGHT
     });
     if (state.chart.tDays < a.t) {
       const mtm = pnlEvaluator();
@@ -1905,18 +1944,29 @@ function chartConfig(a) {
       return { x, y: v * mult };
     });
     datasets.push({
-      label: yTitle, data, borderColor: col.net, borderWidth: 2, pointRadius: 0, tension: 0
+      label: yTitle, data, borderColor: col.net, borderWidth: 2, pointRadius: 0, tension: STRAIGHT
     });
   }
   // No legs, no curves: the page says so in the chart's place (renderChartSafely).
   if (!activeLegs().length) datasets.length = 0;
 
+  // Each leg's own curve can run far past the position's P&L - an iron
+  // condor's to 150,000 either way against -24,000 to +700 - and the scale
+  // followed it, flattening the line that matters. The axis follows the
+  // position's curves, and the legs are cut at its edges.
+  const own = state.chart.mode === 'payoff' && state.chart.showLegs ? positionRange(datasets) : null;
+
   // Marks sit where the leg's payoff actually kinks on the shared axis, which
   // is not the strike itself once a leg trades on its own delivery month.
   const lines = activeLegs()
     .filter(l => l.kind !== 'underlying')
-    .map(l => ({ value: strikeOnAxis(l), color: col.strike, label: 'K ' + fmtPrice(l.strike, true) }));
-  lines.push({ value: state.S, color: col.spot, label: 'Now', dash: [2, 2] });
+    .map(l => ({ value: strikeOnAxis(l), color: col.strike, labelColor: col.strikeLabel, label: 'K ' + fmtPrice(l.strike, true) }));
+  lines.push({ value: state.S, color: col.spot, label: 'Now', dash: [2, 2], first: true });
+
+  // On a phone the legend goes under the chart, without the legs, and the
+  // P&L axis reads 150k for 150,000: three rows of legend and seven-character
+  // ticks left the plot about 300px of its 420.
+  const narrow = isNarrow();
 
   const cfg = {
     type: 'line',
@@ -1933,17 +1983,19 @@ function chartConfig(a) {
           title: { display: true, text: 'Underlying price at horizon', color: col.text },
           grid: { color: col.grid }, ticks: { color: col.text }
         },
-        y: {
+        y: Object.assign({
           title: { display: true, text: yTitle, color: col.text },
           grid: {
             color: ctx => ctx.tick.value === 0 ? col.zero : col.grid,
             lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1
           },
-          ticks: { color: col.text }
-        }
+          ticks: Object.assign({ color: col.text, includeBounds: !own }, narrow ? { callback: compactNumber } : {})
+        }, own || {})
       },
       plugins: {
-        legend: { labels: { color: col.text, boxWidth: 12 } },
+        legend: Object.assign({ labels: { color: col.text, boxWidth: 12 } }, narrow
+          ? { position: 'bottom', labels: { color: col.text, boxWidth: 12, filter: item => item.datasetIndex < POSITION_SERIES } }
+          : {}),
         markers: { lines },
         tooltip: {
           callbacks: {
@@ -1956,6 +2008,44 @@ function chartConfig(a) {
     plugins: [markerPlugin]
   };
   return cfg;
+}
+
+/* Chart.js draws a solid line with no tension by a fast path that rounds each
+ * point to a whole pixel column and draws the column's range. On a steep line,
+ * with two points to a column, that drew a staircase - plain once the axis
+ * followed the position. A tension far too small to bend the line takes the
+ * ordinary path. The dashed lines take it already. */
+const STRAIGHT = 1e-6;
+
+/* The position's own curves come first in the payoff chart: the P&L at the
+ * horizon and, before it, the mark to market. Each leg's follows them. */
+const POSITION_SERIES = 2;
+
+/* The y-axis range the position's own curves need, with a tenth either side,
+ * zero always in view. */
+function positionRange(datasets) {
+  let lo = 0, hi = 0;
+  for (const d of datasets.slice(0, POSITION_SERIES)) {
+    for (const p of d.data) {
+      if (isFinite(p.y)) { lo = Math.min(lo, p.y); hi = Math.max(hi, p.y); }
+    }
+  }
+  const pad = (hi - lo) * 0.1 || 1;
+  return { min: lo - pad, max: hi + pad };
+}
+
+/* 150,000 as 150k and 2,500,000 as 2.5M, for the narrow chart's P&L axis. */
+function compactNumber(v) {
+  const a = Math.abs(v);
+  if (a >= 1e6) return +(v / 1e6).toFixed(1) + 'M';
+  if (a >= 1e3) return +(v / 1e3).toFixed(1) + 'k';
+  return String(+v.toFixed(2));
+}
+
+/* A phone-width window, where the chart's legend and ticks are made smaller. */
+function isNarrow() {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' &&
+    !!window.matchMedia('(max-width: 600px)').matches;
 }
 
 /* The chart is created once and updated in place after that. Destroying and
@@ -1985,10 +2075,15 @@ function renderScenarios() {
     return;
   }
 
+  // Gains and losses are each shaded against their own largest, from a floor
+  // that still shows: against one scale for both, a long call's losses, $1,130
+  // at most beside gains of $58,874, got an opacity of 0.0096 and read as
+  // nothing. A cell that rounds to $0.00 is left plain.
   const shade = v => {
-    if (!isFinite(v) || !s.worst) return '';
-    const a = (Math.abs(v) / s.worst * 0.5).toFixed(3);
-    return ' style="background:rgba(' + (v >= 0 ? '32,140,96' : '190,60,48') + ',' + a + ')"';
+    if (!isFinite(v) || Math.abs(v) < 0.005) return '';
+    const ref = v > 0 ? s.best : s.worstLoss;
+    const a = (0.12 + 0.38 * Math.sqrt(Math.min(Math.abs(v) / ref, 1))).toFixed(3);
+    return ' style="background:rgba(' + (v > 0 ? '32,140,96' : '190,60,48') + ',' + a + ')"';
   };
 
   const panels = s.panels.map(panel => {
@@ -2995,11 +3090,15 @@ function bindInputs() {
   });
 
   // Through renderChartSafely like every other render: called bare, it threw
-  // on every theme change once Chart.js had failed to load.
-  const mq = window.matchMedia('(prefers-color-scheme: dark)');
-  const onScheme = () => renderChartSafely(analyse());
-  if (mq.addEventListener) mq.addEventListener('change', onScheme);
-  else if (mq.addListener) mq.addListener(onScheme); // older Safari
+  // on every theme change once Chart.js had failed to load. The chart redraws
+  // when the scheme changes, and when the window crosses phone width, where
+  // its legend and ticks change.
+  const redraw = () => renderChartSafely(analyse());
+  for (const query of ['(prefers-color-scheme: dark)', '(max-width: 600px)']) {
+    const mq = window.matchMedia(query);
+    if (mq.addEventListener) mq.addEventListener('change', redraw);
+    else if (mq.addListener) mq.addListener(redraw); // older Safari
+  }
 }
 
 function onLegEvent(e) {

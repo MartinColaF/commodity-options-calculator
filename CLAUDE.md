@@ -334,6 +334,23 @@ the test loader serves the same variables from `styles.css`, for either scheme
 chart quietly takes the light one — `test/chart.test.js` fails when it does. They used
 to be written out in `app.js` as well, where nothing kept them in step with the page.
 
+**The chart's y-axis follows the position, not its legs.** Each leg's own curve
+(`showLegs`) is off by default, and when it is on, `positionRange()` sets the axis from the
+position's two curves, the P&L at the horizon and the mark to market, which come first
+(`POSITION_SERIES`); the legs are cut at its edges. An iron condor's legs run to 150,000
+either way against a P&L of −24,000 to +700, and followed by the scale they drew the
+position as a flat line. Strike labels go through `labelRows()`: today's price first, then
+two rows, and a label with no room left out while its line stays; 250 apart on a phone they
+sat 14 px apart and ran together. Below 600 px (`isNarrow()`) the legend goes under the
+chart without the legs, the P&L axis reads `compactNumber()` ("150k"), and the wiring
+redraws the chart when the window crosses that width. The solid lines carry a tension of
+`STRAIGHT`, 1e-6: with none, Chart.js takes a fast path that rounds points to pixel columns
+and drew a steep line as a staircase.
+
+**The scenario grid shades gains and losses each against its own largest**, from a
+floor of 0.12. Against one scale for both, a long call's losses, $1,130 beside gains of
+$58,874, got 0.0096 and read as nothing. `test/scenario.test.js` checks it.
+
 **Chart.js is pinned by Subresource Integrity, and the CSP names that one file.** The
 script runs on the origin that holds the user's Alpha Vantage key, so the browser
 refuses it unless its bytes match the `integrity` hash; a mismatch looks like a CDN
