@@ -40,7 +40,7 @@ test('the calculations and the actions never touch the page or ask for a redraw'
     const s = sections[n];
     if (!s) continue;
     for (const pattern of [/\$\(/, /\bdocument\./, /\brender[A-Z]\w*\(/, /\bscheduleRender\(/,
-      /\bsetStatus\(/, /\brequestAnimationFrame\(/]) {
+      /\bset(Save)?Status\(/, /\brequestAnimationFrame\(/]) {
       assert.doesNotMatch(s, pattern, `section ${n} uses ${pattern}`);
     }
   }

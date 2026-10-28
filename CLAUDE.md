@@ -15,6 +15,7 @@ for users; this file covers what is easy to get wrong when changing it.
 | `api/market.js` | serverless futures-data proxy (Vercel) |
 | `test/` | `node --test` suite, no framework |
 | `scripts/serve.js` | dependency-free dev server |
+| `og.png`, `favicon.*`, `apple-touch-icon.png` | link preview image and icons |
 
 ## Commands
 
@@ -263,6 +264,24 @@ columns in `<div class="grid">` and `styles.css` gives it `display: grid` with f
 template columns. Giving a table `class="grid"` makes it inherit that and splits
 `thead` from `tbody` into separate blocks. The scenario table uses
 `class="scenario"`. Check `styles.css` before reusing a short class name.
+
+**A shared link's preview is in the markup.** LinkedIn, X and messaging apps read the
+Open Graph tags in `index.html`'s `<head>` without running the page, so the tags are
+static, and `og:image` and `og:url` are absolute: crawlers resolve nothing relative.
+`og.png` is 1200×627, the 1.91:1 LinkedIn shows, and is a capture of the page's own
+chart (a bull call spread on gold) set beside the title. There is no build step, so it is
+a committed file: redraw it when the chart's look changes, and keep it free of anything
+that reads as a live quote. The description once promised "live risk-free rates" that the
+disclaimer denies. LinkedIn keeps its own copy of a preview: after changing any of it, run
+the URL through linkedin.com/post-inspector. `test/social.test.js` pins the tags and the
+image's size, and `test/deploy.test.js` maps the absolute image URL back to its file, so
+`.vercelignore` cannot drop it.
+
+**The Save & share card answers under its own buttons**, in `#saveStatus` through
+`setSaveStatus()`: on a phone the market-data status line is 3,400 px above them. The
+share button opens the system share sheet where `navigator.share` exists, and copies the
+link elsewhere or when the sheet cannot open; closing the sheet is not a failure and says
+nothing. `test/save.test.js` runs every path.
 
 **Chart.js is the only CDN dependency and the only thing that can fail at load.**
 `renderChartSafely()` isolates it: an ad blocker or CDN outage used to take out
