@@ -57,7 +57,7 @@
     <!-- ============ left column: inputs ============ -->
     <div>
 
-      <div class="card">
+      <div class="card" id="cardContract">
         <h2>Contract</h2>
 
         <label for="commodity">Commodity</label>
@@ -133,7 +133,7 @@
         <p class="note" id="multInfo"></p>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardMarket">
         <h2>Market data</h2>
 
         <button id="autoFill">Auto-fill from market data</button>
@@ -215,7 +215,8 @@
 
       <div class="card" id="legs">
         <h2>Strategy</h2>
-        <div class="row">
+        <p class="note context"><span id="legsContext"></span> <a href="#cardContract">Edit contract</a></p>
+        <div class="row strategy-row">
           <select id="strategy"></select>
           <button id="addLeg" class="ghost">+ Add leg</button>
           <button id="clearLegs" class="ghost">Clear</button>
@@ -242,13 +243,13 @@
         <p class="note">In a real commodity calendar each month trades at its own price. This reads the listed curve, measures its slope, and prices every leg at its own expiry. The payoff chart then moves all months together, in proportion. <strong>Clear</strong> puts every leg back on the contract in the left panel, which is what you want when you are pricing options on one specific delivery month.</p>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardResults">
         <h2>Results</h2>
         <div id="summary"></div>
         <div id="greeks" style="margin-top:14px"></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardPayoff">
         <h2>Payoff</h2>
         <div class="chart-controls">
           <div>
@@ -280,7 +281,7 @@
         <p class="note">The solid line is the P&amp;L at the nearest expiry among your legs; the dashed line is the mark-to-market value at the evaluation date you pick. Both carry the premium's interest up to their date, unless <em>Premium financing</em> in the Contract panel is set to None. Vertical marks show the strikes and the current price.</p>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardScenarios">
         <h2>Scenario grid</h2>
         <div class="row tight">
           <div>
@@ -295,13 +296,13 @@
         <div id="scenarios"></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardSave">
         <h2>Save &amp; share</h2>
         <div class="row">
           <button id="share" class="ghost">Copy shareable link</button>
           <button id="exportJson" class="ghost">Export JSON</button>
-          <label class="ghost" style="margin:0">
-            <span class="muted small">Import JSON</span>
+          <label class="file-button">
+            Import JSON
             <input type="file" id="importJson" accept="application/json">
           </label>
         </div>

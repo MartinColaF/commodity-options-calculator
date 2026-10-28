@@ -265,6 +265,25 @@ template columns. Giving a table `class="grid"` makes it inherit that and splits
 `thead` from `tbody` into separate blocks. The scenario table uses
 `class="scenario"`. Check `styles.css` before reusing a short class name.
 
+**On a phone the cards are reordered, results first.** Below 900 px the two column
+wrappers become `display: contents`, so the cards are the grid's own items and `order`
+puts Strategy, Results and Payoff before Contract and Market data: the first result used
+to be four screens down. A new card needs an `id` and a place in that list. The cards also
+need `min-width: 0` there, since `.grid > *` no longer reaches them, and without it the
+legs table widened the page to 858 px. The order is visual only; tabbing follows the
+markup. `.context` is the line in Strategy that names the contract it prices, shown only
+in that layout.
+
+**Phone sizes go last in `styles.css`.** Fields are 16 px wherever the screen is narrow or
+the pointer coarse, because iOS Safari zooms into anything smaller and stays zoomed, and
+controls are 44 px on touch screens. Those blocks sit at the end of the file because the
+base sizes above them would otherwise win: written in the middle, they did nothing. Never
+put `maximum-scale=1` in the viewport to stop the zoom; it stops everyone zooming.
+
+**A field's edge is `--field-border`, not `--line`.** WCAG asks 3:1 of a control's
+boundary, and `--line` is 1.29:1; it stays for dividers. `test/layout.test.js` checks the
+ratio in both schemes, the phone order and where the phone sizes sit.
+
 **A shared link's preview is in the markup.** LinkedIn, X and messaging apps read the
 Open Graph tags in `index.html`'s `<head>` without running the page, so the tags are
 static, and `og:image` and `og:url` are absolute: crawlers resolve nothing relative.

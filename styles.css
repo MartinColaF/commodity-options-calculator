@@ -5,6 +5,9 @@
   --text: #23272e;
   --muted: #6b7280;
   --line: #dfe3e8;
+  /* The edge of a field or a secondary button: 3:1 against the card and the page,
+     which WCAG asks of a control's boundary. --line, at 1.29:1, is for dividers. */
+  --field-border: #868f9c;
   --accent: #0b6ea8;
   --accent-ink: #ffffff;
   --pos: #197b3f;
@@ -30,6 +33,7 @@
     --text: #e4e7ec;
     --muted: #98a2b3;
     --line: #2c323c;
+    --field-border: #626b7a;
     --accent: #3fa9e0;
     --accent-ink: #0b1116;
     --pos: #4ade80;
@@ -50,7 +54,11 @@
 * { box-sizing: border-box; }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  /* Each system's own interface face: SF on Apple, Segoe UI on Windows, Roboto on
+     Android, Arial's metrics elsewhere. The old list fell to Verdana on an iPhone,
+     wide enough to cut labels. Not system-ui, which picks odd faces on Linux and
+     in some CJK locales. */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   margin: 0;
   padding: 24px 16px 48px;
   background: var(--bg);
@@ -59,9 +67,11 @@ body {
 }
 
 .wrap { max-width: 1180px; margin: 0 auto; }
+a { color: var(--accent); }
 
 header { text-align: center; margin-bottom: 24px; }
-header h1 { font-size: 1.6rem; margin: 0 0 6px; font-weight: 650; }
+/* One line on a phone: at 1.6rem it broke after "Options". */
+header h1 { font-size: clamp(1.3rem, 5.2vw, 1.6rem); margin: 0 0 6px; font-weight: 650; }
 header p { margin: 0; color: var(--muted); font-size: .92rem; }
 
 .grid {
@@ -75,8 +85,27 @@ header p { margin: 0; color: var(--muted); font-size: .92rem; }
  * the column past the viewport instead of scrolling inside .table-scroll. */
 .grid > * { min-width: 0; }
 
+/* One column on a phone or a narrow window, with what the page works out first:
+ * the strategy, its results and its chart, then the contract and the market data.
+ * The two column wrappers step aside so the cards can be ordered across them.
+ * Visual order only: tabbing and screen readers still follow the markup, in which
+ * every card stands on its own. */
+.context { display: none; }
 @media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: 1fr; gap: 0; }
+  .grid > div { display: contents; }
+  /* What .grid > * gave the column wrappers, given to the cards that are now the
+     grid's items: without it the legs table widens the page to 858px. */
+  .grid .card, .grid .disclaimer { min-width: 0; }
+  #legs { order: 1; }
+  #cardResults { order: 2; }
+  #cardPayoff { order: 3; }
+  #cardContract { order: 4; }
+  #cardMarket { order: 5; }
+  #cardScenarios { order: 6; }
+  #cardSave { order: 7; }
+  .grid .disclaimer { order: 8; }
+  .context { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 12px; margin: -6px 0 10px; }
 }
 
 .card {
@@ -111,11 +140,14 @@ input, select, button, textarea {
   font-size: .92rem;
   padding: 7px 9px;
   width: 100%;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-border);
   border-radius: 6px;
   background: var(--field);
   color: var(--text);
 }
+
+/* The same ring everywhere, in both schemes, instead of each browser's own. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 input:disabled, select:disabled { opacity: .5; }
 
@@ -128,13 +160,30 @@ button {
 }
 
 button:hover { filter: brightness(1.08); }
-button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--field-border); }
 button.icon { width: auto; padding: 3px 7px; font-size: .78rem; }
 button.icon.danger { background: var(--neg); color: #fff; }
+
+/* A file input dressed as a ghost button: the browser's own control read
+ * "Choose Fil" on a phone, beside two buttons. The input stays focusable. */
+label.file-button {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0; padding: 7px 9px;
+  font-size: .92rem; font-weight: 600; color: var(--accent);
+  border: 1px solid var(--field-border); border-radius: 6px;
+  cursor: pointer; text-align: center;
+}
+label.file-button input { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; border: 0; opacity: 0; overflow: hidden; }
+label.file-button:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+label.file-button:hover { filter: brightness(1.08); }
 
 .row { display: flex; gap: 8px; }
 .row > * { flex: 1; }
 .row.tight { gap: 6px; margin-top: 8px; }
+/* The month picker gets the room, not the button: it read "Front month (conti". */
+#contractMonth { flex: 2; }
+#loadMonths { flex: 0 0 auto; width: auto; }
 
 .note, .small { font-size: .78rem; color: var(--muted); margin: 4px 0 0; }
 /* why a number typed into a field above was refused; empty, it takes no room */
@@ -172,7 +221,7 @@ button.icon.danger { background: var(--neg); color: #fff; }
   padding: 8px 10px;
 }
 .kpi span { display: block; font-size: .74rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-.kpi strong { font-size: 1.05rem; font-weight: 650; }
+.kpi strong { font-size: 1.05rem; font-weight: 650; font-variant-numeric: tabular-nums; }
 .kpi small { display: block; font-size: .72rem; color: var(--muted); }
 .pos { color: var(--pos); }
 .neg { color: var(--neg); }
@@ -248,4 +297,36 @@ footer a { color: var(--muted); }
   padding: 10px 12px;
   font-size: .78rem;
   color: var(--muted);
+}
+
+/* Phones and touch screens. Last in the file, so these sizes win over the ones above. */
+
+/* iOS Safari zooms the page into any field under 16px when it takes focus, and
+ * leaves it zoomed. Not maximum-scale=1 in the viewport: that would also stop
+ * anyone zooming who needs to. */
+@media (max-width: 900px), (pointer: coarse) {
+  input, select, textarea, #legs input, #legs select { font-size: 16px; }
+}
+
+/* Touch targets of 44px, Apple's guideline: most controls were 34 to 37px. The
+ * checkboxes are 24px, WCAG's minimum, up from 13; the skew and Legs boxes are
+ * reached through their labels as well, which are 44px tall. */
+@media (pointer: coarse) {
+  input, select, button, #legs input, #legs select { min-height: 44px; }
+  input[type=checkbox], #legs input[type=checkbox], label.inline input[type=checkbox],
+  .chart-controls input[type=checkbox] { width: 24px; height: 24px; min-height: 0; }
+  label.inline, .chart-controls label { min-height: 44px; display: flex; align-items: center; }
+  button.icon { min-width: 44px; }
+  #legs td:last-child { white-space: nowrap; }
+  /* IV and remove sit side by side: a slip should not delete the leg. */
+  #legs button.icon + button.icon { margin-left: 8px; }
+  details > summary { padding: 10px 0; }
+  footer a, .note a { display: inline-block; padding: 13px 4px; margin: -13px -4px; }
+  label.file-button { min-height: 44px; }
+}
+
+/* The strategy picker on its own row: beside two buttons it read "-- pick a str". */
+@media (max-width: 600px) {
+  .strategy-row { flex-wrap: wrap; }
+  .strategy-row #strategy { flex-basis: 100%; }
 }
