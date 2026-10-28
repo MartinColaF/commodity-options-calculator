@@ -1593,6 +1593,11 @@ function renderInputs() {
   $('multInfo').textContent = '1 contract = ' + fmt(c.size, 0) + ' ' + c.unit +
     (c.quote === 'cents' ? ' (quoted in cents)' : '') +
     ' - P&L multiplier $' + fmt(dollarMultiplier(c), 2) + ' per point';
+  // On a phone the Strategy card comes first, above the contract it prices, so
+  // it says which contract that is.
+  $('legsContext').textContent = c.label + ' · ' + (isB76 ? 'futures ' : 'spot ') +
+    fmtPrice(state.S, true) + ' · vol ' + volField(state.vol, 4) + '% · ' +
+    (state.style === 'american' ? 'American' : 'European');
 }
 
 /* The strikes the skew curve gives no one volatility, as a sentence, or ''
@@ -3004,7 +3009,7 @@ function init() {
   $('commodity').innerHTML = Object.keys(COMMODITIES)
     .map(k => `<option value="${k}">${COMMODITIES[k].label}</option>`).join('');
   // Strategy dropdown
-  $('strategy').innerHTML = '<option value="">-- pick a strategy --</option>' +
+  $('strategy').innerHTML = '<option value="">Choose a strategy…</option>' +
     Object.keys(STRATEGIES).map(k => `<option value="${k}">${STRATEGIES[k].label}</option>`).join('');
 
   const saved = readHash() || (() => {
