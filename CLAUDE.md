@@ -436,6 +436,19 @@ and `applyStrategy()` redrew the page. `test/layers.test.js` scans the sections 
 rules, and the test loader no longer stubs `renderAll`, so a calculation that tried to
 draw would throw in its own test.
 
+**Each action reports under its own buttons.** `setStatus(msg, kind, where)` writes to
+one of four status lines: the market data's (`dataStatus`, under the Auto-fill row), the
+month picker's, the carry check's and the legs table's. One message shows at a time, and an
+empty line takes no room. They all wrote to one line at the foot of the Market data card
+once, which on a phone sat 948 px below Auto-fill, so a tap seemed to do nothing.
+`runAction()` and `actionAutoFill()` hold the clicked button while they wait, through
+`holdButton()`: it reads "Fetching…", is disabled and `aria-busy`, and gets its own label
+and disabled state back after. A failing fetch took nine seconds with the button still live.
+
+**With no legs there are no numbers.** `renderResults()` says how to start instead of
+showing $0.00 in green and red and a 0.0% chance of profit, `chartConfig()` returns no
+datasets, and `#chartEmpty` takes the chart's place. `test/status.test.js` covers both.
+
 **The market-data actions never touch the page.** Each `apply*` in §9 takes what it
 needs as arguments, updates `state` and returns `{ message, … }`. Only the wiring in §10
 reads the page's inputs (`volInputs()`) and writes back what an action returned:

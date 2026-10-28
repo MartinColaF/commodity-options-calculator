@@ -207,6 +207,8 @@ label.file-button:hover { filter: brightness(1.08); }
 .status.ok { border-color: var(--pos); }
 .status.err { border-color: var(--neg); }
 .status.busy { opacity: .75; }
+/* A status line shows only while it has something to say. */
+.status:empty { display: none; }
 
 #sources { margin-top: 10px; font-size: .78rem; }
 .src { margin-bottom: 4px; color: var(--muted); }
@@ -228,6 +230,7 @@ label.file-button:hover { filter: brightness(1.08); }
 .kpi span { display: block; font-size: .74rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .kpi strong { font-size: 1.05rem; font-weight: 650; font-variant-numeric: tabular-nums; }
 .kpi small { display: block; font-size: .72rem; color: var(--muted); }
+#summary .empty { grid-column: 1 / -1; margin: 0; color: var(--muted); }
 .pos { color: var(--pos); }
 .neg { color: var(--neg); }
 
@@ -295,6 +298,17 @@ table.scenario td.num { white-space: nowrap; }
 
 /* chart */
 .chart-box { height: 420px; position: relative; }
+/* In place of the chart when there is nothing to chart: a flat line at zero read
+ * as a position that makes and loses nothing. The canvas stays, hidden, so
+ * Chart.js keeps its size; the box shrinks where :has() is supported. */
+.chart-empty {
+  position: absolute; inset: 0; margin: 0; padding: 0 24px;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  color: var(--muted);
+}
+.chart-empty[hidden] { display: none; }
+.chart-empty:not([hidden]) + canvas { visibility: hidden; }
+.chart-box:has(.chart-empty:not([hidden])) { height: 140px; }
 .chart-controls {
   display: flex;
   flex-wrap: wrap;

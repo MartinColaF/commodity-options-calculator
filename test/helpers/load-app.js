@@ -111,9 +111,12 @@ function wired(opts) {
   };
   const made = {};
   const element = id => ({
-    value: '', checked: false, textContent: '', innerHTML: '', dataset: {},
+    value: '', checked: false, disabled: false, textContent: '', innerHTML: '', dataset: {}, attributes: {},
     addEventListener: listen(id),
-    closest: () => null
+    closest: () => null,
+    setAttribute(k, v) { this.attributes[k] = String(v); },
+    removeAttribute(k) { delete this.attributes[k]; },
+    getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attributes, k) ? this.attributes[k] : null; }
   });
   const el = id => made[id] || (made[id] = element(id));
   const app = loadApp(Object.assign({}, opts, {
