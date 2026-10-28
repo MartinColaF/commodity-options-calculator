@@ -179,8 +179,9 @@ some browsers restrict cross-origin requests from `file://`.
   butterflies, financed and nominal; bounded put payoffs; the rate an unlimited maximum
   grows at, a European calendar's against an American one's and a naked call's; the
   verdict decided where the price has no bound, in calendars whose far call is
-  exercised far past the grid or never, a diagonal doing its worst past the grid, legs on
-  their own months and random American calendars against their own P&L; contract
+  exercised far past the grid or never, a diagonal doing its worst past the grid, a far
+  call with no exercise boundary searched past it all the same, legs on their own
+  months and random American calendars against their own P&L; contract
   multipliers including cents-quoted markets; every preset and every commodity.
 - `test/financing.test.js` — the premium's interest: a debit paying it and a credit
   earning it up to the date the P&L is read, a fairly priced option breaking even on
@@ -204,9 +205,9 @@ some browsers restrict cross-origin requests from `file://`.
   no-arbitrage bounds, the early-exercise premium on both sides of a futures
   option, the exercise boundary, greeks by finite difference, the
   style-aware implied-volatility solver, negative rates: European exactly where the
-  tree finds no early-exercise value, never below the European price anywhere, and
-  with no volatility, exercise on the best date — now, at expiry or in between — with
-  that date's greeks.
+  tree finds no early-exercise value, never below the European price anywhere, no
+  premium where BAW finds no exercise boundary, and with no volatility, exercise on
+  the best date — now, at expiry or in between — with that date's greeks.
 - `test/leg-pricing.test.js` — every path that prices a leg agreeing with the others:
   the implied volatility of a leg's own premium is its own volatility, a position marked
   today at today's price shows no P&L, value and greeks report the same price,

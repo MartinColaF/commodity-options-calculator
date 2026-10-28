@@ -244,7 +244,21 @@ function americanBoundary(kind, K, T, r, b, sigma) {
 
   // Coefficient of the (S/Si)^q premium term, evaluated at the boundary.
   const gb = gbs(kind, Si, K, T, r, b, sigma);
-  const A = (isCall ? 1 : -1) * (Si / q) * (1 - eb * normCdf(isCall ? gb.d1 : -gb.d1));
+  const nb = normCdf(isCall ? gb.d1 : -gb.d1);
+  const A = (isCall ? 1 : -1) * (Si / q) * (1 - eb * nb);
+
+  // A boundary must match value: exercising there is worth what BAW's formula
+  // says holding is. At negative rates the equation can have no root - for a
+  // put with carry above zero, or a call with carry below it, it can stay below
+  // zero across the whole range - and Newton then wandered and stopped
+  // anywhere. A third of those contracts got a boundary that matched nothing,
+  // and now and then one whose premium does not exist: a one-year put at 45%
+  // vol, r -1% and carry +1.5% read 24.60 where the binomial tree gives 20.42.
+  // No boundary means BAW adds no premium, so americanPrice() takes the
+  // European price, floored at intrinsic: of 201 contracts where this fails,
+  // none lies further than 0.15% of the underlying from the tree.
+  const matched = isCall ? Si - K - (gb.price + (1 - eb * nb) * Si / q) : K - Si - (gb.price - (1 - eb * nb) * Si / q);
+  if (!(Math.abs(matched) / K < 1e-6)) Si = NaN;
 
   const out = { Si, q, A };
   if (critCache.size >= CRIT_CACHE_MAX) critCache.clear();
@@ -1021,9 +1035,11 @@ function tailGrid(tDays, top) {
     const p = legPricingInputs(leg, { tDays: tDays });
     let settled = p.K * Math.exp(10 * p.sigma * Math.sqrt(p.T) + Math.abs(p.b) * p.T + 1);
     if (p.style === 'american' && p.kind === 'call') {
-      if (p.sigma > 0 && !(p.b >= p.r && p.b >= 0)) {
-        settled = Math.max(settled, 2 * americanCritical('call', p.K, p.T, p.r, p.b, p.sigma));
-      }
+      // Without a boundary BAW has none to pass: the price is the European
+      // one floored at intrinsic, which settles where the two cross, below.
+      const exercised = p.sigma > 0 && !(p.b >= p.r && p.b >= 0)
+        ? americanCritical('call', p.K, p.T, p.r, p.b, p.sigma) : NaN;
+      if (exercised > 0) settled = Math.max(settled, 2 * exercised);
       const fs = Math.exp((p.b - p.r) * p.T);
       const cross = fs !== 1 ? (p.K * Math.exp(-p.r * p.T) - p.K) / (fs - 1) : 0;
       if (cross > 0) settled = Math.max(settled, 2 * cross);

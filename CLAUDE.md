@@ -104,6 +104,15 @@ symmetry. The zeros only matter at negative rates, where the put's half was miss
 the call's stopped at `b >= r`. Below zero BAW can also put its boundary on the wrong
 side of the price, so past the boundary the price is floored at the European one as well
 as the intrinsic; it once returned 0 for a put the European formula values at 15.18.
+**A boundary must match value.** At negative rates, a put with carry above zero or a call
+with carry below it can leave BAW's boundary equation without a root, and Newton then
+stopped anywhere: a one-year put at 45% vol, r −1% and carry +1.5% read 24.60 where the
+tree gives 20.42, and a ten-year one at 300% read 6,066.65 for a 100 strike. Where the
+iteration does not match value, `americanBoundary()` returns no boundary (`NaN`), and the
+price is the European one floored at intrinsic: of 201 such contracts, none further than
+0.15% of the underlying from the tree. At rates of zero or more it fails only at extreme
+inputs — a volatility of a few percent with carry above the rate — where the price was
+the European one already.
 
 `carryTracksRate()` exists because `b = 0` is both "Black-76" and a legitimate carry
 value, and rho has to tell them apart. Both rhos take it as `bTracksRate`: the American
@@ -490,7 +499,8 @@ something is missing from the repo.
   Switching to European prices early exercise at zero, which is wrong by up to 2.6%
   over the same set. At negative rates, where early exercise is still worth something
   (a put with positive carry, a call with carry below zero), BAW is off the tree by up
-  to 0.39% of the underlying on two-year contracts.
+  to 0.39% of the underlying on two-year contracts, and where it finds no exercise
+  boundary there the European price it falls back on is within 0.15%.
 - **The curve moves in parallel.** Each leg can hold its own price, but the payoff
   chart shifts every month in proportion, so each month's basis to the reference stays
   fixed as the price moves. Real curves also change shape; that is not modelled.

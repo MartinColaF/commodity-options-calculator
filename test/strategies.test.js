@@ -166,6 +166,21 @@ test('a diagonal can do its worst far past the grid, and a calendar on two month
   a = analyse();
   assert.strictEqual(a.maxProfit, Infinity);
   near(a.upSlope, (1.03 - 1) * 100, 1e-9, '$3 a point');
+
+  // A far call BAW finds no exercise boundary for - at r -2% and a carry of
+  // -0.1% - is priced European, floored at intrinsic, and the search past the
+  // grid goes on without one: its tail must stay a tail of prices.
+  resetState(app, { style: 'american', model: 'bs', vol: 20, rate: -2, yield: -1.9 });
+  state.legs = [newLeg({ kind: 'call', side: -1, strike: 4000, days: 30 }), newLeg({ kind: 'call', strike: 4000, days: 60 })];
+  assert.ok(Number.isNaN(app.americanCritical('call', 4000, 30 / 365, -0.02, app.carry(), 0.2)), 'no boundary');
+  a = analyse();
+  const tail = Array.from(app.tailGrid(a.t, Math.max(...app.statsGrid())));
+  assert.ok(tail.length > 0 && tail.every(Number.isFinite), 'a tail of prices');
+  const pnl = app.pnlEvaluator();
+  let lo = Infinity;
+  for (const x of tail.concat(Array.from(app.statsGrid()))) lo = Math.min(lo, pnl(x, a.t));
+  near(a.maxLoss, lo, 1e-9, 'the maximum loss is the search\'s');
+  near(a.upSlope, (Math.exp(0.019 * 30 / 365) - 1) * 100, 1e-9, 'held, the far call outgrows the near one');
 });
 
 test('with no volatility the verdict still follows the pricer', () => {
