@@ -430,6 +430,20 @@ price field used to make every derived strike `NaN` and poison the whole curve.
 the caret. `renderLegs()` rebuilds the table body, so it saves and restores focus and
 selection by leg id and field name.
 
+**The Contract and Market data cards fold what refines a result.** The four fields that
+decide a first result (commodity, price, days, volatility), Auto-fill and its buttons, the
+status line and the sources stay in view. The rest sits in `<details class="advanced">`,
+whose summary line `renderInputs()` writes, so folding them hides no assumption: "Black-76 ·
+American · front month · rate 4.00% · …". A reason or a warning that appears inside folded
+settings opens them (`openFolded()`); never leave one where nobody can see it. On a phone
+the Contract card went from 1,442 px to 494.
+
+**Removing every leg can be undone.** "Remove all legs" is styled as the destructive
+action it is, apart from "+ Add leg", and leaves an Undo button that lasts until the next
+edit, choice or button anywhere on the page; Undo puts the same legs back. Before, "Clear"
+looked like "+ Add leg", sat beside it, and `persist()` saved the empty table at once.
+`test/forms.test.js` covers both.
+
 **The legs table commits on blur, not per keystroke.** `legsBody` listens for `change`,
 while the left-hand panel listens for `input`. That is deliberate: `renderLegs()`
 rebuilds the whole tbody, so updating per keystroke fights with typing. A test that

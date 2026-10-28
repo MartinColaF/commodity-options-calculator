@@ -1546,6 +1546,13 @@ function setField(id, value) {
   if (el !== document.activeElement) el.value = value;
 }
 
+/* Opens the folded settings an element sits in: a reason or a warning inside
+ * them must not stay hidden. */
+function openFolded(el) {
+  const box = el && el.closest && el.closest('details');
+  if (box) box.open = true;
+}
+
 function renderInputs() {
   setField('commodity', state.commodity);
   setField('model', state.model);
@@ -1579,7 +1586,11 @@ function renderInputs() {
       'to quote a surface as three points instead of typing a volatility per leg.';
   const warning = skewWarning();
   // Written only when it changes: it is a live region, re-read on every change.
-  if ($('skewWarning').textContent !== warning) $('skewWarning').textContent = warning;
+  // A new warning opens the folded settings it sits in, so it is never hidden.
+  if ($('skewWarning').textContent !== warning) {
+    $('skewWarning').textContent = warning;
+    if (warning) openFolded($('skewWarning'));
+  }
 
   const isB76 = state.model === 'b76';
   $('yield').disabled = isB76;
@@ -1607,6 +1618,21 @@ function renderInputs() {
   $('multInfo').textContent = '1 contract = ' + fmt(c.size, 0) + ' ' + c.unit +
     (c.quote === 'cents' ? ' (quoted in cents)' : '') +
     ' - P&L multiplier $' + fmt(dollarMultiplier(c), 2) + ' per point';
+  // The folded settings say what they hold, so folding them hides no
+  // assumption.
+  const picked = state.session.strip.find(m => m.symbol === state.contractMonth);
+  $('contractSummary').textContent = [
+    isB76 ? 'Black-76' : 'Black-Scholes-Merton',
+    state.style === 'american' ? 'American' : 'European',
+    state.contractMonth ? (picked ? monthLabel(picked) : state.contractMonth) : 'front month',
+    'rate ' + fmt(state.rate, 2) + '%',
+    fin === 'none' ? 'nominal P&L'
+      : 'premium financed at ' + (fin === 'custom' ? fmt(state.financing.rate, 2) + '%' : 'the risk-free rate'),
+    fmt(c.size, 0) + ' ' + c.unit + (c.quote === 'cents' ? ', quoted in cents' : '')
+  ].join(' · ');
+  $('marketSummary').textContent = 'Realised-volatility window and estimator, skew ' +
+    (state.skew.on ? 'on' : 'off') + ', the carry check and the Alpha Vantage fallback';
+
   // On a phone the Strategy card comes first, above the contract it prices, so
   // it says which contract that is.
   $('legsContext').textContent = c.label + ' · ' + (isB76 ? 'futures ' : 'spot ') +
@@ -2967,6 +2993,7 @@ function bindInputs() {
       // The value in use, as renderInputs() shows it.
       const shown = key === 'vol' ? volField(state.vol, 4) : state[key];
       $(id + 'Problem').textContent = problem + ' Still using ' + shown + unit + '.';
+      openFolded($(id + 'Problem'));
       e.target.value = shown;
     });
   });
@@ -2986,10 +3013,36 @@ function bindInputs() {
     renderAll();
   });
 
+  // Removing every leg sat one tap from adding one, with no way back: persist()
+  // saves the empty table at once. The legs stay one Undo away until the next
+  // thing done on the page.
+  let removedLegs = null;
+  const forgetRemoved = () => {
+    removedLegs = null;
+    $('undoRemove').hidden = true;
+  };
   $('clearLegs').addEventListener('click', () => {
+    if (!state.legs.length) return;
+    removedLegs = state.legs;
     state.legs = [];
     renderAll();
+    setStatus(removedLegs.length === 1 ? 'The leg was removed.' : 'All ' + removedLegs.length + ' legs were removed.',
+      'ok', 'legStatus');
+    $('undoRemove').hidden = false;
   });
+  $('undoRemove').addEventListener('click', () => {
+    if (removedLegs) state.legs = removedLegs;
+    forgetRemoved();
+    setStatus('', '', 'legStatus');
+    renderAll();
+  });
+  // Any edit, choice or button but Undo itself, as the refusal reasons above.
+  const isUndo = t => t === $('undoRemove') || !!(t && t.closest && t.closest('#undoRemove'));
+  document.addEventListener('input', forgetRemoved, true);
+  document.addEventListener('change', forgetRemoved, true);
+  document.addEventListener('click', e => {
+    if (e.target.closest && e.target.closest('button') && !isUndo(e.target)) forgetRemoved();
+  }, true);
 
   // Delegated handling for the legs table.
   $('legsBody').addEventListener('change', onLegEvent);
