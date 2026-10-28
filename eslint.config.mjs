@@ -33,6 +33,15 @@ export default [
     }
   },
   {
+    // A page's words in its language, filling the table i18n.js declares.
+    files: ['es/words.js'],
+    languageOptions: {
+      ecmaVersion: PAGE_ES,
+      sourceType: 'script',
+      globals: { ...globals.browser, module: 'readonly', TRANSLATIONS: 'readonly' }
+    }
+  },
+  {
     // A plain browser script loaded after the table and Chart.js, whose
     // globals it reads.
     files: ['app.js'],

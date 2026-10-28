@@ -83,6 +83,9 @@ header { text-align: center; margin-bottom: 24px; }
 /* One line on a phone: at 1.6rem it broke after "Options". */
 header h1 { font-size: clamp(1.3rem, 5.2vw, 1.6rem); margin: 0 0 6px; font-weight: 650; }
 header p { margin: 0; color: var(--muted); font-size: .92rem; }
+/* The page in the other language, at the top: a reader who arrives from a link
+ * in the wrong one finds it before anything else. */
+header .lang-switch { text-align: right; margin: 0 0 4px; font-size: .88rem; }
 
 .grid {
   display: grid;
@@ -232,6 +235,10 @@ label.file-button:hover { filter: brightness(1.08); }
 .row { display: flex; gap: 8px; }
 .row > * { flex: 1; }
 .row.tight { gap: 6px; margin-top: 8px; }
+/* The four market-data buttons take a second row rather than run past the card
+ * when their words are long: in Spanish they need about 410px of a phone's 324.
+ * Each row still shares its width equally. */
+#cardMarket > .row.tight { flex-wrap: wrap; }
 /* The month picker gets the room, not the button: it read "Front month (conti". */
 #contractMonth { flex: 2; }
 #loadMonths { flex: 0 0 auto; width: auto; }
@@ -411,7 +418,7 @@ footer a { color: var(--muted); }
   /* IV and remove sit side by side: a slip should not delete the leg. */
   #legs button.icon + button.icon { margin-left: 8px; }
   details > summary { padding: 10px 0; }
-  footer a, .note a { display: inline-block; padding: 13px 4px; margin: -13px -4px; }
+  footer a, .note a, .lang-switch a { display: inline-block; padding: 13px 4px; margin: -13px -4px; }
   label.file-button { min-height: 44px; }
 }
 

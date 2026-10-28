@@ -11,7 +11,8 @@ for users; this file covers what is easy to get wrong when changing it.
 | `index.html` | markup only; every input has a stable `id` that `app.js` binds by hand |
 | `styles.css` | light/dark theming via CSS variables, the chart's colours included |
 | `commodities.js` | the one table of markets, read by the page and by the function |
-| `i18n.js` | `t()` and the page's words in each language other than English |
+| `i18n.js` | `t()`, and the table each language's words go into |
+| `es/` | the Spanish page: `index.html`, its words (`words.js`), `privacy.html`, `og.png` |
 | `app.js` | pricing engine, strategy analytics, data providers, rendering |
 | `api/market.js` | serverless futures-data proxy (Vercel) |
 | `test/` | `node --test` suite, no framework |
@@ -194,9 +195,9 @@ that shows a price uses `fmtPrice()`; `test/prices.test.js` pins both.
 **Numbers are written in `NUMBER_LOCALE`, en-US, whatever the browser's language.**
 `fmt()`, `fmtPrice()` and the chart's ticks all ask for it. With the browser's own, a
 Spanish browser showed "4.211,30" and "0,1325" beside "11.2%", which goes through
-`toFixed()`, on an English page whose fields take a decimal point. A page in another
-language decides its own. `test/locale.test.js` runs the formatting in a child process
-started in Spanish.
+`toFixed()`, on an English page whose fields take a decimal point. The Spanish page
+keeps it too, by decision: a decimal point, as its fields take. `test/locale.test.js`
+runs the formatting in a child process started in Spanish.
 
 **Every word a reader sees goes through `t()`, keyed by its English text.** `i18n.js`
 holds a table per language and `PAGE_LANG`, read from `<html lang>`. The English page has
@@ -215,6 +216,22 @@ them differently; a translation keeps the same names, in its own order.
   is. A plain key goes through `escapeHtml()`, like anything else.
 - **What is not translated.** Market terms (call, put, the greeks, Black-76) are not
   translated. Numbers stay in `NUMBER_LOCALE`.
+
+**The Spanish page is `es/index.html`, a translation of `index.html`.** The two pages have
+the same elements, ids, classes and attributes, in the same order. They also have the
+same Content-Security-Policy and scripts, with `es/words.js` before `../app.js`.
+`test/pages.test.js` compares them tag for tag, so **a change to one page is made to the
+other**. The words `app.js` writes come from `es/words.js`: impersonal (no tú, vos or
+usted), with market terms left in English.
+- **A new word.** Adding one to `app.js` means adding its Spanish too.
+  `test/words.test.js` fails on a missing or stale entry, and on a translation that drops
+  a key's `{placeholders}` or markup. So does a new market or strategy name, or a new
+  message from `api/market.js`.
+- **The rest of the page.** The scenario saved in the browser is shared by both pages.
+  Each page links the other at its top and names it with `hreflang`.
+- **The privacy policy.** `es/privacy.html` translates it section for section, and says
+  the English one prevails. `test/privacy.test.js` holds the two together: when the
+  English policy changes, effective date included, the translation changes with it.
 
 **Strategy statistics use an economic price grid, not the chart window.** `analyse()`
 scans from a price near zero to well past the highest strike. That is why a long put
@@ -311,7 +328,8 @@ boundary, and `--line` is 1.29:1; it stays for dividers. `test/layout.test.js` c
 ratio in both schemes, the phone order and where the phone sizes sit.
 
 **A shared link's preview is in the markup.** LinkedIn, X and messaging apps read the
-Open Graph tags in `index.html`'s `<head>` without running the page, so the tags are
+Open Graph tags in `index.html`'s `<head>` without running the page (the Spanish page
+has its own, and its own `es/og.png`, with the chart in Spanish), so the tags are
 static, and `og:image` and `og:url` are absolute: crawlers resolve nothing relative.
 `og.png` is 1200×627, the 1.91:1 LinkedIn shows, and is a capture of the page's own
 chart (a bull call spread on gold) set beside the title. There is no build step, so it is

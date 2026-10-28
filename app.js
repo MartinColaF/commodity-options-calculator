@@ -2469,7 +2469,7 @@ async function applyFuturesPrice() {
   const wanted = q.currency === 'USX' ? 'cents' : q.currency === 'USD' ? 'USD' : null;
   if (wanted && wanted !== state.quote) {
     state.quote = wanted;
-    unitNote = ', ' + t('quoting switched to {quote} to match the contract', { quote: wanted });
+    unitNote = ', ' + t('quoting switched to {quote} to match the contract', { quote: wanted === 'cents' ? t('cents') : wanted });
   }
 
   // The continuous front month, so no listed month is picked any more.

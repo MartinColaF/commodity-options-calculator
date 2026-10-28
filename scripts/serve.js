@@ -22,7 +22,8 @@ const TYPES = {
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
   let rel = decodeURIComponent(url.pathname);
-  if (rel === '/') rel = '/index.html';
+  // A folder's page, as Vercel serves /es/.
+  if (rel.endsWith('/')) rel += 'index.html';
 
   const file = path.join(ROOT, rel);
   // Keep requests inside the project directory.
