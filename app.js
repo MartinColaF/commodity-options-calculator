@@ -340,7 +340,12 @@ function americanGreeks(kind, S, K, T, r, b, sigma, bTracksRate) {
   const dn = P(S - hS, T, r, b, sigma);
 
   const hV = 5e-4;
-  const hT = Math.min(T / 2, 1 / 365);
+  // Theta is the price's rate of change, quoted per day, as gbs() gives it -
+  // so the step in time is a thousandth of a day. It was a day, which read a
+  // short option's decay off a curve bending under it: 3.5% off for a two-day
+  // put at the money, and a decay for an option already worth exercising, whose
+  // value expiry no longer moves, wherever the step crossed the boundary.
+  const hT = Math.min(T / 2, 1e-3 / 365);
   const hR = 1e-5;
 
   // Under Black-76 the carry is 0 by construction and a rate bump must not

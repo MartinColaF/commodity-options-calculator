@@ -399,3 +399,28 @@ test('where BAW finds no exercise boundary, it adds no premium', () => {
     prev = v;
   }
 });
+
+test('American theta is the price\'s rate of change, as the European one is', () => {
+  // It came from a step of a day either side, which read a short option's
+  // decay off a curve bending under it, and gave a decay to an option already
+  // worth exercising wherever the step crossed the boundary.
+  const rate = c => {
+    const P = t => americanPrice(c[0], c[1], c[2], t, c[4], c[5], c[6]);
+    const e = 1e-6 / 365;
+    return (P(c[3] - e) - P(c[3] + e)) / (2 * e) / 365;
+  };
+  // A two-day put at the money on a future read -0.3819 a day for -0.3689.
+  let c = ['put', 100, 100, 2 / 365, 0.04, 0, 0.5];
+  let theta = americanGreeks(...c, false).theta;
+  assert.ok(Math.abs(theta - rate(c)) < 1e-6 * Math.abs(rate(c)), `two-day put: ${theta} vs ${rate(c)}`);
+  // A call with carry above the rate is never exercised early, so its theta is
+  // gbs()'s: -0.1877, where it read -0.1903.
+  c = ['call', 100, 100, 3 / 365, 0.04, 0.05, 0.3];
+  theta = americanGreeks(...c, true).theta;
+  assert.ok(Math.abs(theta - gbs(...c, true).theta) < 1e-6 * Math.abs(theta), `three-day call: ${theta} vs ${gbs(...c, true).theta}`);
+  // Worth exercising now, a put is its intrinsic value, which expiry does not
+  // move: no decay, where it read -0.0000788 a day.
+  c = ['put', 100, 115, 10 / 365, 0.05, 0, 0.3];
+  assert.strictEqual(americanPrice(...c), 15);
+  assert.strictEqual(americanGreeks(...c, false).theta, 0);
+});

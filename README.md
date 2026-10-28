@@ -203,11 +203,11 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/american.test.js` — an independent CRR binomial tree, and the
   Barone-Adesi-Whaley pricer checked against it: the approximation envelope, the
   no-arbitrage bounds, the early-exercise premium on both sides of a futures
-  option, the exercise boundary, greeks by finite difference, the
-  style-aware implied-volatility solver, negative rates: European exactly where the
-  tree finds no early-exercise value, never below the European price anywhere, no
-  premium where BAW finds no exercise boundary, and with no volatility, exercise on
-  the best date — now, at expiry or in between — with that date's greeks.
+  option, the exercise boundary, greeks by finite difference, theta as the price's
+  rate of change, the style-aware implied-volatility solver, negative rates: European
+  exactly where the tree finds no early-exercise value, never below the European price
+  anywhere, no premium where BAW finds no exercise boundary, and with no volatility,
+  exercise on the best date — now, at expiry or in between — with that date's greeks.
 - `test/leg-pricing.test.js` — every path that prices a leg agreeing with the others:
   the implied volatility of a leg's own premium is its own volatility, a position marked
   today at today's price shows no P&L, value and greeks report the same price,
