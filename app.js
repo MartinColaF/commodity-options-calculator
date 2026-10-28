@@ -2140,7 +2140,8 @@ function renderScenarios() {
         : 'Each date includes the premium\'s interest up to it, at ' + fmt(premiumRate() * 100, 2) + '%.')
     : 'Only the underlying is in the position, so volatility and time do nothing.';
 
-  $('scenarios').innerHTML = panels + '<p class="note">' + escapeHtml(note) + '</p>';
+  $('scenarios').innerHTML = panels;
+  $('scenarioHelp').textContent = note;
 }
 
 /* Chart.js is the one thing on the page loaded from a CDN. An ad blocker, a CDN
@@ -2809,6 +2810,11 @@ function holdButton(button) {
   };
 }
 
+/* A "?" that opens an explanation, which is not an action on the page. */
+function isHelpButton(el) {
+  return !!(el && el.classList && el.classList.contains('help-btn'));
+}
+
 /* What a share or an import did, under the buttons that did it. On a phone the
  * market-data status line is 3,400px above them, out of sight. */
 function setSaveStatus(msg, kind) {
@@ -2981,7 +2987,12 @@ function bindInputs() {
   };
   document.addEventListener('input', clearProblems, true);
   document.addEventListener('change', clearProblems, true);
-  document.addEventListener('click', e => { if (e.target.closest('button')) clearProblems(); }, true);
+  // Not the "?" buttons: opening an explanation should not erase the reason
+  // it explains.
+  document.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b && !isHelpButton(b)) clearProblems();
+  }, true);
 
   // A number inputProblem() refuses never reaches the state while it is being
   // typed - "0.45" passes through "0" on the way - so the reason is given once
@@ -3013,6 +3024,17 @@ function bindInputs() {
     renderAll();
   });
 
+  // A "?" opens or closes the explanation it names, which sits under it. The
+  // explanations were all on show: 18 notes, 1,284px of a phone's page.
+  // Only the page changes, never the state.
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('button');
+    if (!isHelpButton(b)) return;
+    const open = b.getAttribute('aria-expanded') !== 'true';
+    b.setAttribute('aria-expanded', String(open));
+    $(b.getAttribute('aria-controls')).hidden = !open;
+  });
+
   // Removing every leg sat one tap from adding one, with no way back: persist()
   // saves the empty table at once. The legs stay one Undo away until the next
   // thing done on the page.
@@ -3041,7 +3063,8 @@ function bindInputs() {
   document.addEventListener('input', forgetRemoved, true);
   document.addEventListener('change', forgetRemoved, true);
   document.addEventListener('click', e => {
-    if (e.target.closest && e.target.closest('button') && !isUndo(e.target)) forgetRemoved();
+    const b = e.target.closest && e.target.closest('button');
+    if (b && !isHelpButton(b) && !isUndo(e.target)) forgetRemoved();
   }, true);
 
   // Delegated handling for the legs table.

@@ -159,7 +159,7 @@ test('the page says what the premium carries, and at what rate', () => {
     '</strong><small>to the horizon, at 4\\.00%, the risk-free rate</small>'));
   assert.match(el('greeks').innerHTML, new RegExp('Theta is the options\' own decay\\. The P&amp;L also carries the ' +
     'premium\'s interest: ' + amount(-page.premiumInterestPerDay(0)) + ' a day at 4\\.00%\\.'));
-  assert.match(el('scenarios').innerHTML, /Each date includes the premium&#39;s interest up to it, at 4\.00%\./);
+  assert.match(el('scenarioHelp').textContent, /Each date includes the premium's interest up to it, at 4\.00%\./);
   assert.match(el('financingNote').textContent, /at the risk-free rate above - the one that discounts the price/);
   assert.strictEqual(el('financingRate').disabled, true, 'no rate of your own to type');
 
@@ -186,7 +186,7 @@ test('the page says what the premium carries, and at what rate', () => {
   draw();
   assert.match(el('summary').innerHTML, /Premium interest<\/span><strong>Not charged<\/strong><small>nominal P&amp;L<\/small>/);
   assert.doesNotMatch(el('greeks').innerHTML, /premium's interest/);
-  assert.match(el('scenarios').innerHTML, /The P&amp;L is nominal: the premium carries no interest\./);
+  assert.match(el('scenarioHelp').textContent, /The P&L is nominal: the premium carries no interest\./);
   assert.match(el('financingNote').textContent, /^Nominal P&L/);
   assert.strictEqual(el('financingRate').disabled, true);
 });

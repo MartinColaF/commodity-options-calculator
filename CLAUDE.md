@@ -438,6 +438,17 @@ American · front month · rate 4.00% · …". A reason or a warning that appear
 settings opens them (`openFolded()`); never leave one where nobody can see it. On a phone
 the Contract card went from 1,442 px to 494.
 
+**Explanations open from a "?"; what a number is stays in view.** A `button.help-btn`
+with `aria-controls` and `aria-expanded` opens the paragraph it names, which sits under it
+with `hidden`; the wiring toggles it and changes only the page. Before, 18 notes and 596
+words took 1,284 px of a phone's page. Never put behind a "?" what says what a number is,
+where it came from or what went wrong: the sources, "not implied", "not market data", the
+multiplier, refusal reasons, warnings and the disclaimer stay shown. The capture-phase
+listeners that clear a refusal reason or an Undo on "any button" skip the help buttons
+(`isHelpButton()`), or opening an explanation would erase what it explains. The scenario
+grid's note is written to `#scenarioHelp`, not under the tables. `test/help.test.js`
+checks the markup and the toggle.
+
 **Removing every leg can be undone.** "Remove all legs" is styled as the destructive
 action it is, apart from "+ Add leg", and leaves an Undo button that lasts until the next
 edit, choice or button anywhere on the page; Undo puts the same legs back. Before, "Clear"
