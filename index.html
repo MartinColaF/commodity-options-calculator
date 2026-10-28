@@ -85,6 +85,7 @@
           </select>
           <button id="loadMonths" class="ghost">Load</button>
         </div>
+        <div class="status" id="monthStatus" role="status"></div>
         <p class="note" id="monthNote">The continuous front-month series by default. Load the listed months to price against one specific delivery month &mdash; which is what an option quote on a broker's screen refers to.</p>
 
         <label for="spot"><span id="spotLabel">Futures price</span></label>
@@ -145,6 +146,7 @@
           <button id="fetchVol" class="ghost">Volatility</button>
           <button id="fetchCurve" class="ghost">Yield</button>
         </div>
+        <div class="status" id="dataStatus" role="status"></div>
         <p class="note">Futures prices come from the front-month contract; the convenience yield is implied by two listed contracts on the real curve. The rate is the US Treasury daily par yield curve, interpolated to your expiry. When the two contracts sit close together, a small price gap annualises into a large yield &mdash; the two prices used are shown below so you can judge it.</p>
 
         <h3>Volatility settings</h3>
@@ -191,6 +193,7 @@
           <div><label for="carryDays">Days</label><input type="number" id="carryDays" step="1" placeholder="90"></div>
         </div>
         <button id="implyYield" class="ghost" style="margin-top:8px">Imply convenience yield from these</button>
+        <div class="status" id="carryStatus" role="status"></div>
         <p class="note">Inverts F = S&middot;e<sup>(r&minus;y)T</sup>, net of storage costs. The Yield button above fills these boxes with the two contracts it used, so you can check its work or override it.</p>
 
         <details style="margin-top:14px">
@@ -204,7 +207,6 @@
 
         <button id="usePreset" class="ghost" style="margin-top:12px">Reset to commodity presets</button>
 
-        <div class="status" id="dataStatus"></div>
         <div id="sources"></div>
       </div>
 
@@ -236,6 +238,7 @@
           </table>
         </div>
         <p class="problem" id="legProblem" role="alert"></p>
+        <div class="status" id="legStatus" role="status"></div>
         <p class="note">Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Under</strong> is that leg's own delivery month price &mdash; blank uses the contract on the left, and the <em>Leg prices</em> button below fills it from the real curve. <strong>Entry</strong> overrides the theoretical premium with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
         <div class="row tight">
           <button id="fillLegPrices" class="ghost">Fill leg prices from the futures curve</button>
@@ -278,7 +281,10 @@
             <input type="checkbox" id="showLegs" checked>
           </div>
         </div>
-        <div class="chart-box"><canvas id="payoffChart"></canvas></div>
+        <div class="chart-box">
+          <p class="chart-empty" id="chartEmpty" hidden>No legs to chart yet. Choose a strategy or add a leg.</p>
+          <canvas id="payoffChart"></canvas>
+        </div>
         <p class="note">The solid line is the P&amp;L at the nearest expiry among your legs; the dashed line is the mark-to-market value at the evaluation date you pick. Both carry the premium's interest up to their date, unless <em>Premium financing</em> in the Contract panel is set to None. Vertical marks show the strikes and the current price.</p>
       </div>
 

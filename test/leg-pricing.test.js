@@ -207,12 +207,12 @@ test('the IV button writes nothing for a premium without time value, and says wh
   deep.entry = page.legGreeks(deep).price;
   press(deep);
   assert.strictEqual(deep.vol, null, 'no volatility written into the leg - it used to get 30%');
-  assert.match(el('dataStatus').textContent, /^That premium has no time value/);
+  assert.match(el('legStatus').textContent, /^That premium has no time value/);
 
   deep.entry = 20;
   press(deep);
   assert.strictEqual(deep.vol, null);
-  assert.match(el('dataStatus').textContent, /^No implied volatility solves that premium/,
+  assert.match(el('legStatus').textContent, /^No implied volatility solves that premium/,
     'a premium below the value at zero volatility has no volatility at all');
 
   // Not only deep in the money: any premium no higher than the value at zero
@@ -222,7 +222,7 @@ test('the IV button writes nothing for a premium without time value, and says wh
   itm.entry = page.gbs('call', 100, 95, 30 / 365, 0.04, 0, 1e-8).price;
   press(itm);
   assert.strictEqual(itm.vol, null);
-  assert.match(el('dataStatus').textContent, /^That premium has no time value/);
+  assert.match(el('legStatus').textContent, /^That premium has no time value/);
 
   const call = page.newLeg({ kind: 'call', strike: 105, days: 30 });
   page.state.legs = [call];
@@ -249,7 +249,7 @@ test('the IV button keeps the volatility it solves, so the leg is worth its prem
   near(page.legGreeks(leg).price, 91.37, 1e-9, 'the leg is worth its premium');
   near(page.pnlEvaluator()(4000, 0), 0, 1e-6, 'and shows no P&L today');
   assert.match(el('legsBody').innerHTML, /data-f="vol" value="20\.03"/, 'the table shows two decimals');
-  assert.match(el('dataStatus').textContent, /^Implied volatility for that leg: 20\.0313%\. /,
+  assert.match(el('legStatus').textContent, /^Implied volatility for that leg: 20\.0313%\. /,
     'the message four');
 
   // Stored as before, it was not worth its premium.

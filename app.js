@@ -1756,39 +1756,48 @@ function renderResults() {
     : (a.upSlope < 0 ? '-$' : '$') + Math.abs(a.upSlope).toPrecision(2);
   const rising = `<small>${perPoint} per point as the price rises</small>`;
 
-  $('summary').innerHTML = `
-    <div class="kpi"><span>Net ${cost >= 0 ? 'debit (paid)' : 'credit (received)'}</span><strong>${money(Math.abs(cost))}</strong></div>
-    <div class="kpi"><span>Max profit</span><strong class="pos">${money(a.maxProfit)}</strong>${a.maxProfit === Infinity ? rising : ''}</div>
-    <div class="kpi"><span>Max loss</span><strong class="neg">${money(a.maxLoss)}</strong>${a.maxLoss === -Infinity ? rising : ''}</div>
-    <div class="kpi"><span>Breakeven${a.breakevens.length === 1 ? '' : 's'}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmtPrice(b)).join(' / ') : '-'}</strong></div>
-    <div class="kpi"><span>Prob. of profit</span><strong>${(a.pop * 100).toFixed(1)}%</strong><small>risk-neutral, at ${escapeHtml(fmt(a.popVol * 100, 1))}% vol</small></div>
-    <div class="kpi"><span>Horizon</span><strong>${escapeHtml(a.t)} days</strong></div>
-    <div class="kpi"><span>Premium interest</span>${interest}</div>`;
+  // Nothing to measure. Zeros in green and red, and a 0.0% chance of profit,
+  // read as a position that makes and loses nothing.
+  if (!activeLegs().length) {
+    $('summary').innerHTML = '<p class="empty">' + (state.legs.length
+      ? 'Every leg is switched off. Tick <strong>Include</strong> on one in the table above to see its results.'
+      : 'No legs yet. <a href="#strategy">Choose a strategy</a> or add a leg above to see its results.') + '</p>';
+    $('greeks').innerHTML = '';
+  } else {
+    $('summary').innerHTML = `
+      <div class="kpi"><span>Net ${cost >= 0 ? 'debit (paid)' : 'credit (received)'}</span><strong>${money(Math.abs(cost))}</strong></div>
+      <div class="kpi"><span>Max profit</span><strong class="pos">${money(a.maxProfit)}</strong>${a.maxProfit === Infinity ? rising : ''}</div>
+      <div class="kpi"><span>Max loss</span><strong class="neg">${money(a.maxLoss)}</strong>${a.maxLoss === -Infinity ? rising : ''}</div>
+      <div class="kpi"><span>Breakeven${a.breakevens.length === 1 ? '' : 's'}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmtPrice(b)).join(' / ') : '-'}</strong></div>
+      <div class="kpi"><span>Prob. of profit</span><strong>${(a.pop * 100).toFixed(1)}%</strong><small>risk-neutral, at ${escapeHtml(fmt(a.popVol * 100, 1))}% vol</small></div>
+      <div class="kpi"><span>Horizon</span><strong>${escapeHtml(a.t)} days</strong></div>
+      <div class="kpi"><span>Premium interest</span>${interest}</div>`;
 
-  const mult = dollarMultiplier(c);
-  // Once a leg prices off its own month, "a point" needs saying: a point of
-  // the panel's contract, every month moving in proportion, as on the chart.
-  const ownMonth = activeLegs().some(l => legRatio(l) !== 1);
-  // Theta stays the options' own; the interest is the rest of the P&L's change
-  // from one day to the next, so it is given beside it.
-  const perDay = carried ? premiumInterestPerDay(0) : 0;
-  $('greeks').innerHTML = `
-    <table class="greeks">
-      <tr><th><span class="sr-only">Greek</span></th><th>Per unit</th><th>Position ($)</th><th>Meaning</th></tr>
-      <tr><td>Delta</td><td class="num">${fmt(g.unit.delta, 4)}</td><td class="num">${money(g.money.delta)}</td><td class="muted">$ P&L per 1 point move</td></tr>
-      <tr><td>Gamma</td><td class="num">${fmt(g.unit.gamma, 6)}</td><td class="num">${money(g.money.gamma)}</td><td class="muted">delta change per 1 point move</td></tr>
-      <tr><td>Vega</td><td class="num">${fmt(g.unit.vega, 4)}</td><td class="num">${money(g.money.vega)}</td><td class="muted">$ per +1 vol point</td></tr>
-      <tr><td>Theta</td><td class="num">${fmt(g.unit.theta, 4)}</td><td class="num">${money(g.money.theta)}</td><td class="muted">$ per calendar day</td></tr>
-      <tr><td>Rho</td><td class="num">${fmt(g.unit.rho, 4)}</td><td class="num">${money(g.money.rho)}</td><td class="muted">$ per +1 rate point</td></tr>
-    </table>
-    <p class="muted small">Position column = per-unit greek x quantity x $${fmt(mult, 2)} multiplier.${ownMonth
-      ? ' Delta and gamma are per point of the contract in the left panel, with each leg\'s own month ' +
-        'moving in proportion, as on the chart; the Delta column in the legs table is against each ' +
-        'leg\'s own month.'
-      : ''}${perDay
-      ? ' Theta is the options\' own decay. The P&amp;L also carries the premium\'s interest: ' +
-        money(-perDay) + ' a day at ' + ratePct + '%.'
-      : ''}</p>`;
+    const mult = dollarMultiplier(c);
+    // Once a leg prices off its own month, "a point" needs saying: a point of
+    // the panel's contract, every month moving in proportion, as on the chart.
+    const ownMonth = activeLegs().some(l => legRatio(l) !== 1);
+    // Theta stays the options' own; the interest is the rest of the P&L's change
+    // from one day to the next, so it is given beside it.
+    const perDay = carried ? premiumInterestPerDay(0) : 0;
+    $('greeks').innerHTML = `
+      <table class="greeks">
+        <tr><th><span class="sr-only">Greek</span></th><th>Per unit</th><th>Position ($)</th><th>Meaning</th></tr>
+        <tr><td>Delta</td><td class="num">${fmt(g.unit.delta, 4)}</td><td class="num">${money(g.money.delta)}</td><td class="muted">$ P&L per 1 point move</td></tr>
+        <tr><td>Gamma</td><td class="num">${fmt(g.unit.gamma, 6)}</td><td class="num">${money(g.money.gamma)}</td><td class="muted">delta change per 1 point move</td></tr>
+        <tr><td>Vega</td><td class="num">${fmt(g.unit.vega, 4)}</td><td class="num">${money(g.money.vega)}</td><td class="muted">$ per +1 vol point</td></tr>
+        <tr><td>Theta</td><td class="num">${fmt(g.unit.theta, 4)}</td><td class="num">${money(g.money.theta)}</td><td class="muted">$ per calendar day</td></tr>
+        <tr><td>Rho</td><td class="num">${fmt(g.unit.rho, 4)}</td><td class="num">${money(g.money.rho)}</td><td class="muted">$ per +1 rate point</td></tr>
+      </table>
+      <p class="muted small">Position column = per-unit greek x quantity x $${fmt(mult, 2)} multiplier.${ownMonth
+        ? ' Delta and gamma are per point of the contract in the left panel, with each leg\'s own month ' +
+          'moving in proportion, as on the chart; the Delta column in the legs table is against each ' +
+          'leg\'s own month.'
+        : ''}${perDay
+        ? ' Theta is the options\' own decay. The P&amp;L also carries the premium\'s interest: ' +
+          money(-perDay) + ' a day at ' + ratePct + '%.'
+        : ''}</p>`;
+  }
 
   $('tDays').max = Math.max(a.t, 1);
   $('tDays').value = state.chart.tDays;
@@ -1893,6 +1902,8 @@ function chartConfig(a) {
       label: yTitle, data, borderColor: col.net, borderWidth: 2, pointRadius: 0, tension: 0
     });
   }
+  // No legs, no curves: the page says so in the chart's place (renderChartSafely).
+  if (!activeLegs().length) datasets.length = 0;
 
   // Marks sit where the leg's payoff actually kinks on the shared axis, which
   // is not the strike itself once a leg trades on its own delivery month.
@@ -2011,6 +2022,9 @@ function renderScenarios() {
 let chartBroken = false;
 
 function renderChartSafely(a) {
+  // With nothing to chart, the box says so in its place.
+  const empty = $('chartEmpty');
+  if (empty) empty.hidden = activeLegs().length > 0;
   if (chartBroken) return;
   try {
     renderChart(a);
@@ -2635,10 +2649,35 @@ function applyPreset() {
  * their results.
  * ========================================================== */
 
-function setStatus(msg, kind) {
-  const el = $('dataStatus');
-  el.textContent = msg || '';
-  el.className = 'status ' + (kind || '');
+/* Each action reports under its own buttons: the market data's, the month
+ * picker's, the carry check's, the legs table's. They all wrote to the market
+ * data's line once, which on a phone sat 948px below Auto-fill and further from
+ * the rest. One message shows at a time, as it did then. */
+const STATUS_LINES = ['dataStatus', 'monthStatus', 'carryStatus', 'legStatus'];
+
+function setStatus(msg, kind, where) {
+  const line = where || 'dataStatus';
+  for (const id of STATUS_LINES) {
+    const el = $(id);
+    el.textContent = id === line ? msg || '' : '';
+    el.className = 'status ' + (id === line ? kind || '' : '');
+  }
+}
+
+/* While an action waits on the network its button says so and cannot be pressed
+ * again: it used to stay as it was for the nine seconds a failing fetch took.
+ * Returns what puts the button back. */
+function holdButton(button) {
+  if (!button) return () => { };
+  const text = button.textContent, was = button.disabled;
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  button.textContent = 'Fetching…';
+  return () => {
+    button.disabled = was;
+    button.removeAttribute('aria-busy');
+    button.textContent = text;
+  };
 }
 
 /* What a share or an import did, under the buttons that did it. On a phone the
@@ -2677,32 +2716,41 @@ function resetProxyFields() {
   $('proxyNote').textContent = meta.proxy || '';
 }
 
-/* Thin wrapper so every single-field button behaves the same way. */
-function runAction(label, step) {
-  return async () => {
-    setStatus(label + '...', 'busy');
+/* Thin wrapper so every single-field button behaves the same way. `where` is
+ * the status line under it, the market data's unless given. */
+function runAction(label, step, where) {
+  return async e => {
+    const release = holdButton(e && (e.currentTarget || e.target));
+    setStatus(label + '...', 'busy', where);
     try {
       const r = await step();
       showResult(r);
       renderAll();
-      setStatus('Updated ' + r.message + '.', 'ok');
-    } catch (e) {
-      setStatus(label + ' failed: ' + e.message + '. The current value is unchanged.', 'err');
+      setStatus('Updated ' + r.message + '.', 'ok', where);
+    } catch (err) {
+      setStatus(label + ' failed: ' + err.message + '. The current value is unchanged.', 'err', where);
+    } finally {
+      release();
     }
   };
 }
 
 /* One button that fills everything it can, reporting each field separately. */
-async function actionAutoFill() {
+async function actionAutoFill(e) {
+  const release = holdButton(e && (e.currentTarget || e.target));
   setStatus('Fetching market data...', 'busy');
-  const r = await autoFill(volInputs());
-  r.results.forEach(showResult);
-  renderAll();
+  try {
+    const r = await autoFill(volInputs());
+    r.results.forEach(showResult);
+    renderAll();
 
-  const parts = [];
-  if (r.done.length) parts.push('Updated ' + r.done.join('; ') + '.');
-  if (r.failed.length) parts.push('Left unchanged: ' + r.failed.join('; ') + '.');
-  setStatus(parts.join(' '), r.failed.length ? (r.done.length ? '' : 'err') : 'ok');
+    const parts = [];
+    if (r.done.length) parts.push('Updated ' + r.done.join('; ') + '.');
+    if (r.failed.length) parts.push('Left unchanged: ' + r.failed.join('; ') + '.');
+    setStatus(parts.join(' '), r.failed.length ? (r.done.length ? '' : 'err') : 'ok');
+  } finally {
+    release();
+  }
 }
 
 function actionImplyYield() {
@@ -2711,10 +2759,10 @@ function actionImplyYield() {
     r = applyCarryYield(parseFloat($('carryS').value), parseFloat($('carryF').value),
       parseFloat($('carryDays').value));
   } catch (e) {
-    setStatus(e.message, 'err');
+    setStatus(e.message, 'err', 'carryStatus');
     return;
   }
-  setStatus(r.message, 'ok');
+  setStatus(r.message, 'ok', 'carryStatus');
   renderAll();
 }
 
@@ -2741,7 +2789,7 @@ function bindInputs() {
     const r = await loadContractMonths();
     renderMonths();
     return r;
-  }));
+  }, 'monthStatus'));
   $('contractMonth').addEventListener('change', e => {
     useContractMonth(e.target.value);
     renderAll();
@@ -2873,10 +2921,10 @@ function bindInputs() {
     if (!e.target.value.trim()) storeAvKey('');
   });
   $('fetchCurve').addEventListener('click', runAction('Convenience yield', applyCurveYield));
-  $('fillLegPrices').addEventListener('click', runAction('Leg prices', applyLegPrices));
+  $('fillLegPrices').addEventListener('click', runAction('Leg prices', applyLegPrices, 'legStatus'));
   $('clearLegPrices').addEventListener('click', () => {
     clearLegPrices();
-    setStatus('Every leg is back on the contract in the left panel.', 'ok');
+    setStatus('Every leg is back on the contract in the left panel.', 'ok', 'legStatus');
     renderAll();
   });
   $('skewOn').addEventListener('change', e => {
@@ -2961,7 +3009,7 @@ function onLegEvent(e) {
   if (f === 'iv') {
     const target = leg.entry;
     if (target == null) {
-      setStatus('Enter the market premium in the Entry column first, then press IV.', 'err');
+      setStatus('Enter the market premium in the Entry column first, then press IV.', 'err', 'legStatus');
       return;
     }
     const iv = legImpliedVol(leg, target);
@@ -2970,13 +3018,13 @@ function onLegEvent(e) {
         ? 'That premium has no time value - it is what the option is worth at zero volatility - so ' +
           'every volatility up to some level prices it alike and none can be implied. The leg keeps ' +
           'its volatility.'
-        : 'No implied volatility solves that premium (check the price and the strike).', 'err');
+        : 'No implied volatility solves that premium (check the price and the strike).', 'err', 'legStatus');
       return;
     }
     // Kept exact, so the leg is worth its premium; the table shows two decimals.
     leg.vol = iv * 100;
     setStatus('Implied volatility for that leg: ' + volField(leg.vol, 4) + '%. The table shows it ' +
-      'to two decimals; the leg is priced at the exact figure, so it is worth its premium.', 'ok');
+      'to two decimals; the leg is priced at the exact figure, so it is worth its premium.', 'ok', 'legStatus');
     renderAll();
     return;
   }
