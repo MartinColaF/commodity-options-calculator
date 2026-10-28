@@ -21,9 +21,13 @@
   --chart-text: #333;
   --chart-net: #0b6ea8;
   --chart-now: #d97706;
-  --chart-leg: rgba(0,0,0,.25);
+  /* Each leg's own curve: 3.4:1 against the card, which a line on a chart needs
+     to reach 3:1; it was 1.8:1. */
+  --chart-leg: rgba(0,0,0,.45);
   --chart-spot: #6b7280;
   --chart-strike: #9ca3af;
+  /* The strike marks' labels are text, so 4.5:1; the dashed lines can stay light. */
+  --chart-strike-label: #6b7280;
   /* The shade at a table's edge that says it scrolls further. */
   --scroll-shadow: rgba(0,0,0,.18);
 }
@@ -47,9 +51,10 @@
     --chart-text: #d9dde3;
     --chart-net: #7fd1ff;
     --chart-now: #ffb45c;
-    --chart-leg: rgba(255,255,255,.30);
+    --chart-leg: rgba(255,255,255,.40);
     --chart-spot: #9aa4b2;
     --chart-strike: #8f8f8f;
+    --chart-strike-label: #9aa4b2;
     --scroll-shadow: rgba(0,0,0,.6);
   }
 }
@@ -295,9 +300,15 @@ table.scenario th.rowhead {
   white-space: nowrap;
 }
 table.scenario td.num { white-space: nowrap; }
+/* The price column stays put while the dates scroll by on a phone. */
+table.scenario th.rowhead, table.scenario thead th:first-child {
+  position: sticky; left: 0; z-index: 1; background: var(--card);
+}
 
 /* chart */
-.chart-box { height: 420px; position: relative; }
+/* 420px, but never more than about half a short screen: on a phone held sideways the
+ * chart fits whole. */
+.chart-box { height: clamp(300px, 52vh, 420px); position: relative; }
 /* In place of the chart when there is nothing to chart: a flat line at zero read
  * as a position that makes and loses nothing. The canvas stays, hidden, so
  * Chart.js keeps its size; the box shrinks where :has() is supported. */

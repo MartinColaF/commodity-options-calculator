@@ -79,6 +79,7 @@ test('breakevens, strikes, the scenario grid and the chart read in the same deci
   page.renderScenarios();
   assert.match(el('scenarios').innerHTML, /<th class="rowhead">4\.5000 <span/, 'the grid\'s price rows');
 
+  page.state.chart.showLegs = true;
   const cfg = page.chartConfig(page.analyse());
   assert.ok(cfg.data.datasets.some(d => d.label === 'Long 1 call 4.7'), 'the leg in the legend');
   assert.ok(cfg.options.plugins.markers.lines.some(l => l.label === 'K 4.7'), 'the strike mark, not "K 5"');
