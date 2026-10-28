@@ -364,6 +364,15 @@ guarantees numbers: it is where the markup is built, and it should not depend on
 source of a leg getting its types right. It is a pure function so the escaping is tested.
 Any new `innerHTML` that interpolates state needs the same `escapeHtml` treatment.
 
+**Every control in a leg row carries its own name, and every cell its heading.** The
+header row names a column for the eye, but not the input under it, so each control has an
+`aria-label` with its leg's place in the table ("Strike, leg 2"); without them a screen
+reader said "edit text". Each cell's `data-label` heads it on a phone, where each leg is a
+card of three columns: the table needed 808 px and showed 324. A new column needs both,
+and its `data-label` must match its header: `test/names.test.js` compares them, and checks
+that every field on the page has a label. On desktop the right column fits the whole table
+from 1280 px screens up; below that it scrolls, with a shade at the edge that has more.
+
 **`index.html` carries a Content-Security-Policy.** No inline script runs, so an
 `onerror=` that slipped past escaping is refused. **Update it whenever an external script
 or `fetch` origin is added** — the AdSense script the privacy policy mentions, say —

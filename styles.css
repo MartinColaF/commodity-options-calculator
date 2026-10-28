@@ -24,6 +24,8 @@
   --chart-leg: rgba(0,0,0,.25);
   --chart-spot: #6b7280;
   --chart-strike: #9ca3af;
+  /* The shade at a table's edge that says it scrolls further. */
+  --scroll-shadow: rgba(0,0,0,.18);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,6 +50,7 @@
     --chart-leg: rgba(255,255,255,.30);
     --chart-spot: #9aa4b2;
     --chart-strike: #8f8f8f;
+    --scroll-shadow: rgba(0,0,0,.6);
   }
 }
 
@@ -66,7 +69,9 @@ body {
   line-height: 1.45;
 }
 
-.wrap { max-width: 1180px; margin: 0 auto; }
+/* Wide enough, from 1280px screens up, for the whole legs table beside the
+ * contract panel: at 1180 its IV and remove buttons sat past the edge. */
+.wrap { max-width: 1320px; margin: 0 auto; }
 a { color: var(--accent); }
 
 header { text-align: center; margin-bottom: 24px; }
@@ -76,7 +81,7 @@ header p { margin: 0; color: var(--muted); font-size: .92rem; }
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(320px, 380px) 1fr;
+  grid-template-columns: minmax(300px, 340px) 1fr;
   gap: 18px;
   align-items: start;
 }
@@ -227,7 +232,24 @@ label.file-button:hover { filter: brightness(1.08); }
 .neg { color: var(--neg); }
 
 /* tables */
-.table-scroll { overflow-x: auto; }
+/* A shade at whichever edge has more table behind it. The card-coloured covers
+ * scroll with the content and hide the shade once that edge is reached; macOS
+ * and iOS show no scrollbar until you scroll. */
+.table-scroll {
+  overflow-x: auto;
+  background:
+    linear-gradient(to right, var(--card) 30%, transparent) left / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--card) 30%, transparent) right / 24px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--scroll-shadow), transparent) left / 10px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--scroll-shadow), transparent) right / 10px 100% no-repeat scroll;
+}
+
+/* Read by screen readers, not shown: the empty headers and the strategy picker's
+ * label. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
 
 table { border-collapse: collapse; width: 100%; font-size: .84rem; }
 th, td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
@@ -236,6 +258,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 #legs input, #legs select { padding: 4px 6px; font-size: .82rem; min-width: 62px; }
 #legs input[type=checkbox] { width: auto; min-width: 0; }
+/* Headings and the two buttons on one line each: squeezed, "Cost $" broke in two
+ * and IV sat on top of remove. */
+#legs th, #legs td:last-child { white-space: nowrap; }
 #legs tr.off { opacity: .45; }
 
 .greeks td:first-child { font-weight: 600; }
@@ -317,7 +342,6 @@ footer a { color: var(--muted); }
   .chart-controls input[type=checkbox] { width: 24px; height: 24px; min-height: 0; }
   label.inline, .chart-controls label { min-height: 44px; display: flex; align-items: center; }
   button.icon { min-width: 44px; }
-  #legs td:last-child { white-space: nowrap; }
   /* IV and remove sit side by side: a slip should not delete the leg. */
   #legs button.icon + button.icon { margin-left: 8px; }
   details > summary { padding: 10px 0; }
@@ -329,4 +353,30 @@ footer a { color: var(--muted); }
 @media (max-width: 600px) {
   .strategy-row { flex-wrap: wrap; }
   .strategy-row #strategy { flex-basis: 100%; }
+}
+
+/* Each leg as a card of three columns on a phone, every field under its own
+ * heading: the table needed 808px and showed 324, with the price and the cost
+ * of the leg out of sight. The headings come from each cell's data-label. */
+@media (max-width: 600px) {
+  #legs thead { display: none; }
+  #legs table, #legs tbody { display: block; }
+  #legs tbody tr {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+    padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  #legs tbody td {
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start;
+    gap: 2px; min-width: 0; padding: 0; border: 0;
+  }
+  #legs tbody td::before {
+    content: attr(data-label); font-size: .72rem; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  #legs tbody td.num { text-align: left; font-size: 1rem; }
+  #legs input, #legs select { min-width: 0; width: 100%; }
+  #legs input[type=checkbox] { width: 24px; }
+  /* IV and remove, on their own line at the card's foot. */
+  #legs tbody td:last-child { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+  #legs tbody td[colspan] { grid-column: 1 / -1; }
 }

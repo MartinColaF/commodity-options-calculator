@@ -178,7 +178,7 @@ test('the legs table keeps each leg\'s delta against its own month', () => {
   const leg = newLeg({ kind: 'call', side: 1, qty: 2, strike: 112, days: 180, under: 110 });
   state.legs = [leg];
   const own = legGreeks(leg).delta;
-  assert.ok(app.legRowHtml(leg, 100).includes('<td class="num">' + app.fmt(2 * own, 3) + '</td>'));
+  assert.ok(app.legRowHtml(leg, 100).includes('<td class="num" data-label="Delta">' + app.fmt(2 * own, 3) + '</td>'));
   near(app.netGreeks().unit.delta, 2 * own * 1.1, 1e-12, 'the position, per point of the panel\'s 100');
 });
 
