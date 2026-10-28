@@ -1280,7 +1280,7 @@ async function fetchYieldCurve() {
     cacheSet('treasury', curve);
     return curve;
   }
-  throw new Error('Treasury yield curve unavailable');
+  throw new Error(t('Treasury yield curve unavailable'));
 }
 
 /* The last day in one month of the Treasury's yield curve feed, or null when
@@ -1341,14 +1341,14 @@ async function fetchDailySeries(symbol, key) {
   const url = AV_URL + '?function=TIME_SERIES_DAILY&symbol=' + encodeURIComponent(symbol) +
     '&outputsize=compact&apikey=' + encodeURIComponent(key);
   const res = await fetch(url);
-  if (!res.ok) throw new Error('Alpha Vantage HTTP ' + res.status);
+  if (!res.ok) throw new Error(t('Alpha Vantage HTTP {status}', { status: res.status }));
   const json = await res.json();
 
   if (json['Note'] || json['Information']) {
     throw new Error(json['Note'] || json['Information']);
   }
   const raw = json['Time Series (Daily)'];
-  if (!raw) throw new Error(json['Error Message'] || 'Symbol not found: ' + symbol);
+  if (!raw) throw new Error(json['Error Message'] || t('Symbol not found: {symbol}', { symbol }));
 
   const series = Object.keys(raw).sort().map(d => ({
     date: d,
@@ -1402,8 +1402,8 @@ function proxyAvailable(commodity) {
 async function proxyGet(fn, commodity, ttlMs) {
   if (!proxyAvailable(commodity)) {
     throw new Error(PROXY_COMMODITIES.indexOf(commodity) === -1
-      ? 'no futures contract mapped for this commodity'
-      : 'the futures proxy only runs on the deployed site');
+      ? t('no futures contract mapped for this commodity')
+      : t('the futures proxy only runs on the deployed site'));
   }
   const ck = 'proxy.' + fn + '.' + commodity;
   const cached = cacheGet(ck, ttlMs);
@@ -1413,9 +1413,11 @@ async function proxyGet(fn, commodity, ttlMs) {
   let json = null;
   try { json = await res.json(); } catch (e) { /* an HTML error page, not JSON */ }
   if (!res.ok) {
+    // The function's own messages are English; t() gives the ones it knows in
+    // the page's language.
     throw new Error(res.status === 404
-      ? 'the futures proxy is not deployed here'
-      : (json && json.error) || ('proxy returned HTTP ' + res.status));
+      ? t('the futures proxy is not deployed here')
+      : (json && json.error && t(json.error)) || t('proxy returned HTTP {status}', { status: res.status }));
   }
   cacheSet(ck, json);
   return json;
@@ -1435,7 +1437,7 @@ async function listedContracts(commodity) {
 /* The two nearest listed contracts: what the carry is measured on. */
 async function nearestContracts(commodity) {
   const list = await listedContracts(commodity);
-  if (list.length < 2) throw new Error('fewer than two listed contracts quote for this commodity');
+  if (list.length < 2) throw new Error(t('fewer than two listed contracts quote for this commodity'));
   return { near: list[0], far: list[1] };
 }
 
@@ -1487,8 +1489,8 @@ function fmt(x, dp) {
 }
 
 function money(x) {
-  if (x === Infinity) return 'Unlimited';
-  if (x === -Infinity) return 'Unlimited';
+  if (x === Infinity) return t('Unlimited');
+  if (x === -Infinity) return t('Unlimited');
   const sign = x < 0 ? '-' : '';
   return sign + '$' + fmt(Math.abs(x), 2);
 }
@@ -1578,12 +1580,12 @@ function renderInputs() {
   $('skewRr').disabled = !state.skew.on;
   $('skewBf').disabled = !state.skew.on;
   $('skewNote').textContent = state.skew.on
-    ? 'Malz interpolation: legs with a blank Vol take the curve for their own strike, ' +
+    ? t('Malz interpolation: legs with a blank Vol take the curve for their own strike, ' +
       'read at today\'s price and held as the scenario moves (sticky strike). ' +
       'Risk reversal is the 25-delta call\'s volatility minus the put\'s; butterfly is ' +
-      'how far both wings sit above the at-the-money level, which is the Volatility field.'
-    : 'Off: every leg with a blank Vol uses the single Volatility number above. Turn it on ' +
-      'to quote a surface as three points instead of typing a volatility per leg.';
+      'how far both wings sit above the at-the-money level, which is the Volatility field.')
+    : t('Off: every leg with a blank Vol uses the single Volatility number above. Turn it on ' +
+      'to quote a surface as three points instead of typing a volatility per leg.');
   const warning = skewWarning();
   // Written only when it changes: it is a live region, re-read on every change.
   // A new warning opens the folded settings it sits in, so it is never hidden.
@@ -1595,49 +1597,57 @@ function renderInputs() {
   const isB76 = state.model === 'b76';
   $('yield').disabled = isB76;
   $('yieldNote').textContent = isB76
-    ? 'Not used in Black-76: the futures price already embeds carry and convenience yield.'
-    : 'Net convenience yield (benefit of holding the physical, minus storage).';
+    ? t('Not used in Black-76: the futures price already embeds carry and convenience yield.')
+    : t('Net convenience yield (benefit of holding the physical, minus storage).');
 
   const fin = state.financing.mode;
   $('financingRate').disabled = fin !== 'custom';
   $('financingNote').textContent = fin === 'none'
-    ? 'Nominal P&L: measured from the entry price alone, with no interest on the premium.'
-    : 'The premium paid today carries interest from today to the date the P&L is read, at ' +
-      (fin === 'custom'
-        ? 'your own rate, continuously compounded like the risk-free rate.'
-        : 'the risk-free rate above - the one that discounts the price - so a fairly priced ' +
-          'option breaks even on average.') +
-      ' A debit pays the interest and a credit earns it; a futures leg has no premium to carry.';
+    ? t('Nominal P&L: measured from the entry price alone, with no interest on the premium.')
+    : fin === 'custom'
+      ? t('The premium paid today carries interest from today to the date the P&L is read, at ' +
+        'your own rate, continuously compounded like the risk-free rate. A debit pays the ' +
+        'interest and a credit earns it; a futures leg has no premium to carry.')
+      : t('The premium paid today carries interest from today to the date the P&L is read, at ' +
+        'the risk-free rate above - the one that discounts the price - so a fairly priced ' +
+        'option breaks even on average. A debit pays the interest and a credit earns it; a ' +
+        'futures leg has no premium to carry.');
 
   $('styleNote').textContent = state.style === 'american'
-    ? 'Barone-Adesi-Whaley approximation. Most listed commodity futures options are American, and on futures the early-exercise premium shows up on calls and puts alike.'
-    : 'Closed-form Black-76 / Black-Scholes-Merton. Exact for European exercise, but it prices the right to exercise early at zero - worth up to ~2.6% of the underlying on a deep in-the-money contract.';
+    ? t('Barone-Adesi-Whaley approximation. Most listed commodity futures options are American, and on futures the early-exercise premium shows up on calls and puts alike.')
+    : t('Closed-form Black-76 / Black-Scholes-Merton. Exact for European exercise, but it prices the right to exercise early at zero - worth up to ~2.6% of the underlying on a deep in-the-money contract.');
 
   const c = currentCommodity();
-  $('spotLabel').textContent = isB76 ? 'Futures price' : 'Spot price';
-  $('multInfo').textContent = '1 contract = ' + fmt(c.size, 0) + ' ' + c.unit +
-    (c.quote === 'cents' ? ' (quoted in cents)' : '') +
-    ' - P&L multiplier $' + fmt(dollarMultiplier(c), 2) + ' per point';
+  $('spotLabel').textContent = isB76 ? t('Futures price') : t('Spot price');
+  const sized = { size: fmt(c.size, 0), unit: t(c.unit), mult: fmt(dollarMultiplier(c), 2) };
+  $('multInfo').textContent = c.quote === 'cents'
+    ? t('1 contract = {size} {unit} (quoted in cents) - P&L multiplier ${mult} per point', sized)
+    : t('1 contract = {size} {unit} - P&L multiplier ${mult} per point', sized);
   // The folded settings say what they hold, so folding them hides no
   // assumption.
   const picked = state.session.strip.find(m => m.symbol === state.contractMonth);
+  const style = state.style === 'american' ? t('American') : t('European');
   $('contractSummary').textContent = [
     isB76 ? 'Black-76' : 'Black-Scholes-Merton',
-    state.style === 'american' ? 'American' : 'European',
-    state.contractMonth ? (picked ? monthLabel(picked) : state.contractMonth) : 'front month',
-    'rate ' + fmt(state.rate, 2) + '%',
-    fin === 'none' ? 'nominal P&L'
-      : 'premium financed at ' + (fin === 'custom' ? fmt(state.financing.rate, 2) + '%' : 'the risk-free rate'),
-    fmt(c.size, 0) + ' ' + c.unit + (c.quote === 'cents' ? ', quoted in cents' : '')
+    style,
+    state.contractMonth ? (picked ? monthLabel(picked) : state.contractMonth) : t('front month'),
+    t('rate {rate}%', { rate: fmt(state.rate, 2) }),
+    fin === 'none' ? t('nominal P&L')
+      : fin === 'custom' ? t('premium financed at {rate}%', { rate: fmt(state.financing.rate, 2) })
+        : t('premium financed at the risk-free rate'),
+    c.quote === 'cents' ? t('{size} {unit}, quoted in cents', sized) : t('{size} {unit}', sized)
   ].join(' · ');
-  $('marketSummary').textContent = 'Realised-volatility window and estimator, skew ' +
-    (state.skew.on ? 'on' : 'off') + ', the carry check and the Alpha Vantage fallback';
+  $('marketSummary').textContent = state.skew.on
+    ? t('Realised-volatility window and estimator, skew on, the carry check and the Alpha Vantage fallback')
+    : t('Realised-volatility window and estimator, skew off, the carry check and the Alpha Vantage fallback');
 
   // On a phone the Strategy card comes first, above the contract it prices, so
   // it says which contract that is.
-  $('legsContext').textContent = c.label + ' · ' + (isB76 ? 'futures ' : 'spot ') +
-    fmtPrice(state.S, true) + ' · vol ' + volField(state.vol, 4) + '% · ' +
-    (state.style === 'american' ? 'American' : 'European');
+  const priced = { price: fmtPrice(state.S, true) };
+  $('legsContext').textContent = [
+    t(c.label), isB76 ? t('futures {price}', priced) : t('spot {price}', priced),
+    t('vol {vol}%', { vol: volField(state.vol, 4) }), style
+  ].join(' · ');
 }
 
 /* The strikes the skew curve gives no one volatility, as a sentence, or ''
@@ -1651,12 +1661,13 @@ function skewWarning() {
     if (list && list.indexOf(strike) === -1) list.push(strike);
   }
   if (!floor.length && !several.length) return '';
-  const at = list => 'At the ' +
-    (list.length > 1 ? list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1] + ' strikes' : list[0] + ' strike');
-  return 'This curve is steeper than its at-the-money level allows. ' +
-    (floor.length ? at(floor) + ' it goes below zero, so the leg prices at the 0.01% floor. ' : '') +
-    (several.length ? at(several) + ' more than one volatility fits it. ' : '') +
-    'Narrow the risk reversal or the butterfly, or type a Vol for those legs.';
+  const at = list => (list.length > 1
+    ? t('At the {strikes} and {last} strikes', { strikes: list.slice(0, -1).join(', '), last: list[list.length - 1] })
+    : t('At the {strike} strike', { strike: list[0] }));
+  return t('This curve is steeper than its at-the-money level allows.') + ' ' +
+    (floor.length ? t('{where} it goes below zero, so the leg prices at the 0.01% floor.', { where: at(floor) }) + ' ' : '') +
+    (several.length ? t('{where} more than one volatility fits it.', { where: at(several) }) + ' ' : '') +
+    t('Narrow the risk reversal or the butterfly, or type a Vol for those legs.');
 }
 
 function monthLabel(c) {
@@ -1669,7 +1680,7 @@ function monthLabel(c) {
 function renderMonths() {
   const sel = $('contractMonth');
   const current = state.contractMonth || '';
-  const opts = ['<option value="">Front month (continuous)</option>'].concat(
+  const opts = ['<option value="">' + escapeHtml(t('Front month (continuous)')) + '</option>'].concat(
     state.session.strip.map(c =>
       '<option value="' + escapeHtml(c.symbol) + '">' + escapeHtml(monthLabel(c)) + '</option>')
   );
@@ -1681,19 +1692,19 @@ function renderMonths() {
 
 function renderSources() {
   const rows = [
-    ['Underlying price', state.sources.price],
-    ['Risk-free rate', state.sources.rate],
-    ['Volatility', state.sources.vol],
-    ['Convenience yield', state.sources.yield]
+    [t('Underlying price'), state.sources.price],
+    [t('Risk-free rate'), state.sources.rate],
+    [t('Volatility'), state.sources.vol],
+    [t('Convenience yield'), state.sources.yield]
   ];
   // Only while legs carry prices from the curve: with none, every leg is on
   // the panel price, which the first line already describes.
-  if (state.sources.legs) rows.push(['Leg prices', state.sources.legs]);
+  if (state.sources.legs) rows.push([t('Leg prices'), state.sources.legs]);
   $('sources').innerHTML = rows.map(([name, s]) => {
-    if (!s) return '<div class="src"><span class="dot preset"></span>' + name +
-      ': <em>manual / preset (not market data)</em></div>';
+    if (!s) return '<div class="src"><span class="dot preset"></span>' + escapeHtml(name) +
+      ': <em>' + escapeHtml(t('manual / preset (not market data)')) + '</em></div>';
     return '<div class="src"><span class="dot ' + (s.live ? 'live' : 'preset') + '"></span>' +
-      name + ': ' + escapeHtml(s.text) + '</div>';
+      escapeHtml(name) + ': ' + escapeHtml(s.text) + '</div>';
   }).join('');
 }
 
@@ -1701,6 +1712,11 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, ch => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[ch]));
+}
+
+/* What a leg is, in the words of a sentence: "Long 1 call". */
+function kindWord(kind) {
+  return kind === 'call' ? t('call') : kind === 'put' ? t('put') : t('underlying');
 }
 
 /* One row of the legs table, as markup. Pure - no DOM - so the escaping can be
@@ -1715,30 +1731,32 @@ function legRowHtml(leg, mult, n) {
   const a = v => escapeHtml(v == null ? '' : v);
   // A screen reader hears the column and the leg, not "edit text": the header
   // row does not name an input. n is the leg's place in the table.
-  const name = what => `aria-label="${a(what + (n ? ', leg ' + n : ''))}"`;
+  const name = what => `aria-label="${a(n ? t('{what}, leg {n}', { what: t(what), n }) : t(what))}"`;
+  // The page's own words, escaped like everything else that goes in.
+  const w = text => a(t(text));
   // data-label heads each cell where a phone shows the leg as a card.
   return `<tr data-id="${a(leg.id)}" class="${leg.on ? '' : 'off'}">
-      <td data-label="Include"><input type="checkbox" data-f="on" ${leg.on ? 'checked' : ''} title="Include in the strategy" ${name('Include')}></td>
-      <td data-label="Side"><select data-f="side" ${name('Side')}>
-        <option value="1" ${leg.side === 1 ? 'selected' : ''}>Long</option>
-        <option value="-1" ${leg.side === -1 ? 'selected' : ''}>Short</option>
+      <td data-label="${w('Include')}"><input type="checkbox" data-f="on" ${leg.on ? 'checked' : ''} title="${w('Include in the strategy')}" ${name('Include')}></td>
+      <td data-label="${w('Side')}"><select data-f="side" ${name('Side')}>
+        <option value="1" ${leg.side === 1 ? 'selected' : ''}>${w('Long')}</option>
+        <option value="-1" ${leg.side === -1 ? 'selected' : ''}>${w('Short')}</option>
       </select></td>
-      <td data-label="Type"><select data-f="kind" ${name('Type')}>
-        <option value="call" ${leg.kind === 'call' ? 'selected' : ''}>Call</option>
-        <option value="put" ${leg.kind === 'put' ? 'selected' : ''}>Put</option>
-        <option value="underlying" ${isU ? 'selected' : ''}>Underlying</option>
+      <td data-label="${w('Type')}"><select data-f="kind" ${name('Type')}>
+        <option value="call" ${leg.kind === 'call' ? 'selected' : ''}>${w('Call')}</option>
+        <option value="put" ${leg.kind === 'put' ? 'selected' : ''}>${w('Put')}</option>
+        <option value="underlying" ${isU ? 'selected' : ''}>${w('Underlying')}</option>
       </select></td>
-      <td data-label="Qty"><input type="number" data-f="qty" value="${a(leg.qty)}" min="0" step="1" ${name('Quantity')}></td>
-      <td data-label="Strike"><input type="number" data-f="strike" value="${isU ? '' : a(leg.strike)}" ${isU ? 'disabled' : ''} step="any" ${name('Strike')}></td>
-      <td data-label="Days"><input type="number" data-f="days" value="${isU ? '' : a(leg.days)}" ${isU ? 'disabled' : ''} min="0" step="1" ${name('Days to expiry')}></td>
-      <td data-label="Vol %"><input type="number" data-f="vol" value="${a(volField(leg.vol, 2))}" placeholder="${a(fmt(legVolPct(leg), 1))}" ${isU ? 'disabled' : ''} step="any" ${name('Volatility %')}></td>
-      <td data-label="Under"><input type="number" data-f="under" value="${a(leg.under)}" placeholder="${a(fmtPrice(state.S))}" step="any" title="This leg's own contract price today. Blank uses the contract in the left panel." ${name('Underlying price')}></td>
-      <td data-label="Entry"><input type="number" data-f="entry" value="${a(leg.entry)}" placeholder="${a(fmtPrice(isU ? state.S : g.price))}" step="any" ${name('Entry price')}></td>
-      <td class="num" data-label="Theo.">${isU ? '-' : a(fmtPrice(g.price))}</td>
-      <td class="num" data-label="Delta">${a(fmt(g.delta * leg.side * leg.qty, 3))}</td>
-      <td class="num" data-label="Cost $">${a(fmt(leg.side * leg.qty * mult * (isU ? 0 : entry), 0))}</td>
-      <td><button class="icon" data-f="iv" title="Solve implied volatility from the entry price" ${isU ? 'disabled' : ''} ${name('Implied volatility from the entry price')}>IV</button>
-          <button class="icon danger" data-f="del" title="Remove leg" ${name('Remove')}>×</button></td>
+      <td data-label="${w('Qty')}"><input type="number" data-f="qty" value="${a(leg.qty)}" min="0" step="1" ${name('Quantity')}></td>
+      <td data-label="${w('Strike')}"><input type="number" data-f="strike" value="${isU ? '' : a(leg.strike)}" ${isU ? 'disabled' : ''} step="any" ${name('Strike')}></td>
+      <td data-label="${w('Days')}"><input type="number" data-f="days" value="${isU ? '' : a(leg.days)}" ${isU ? 'disabled' : ''} min="0" step="1" ${name('Days to expiry')}></td>
+      <td data-label="${w('Vol %')}"><input type="number" data-f="vol" value="${a(volField(leg.vol, 2))}" placeholder="${a(fmt(legVolPct(leg), 1))}" ${isU ? 'disabled' : ''} step="any" ${name('Volatility %')}></td>
+      <td data-label="${w('Under')}"><input type="number" data-f="under" value="${a(leg.under)}" placeholder="${a(fmtPrice(state.S))}" step="any" title="${w('This leg\'s own contract price today. Blank uses the contract in the left panel.')}" ${name('Underlying price')}></td>
+      <td data-label="${w('Entry')}"><input type="number" data-f="entry" value="${a(leg.entry)}" placeholder="${a(fmtPrice(isU ? state.S : g.price))}" step="any" ${name('Entry price')}></td>
+      <td class="num" data-label="${w('Theo.')}">${isU ? '-' : a(fmtPrice(g.price))}</td>
+      <td class="num" data-label="${w('Delta')}">${a(fmt(g.delta * leg.side * leg.qty, 3))}</td>
+      <td class="num" data-label="${w('Cost $')}">${a(fmt(leg.side * leg.qty * mult * (isU ? 0 : entry), 0))}</td>
+      <td><button class="icon" data-f="iv" title="${w('Solve implied volatility from the entry price')}" ${isU ? 'disabled' : ''} ${name('Implied volatility from the entry price')}>IV</button>
+          <button class="icon danger" data-f="del" title="${w('Remove leg')}" ${name('Remove')}>×</button></td>
     </tr>`;
 }
 
@@ -1753,19 +1771,20 @@ function renderLegs() {
     ? { id: ae.closest('tr').dataset.id, f: ae.dataset.f, start: ae.selectionStart, end: ae.selectionEnd }
     : null;
 
-  $('legsBody').innerHTML = body || '<tr><td colspan="13" class="muted">No legs. Add one or pick a strategy.</td></tr>';
+  $('legsBody').innerHTML = body ||
+    '<tr><td colspan="13" class="muted">' + escapeHtml(t('No legs. Add one or pick a strategy.')) + '</td></tr>';
 
   // Show the way out before it is needed: the button sits there greyed until a
   // leg actually carries its own price, then lights up.
   $('clearLegPrices').disabled = !state.legs.some(l => l.under != null);
   $('monthNote').textContent = state.session.strip.length
     ? (state.contractMonth
-      ? 'Pricing against one listed contract. "Fill leg prices" now interpolates between these ' +
-        state.session.strip.length + ' real quotes instead of extrapolating a single slope.'
-      : 'Listed months loaded. Pick one to price against that specific contract, which is what ' +
-        'an option quote on a broker\'s screen refers to.')
-    : 'The continuous front-month series by default. Load the listed months to price against one ' +
-      'specific delivery month - which is what an option quote on a broker\'s screen refers to.';
+      ? t('Pricing against one listed contract. "Fill leg prices" now interpolates between these ' +
+        '{n} real quotes instead of extrapolating a single slope.', { n: state.session.strip.length })
+      : t('Listed months loaded. Pick one to price against that specific contract, which is what ' +
+        'an option quote on a broker\'s screen refers to.'))
+    : t('The continuous front-month series by default. Load the listed months to price against one ' +
+      'specific delivery month - which is what an option quote on a broker\'s screen refers to.');
 
   if (focus) {
     const el = $('legsBody').querySelector(
@@ -1786,32 +1805,34 @@ function renderResults() {
   const carried = state.financing.mode !== 'none';
   const ratePct = escapeHtml(fmt(premiumRate() * 100, 2));
   const interest = carried
-    ? `<strong>${money(-premiumInterest(a.t))}</strong><small>to the horizon, at ${ratePct}%, ${state.financing.mode === 'custom' ? 'your rate' : 'the risk-free rate'}</small>`
-    : '<strong>Not charged</strong><small>nominal P&amp;L</small>';
+    ? `<strong>${money(-premiumInterest(a.t))}</strong><small>${state.financing.mode === 'custom'
+      ? t('to the horizon, at {rate}%, your rate', { rate: ratePct })
+      : t('to the horizon, at {rate}%, the risk-free rate', { rate: ratePct })}</small>`
+    : `<strong>${t('Not charged')}</strong><small>${escapeHtml(t('nominal P&L'))}</small>`;
   // An unlimited maximum says how fast it grows: that is what tells a naked call
   // from a calendar bleeding cents a point. A rate that rounds to no cents keeps
   // two significant figures rather than read $0.00.
   const perPoint = Math.abs(a.upSlope) >= 0.005
     ? money(a.upSlope)
     : (a.upSlope < 0 ? '-$' : '$') + Math.abs(a.upSlope).toPrecision(2);
-  const rising = `<small>${perPoint} per point as the price rises</small>`;
+  const rising = `<small>${t('{amount} per point as the price rises', { amount: perPoint })}</small>`;
 
   // Nothing to measure. Zeros in green and red, and a 0.0% chance of profit,
   // read as a position that makes and loses nothing.
   if (!activeLegs().length) {
     $('summary').innerHTML = '<p class="empty">' + (state.legs.length
-      ? 'Every leg is switched off. Tick <strong>Include</strong> on one in the table above to see its results.'
-      : 'No legs yet. <a href="#strategy">Choose a strategy</a> or add a leg above to see its results.') + '</p>';
+      ? t('Every leg is switched off. Tick <strong>Include</strong> on one in the table above to see its results.')
+      : t('No legs yet. <a href="#strategy">Choose a strategy</a> or add a leg above to see its results.')) + '</p>';
     $('greeks').innerHTML = '';
   } else {
     $('summary').innerHTML = `
-      <div class="kpi"><span>Net ${cost >= 0 ? 'debit (paid)' : 'credit (received)'}</span><strong>${money(Math.abs(cost))}</strong></div>
-      <div class="kpi"><span>Max profit</span><strong class="pos">${money(a.maxProfit)}</strong>${a.maxProfit === Infinity ? rising : ''}</div>
-      <div class="kpi"><span>Max loss</span><strong class="neg">${money(a.maxLoss)}</strong>${a.maxLoss === -Infinity ? rising : ''}</div>
-      <div class="kpi"><span>Breakeven${a.breakevens.length === 1 ? '' : 's'}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmtPrice(b)).join(' / ') : '-'}</strong></div>
-      <div class="kpi"><span>Prob. of profit</span><strong>${(a.pop * 100).toFixed(1)}%</strong><small>risk-neutral, at ${escapeHtml(fmt(a.popVol * 100, 1))}% vol</small></div>
-      <div class="kpi"><span>Horizon</span><strong>${escapeHtml(a.t)} days</strong></div>
-      <div class="kpi"><span>Premium interest</span>${interest}</div>`;
+      <div class="kpi"><span>${cost >= 0 ? t('Net debit (paid)') : t('Net credit (received)')}</span><strong>${money(Math.abs(cost))}</strong></div>
+      <div class="kpi"><span>${t('Max profit')}</span><strong class="pos">${money(a.maxProfit)}</strong>${a.maxProfit === Infinity ? rising : ''}</div>
+      <div class="kpi"><span>${t('Max loss')}</span><strong class="neg">${money(a.maxLoss)}</strong>${a.maxLoss === -Infinity ? rising : ''}</div>
+      <div class="kpi"><span>${a.breakevens.length === 1 ? t('Breakeven') : t('Breakevens')}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmtPrice(b)).join(' / ') : '-'}</strong></div>
+      <div class="kpi"><span>${t('Prob. of profit')}</span><strong>${(a.pop * 100).toFixed(1)}%</strong><small>${t('risk-neutral, at {vol}% vol', { vol: escapeHtml(fmt(a.popVol * 100, 1)) })}</small></div>
+      <div class="kpi"><span>${t('Horizon')}</span><strong>${a.t === 1 ? t('{n} day', { n: escapeHtml(a.t) }) : t('{n} days', { n: escapeHtml(a.t) })}</strong></div>
+      <div class="kpi"><span>${t('Premium interest')}</span>${interest}</div>`;
 
     const mult = dollarMultiplier(c);
     // Once a leg prices off its own month, "a point" needs saying: a point of
@@ -1822,27 +1843,27 @@ function renderResults() {
     const perDay = carried ? premiumInterestPerDay(0) : 0;
     $('greeks').innerHTML = `
       <table class="greeks">
-        <tr><th><span class="sr-only">Greek</span></th><th>Per unit</th><th>Position ($)</th><th>Meaning</th></tr>
-        <tr><td>Delta</td><td class="num">${fmt(g.unit.delta, 4)}</td><td class="num">${money(g.money.delta)}</td><td class="muted">$ P&L per 1 point move</td></tr>
-        <tr><td>Gamma</td><td class="num">${fmt(g.unit.gamma, 6)}</td><td class="num">${money(g.money.gamma)}</td><td class="muted">delta change per 1 point move</td></tr>
-        <tr><td>Vega</td><td class="num">${fmt(g.unit.vega, 4)}</td><td class="num">${money(g.money.vega)}</td><td class="muted">$ per +1 vol point</td></tr>
-        <tr><td>Theta</td><td class="num">${fmt(g.unit.theta, 4)}</td><td class="num">${money(g.money.theta)}</td><td class="muted">$ per calendar day</td></tr>
-        <tr><td>Rho</td><td class="num">${fmt(g.unit.rho, 4)}</td><td class="num">${money(g.money.rho)}</td><td class="muted">$ per +1 rate point</td></tr>
+        <tr><th><span class="sr-only">${t('Greek')}</span></th><th>${t('Per unit')}</th><th>${t('Position ($)')}</th><th>${t('Meaning')}</th></tr>
+        <tr><td>Delta</td><td class="num">${fmt(g.unit.delta, 4)}</td><td class="num">${money(g.money.delta)}</td><td class="muted">${escapeHtml(t('$ P&L per 1 point move'))}</td></tr>
+        <tr><td>Gamma</td><td class="num">${fmt(g.unit.gamma, 6)}</td><td class="num">${money(g.money.gamma)}</td><td class="muted">${t('delta change per 1 point move')}</td></tr>
+        <tr><td>Vega</td><td class="num">${fmt(g.unit.vega, 4)}</td><td class="num">${money(g.money.vega)}</td><td class="muted">${t('$ per +1 vol point')}</td></tr>
+        <tr><td>Theta</td><td class="num">${fmt(g.unit.theta, 4)}</td><td class="num">${money(g.money.theta)}</td><td class="muted">${t('$ per calendar day')}</td></tr>
+        <tr><td>Rho</td><td class="num">${fmt(g.unit.rho, 4)}</td><td class="num">${money(g.money.rho)}</td><td class="muted">${t('$ per +1 rate point')}</td></tr>
       </table>
-      <p class="muted small">Position column = per-unit greek x quantity x $${fmt(mult, 2)} multiplier.${ownMonth
-        ? ' Delta and gamma are per point of the contract in the left panel, with each leg\'s own month ' +
+      <p class="muted small">${t('Position column = per-unit greek x quantity x ${mult} multiplier.', { mult: fmt(mult, 2) })}${ownMonth
+        ? ' ' + t('Delta and gamma are per point of the contract in the left panel, with each leg\'s own month ' +
           'moving in proportion, as on the chart; the Delta column in the legs table is against each ' +
-          'leg\'s own month.'
+          'leg\'s own month.')
         : ''}${perDay
-        ? ' Theta is the options\' own decay. The P&amp;L also carries the premium\'s interest: ' +
-          money(-perDay) + ' a day at ' + ratePct + '%.'
+        ? ' ' + t('Theta is the options\' own decay. The P&amp;L also carries the premium\'s interest: ' +
+          '{amount} a day at {rate}%.', { amount: money(-perDay), rate: ratePct })
         : ''}</p>`;
   }
 
   $('tDays').max = Math.max(a.t, 1);
   $('tDays').value = state.chart.tDays;
-  $('tDaysLabel').textContent = state.chart.tDays === 0
-    ? 'today' : 'in ' + state.chart.tDays + ' day' + (state.chart.tDays === 1 ? '' : 's');
+  const n = state.chart.tDays;
+  $('tDaysLabel').textContent = n === 0 ? t('today') : n === 1 ? t('in {n} day', { n }) : t('in {n} days', { n });
   return a;
 }
 
@@ -1930,16 +1951,16 @@ function chartConfig(a) {
   let yTitle;
 
   if (state.chart.mode === 'payoff') {
-    yTitle = 'Profit / loss ($)';
+    yTitle = t('Profit / loss ($)');
     datasets.push({
-      label: 'At horizon (' + a.t + 'd)',
+      label: t('At horizon ({n}d)', { n: a.t }),
       data: a.xs.map((x, i) => ({ x, y: a.ys[i] })),
       borderColor: col.net, borderWidth: 2, pointRadius: 0, tension: STRAIGHT
     });
     if (state.chart.tDays < a.t) {
       const mtm = pnlEvaluator();
       datasets.push({
-        label: state.chart.tDays === 0 ? 'Today (mark to market)' : 'In ' + state.chart.tDays + 'd',
+        label: state.chart.tDays === 0 ? t('Today (mark to market)') : t('In {n}d', { n: state.chart.tDays }),
         data: a.xs.map(x => ({ x, y: mtm(x, state.chart.tDays) })),
         borderColor: col.now, borderWidth: 2, borderDash: [6, 4], pointRadius: 0, tension: 0
       });
@@ -1949,8 +1970,9 @@ function chartConfig(a) {
         // The position's own P&L for this leg alone, the premium's interest
         // included, so the legs add up to the solid line.
         const pnl = pnlEvaluator(undefined, [leg]);
+        const which = { qty: leg.qty, kind: kindWord(leg.kind) };
         datasets.push({
-          label: (leg.side === 1 ? 'Long ' : 'Short ') + leg.qty + ' ' + leg.kind +
+          label: (leg.side === 1 ? t('Long {qty} {kind}', which) : t('Short {qty} {kind}', which)) +
             (leg.kind === 'underlying' ? '' : ' ' + fmtPrice(leg.strike, true)),
           data: a.xs.map(x => ({ x, y: pnl(x, a.t) })),
           borderColor: col.leg, borderWidth: 1, borderDash: [2, 3], pointRadius: 0, tension: 0
@@ -1960,7 +1982,7 @@ function chartConfig(a) {
   } else {
     // Greek profile across underlying price, at the chosen evaluation date.
     const which = state.chart.mode; // delta | gamma | vega | theta
-    yTitle = which.charAt(0).toUpperCase() + which.slice(1) + ' (position, $ terms)';
+    yTitle = t('{greek} (position, $ terms)', { greek: which.charAt(0).toUpperCase() + which.slice(1) });
     const tOff = state.chart.tDays;
     const data = a.xs.map(x => {
       let v = 0;
@@ -1986,8 +2008,8 @@ function chartConfig(a) {
   // is not the strike itself once a leg trades on its own delivery month.
   const lines = activeLegs()
     .filter(l => l.kind !== 'underlying')
-    .map(l => ({ value: strikeOnAxis(l), color: col.strike, labelColor: col.strikeLabel, label: 'K ' + fmtPrice(l.strike, true) }));
-  lines.push({ value: state.S, color: col.spot, label: 'Now', dash: [2, 2], first: true });
+    .map(l => ({ value: strikeOnAxis(l), color: col.strike, labelColor: col.strikeLabel, label: t('K {strike}', { strike: fmtPrice(l.strike, true) }) }));
+  lines.push({ value: state.S, color: col.spot, label: t('Now'), dash: [2, 2], first: true });
 
   // On a phone the legend goes under the chart, without the legs, and the
   // P&L axis reads 150k for 150,000: three rows of legend and seven-character
@@ -2006,7 +2028,7 @@ function chartConfig(a) {
       scales: {
         x: {
           type: 'linear',
-          title: { display: true, text: 'Underlying price at horizon', color: col.text },
+          title: { display: true, text: t('Underlying price at horizon'), color: col.text },
           grid: { color: col.grid }, ticks: { color: col.text }
         },
         y: Object.assign({
@@ -2025,7 +2047,7 @@ function chartConfig(a) {
         markers: { lines },
         tooltip: {
           callbacks: {
-            title: items => 'Price ' + fmtPrice(items[0].parsed.x),
+            title: items => t('Price {price}', { price: fmtPrice(items[0].parsed.x) }),
             label: item => item.dataset.label + ': ' + money(item.parsed.y)
           }
         }
@@ -2097,7 +2119,7 @@ function renderScenarios() {
   const s = scenarioTable();
   const legs = activeLegs().filter(l => l.kind !== 'underlying');
   if (!activeLegs().length) {
-    $('scenarios').innerHTML = '<p class="note">Add a leg to see the scenario grid.</p>';
+    $('scenarios').innerHTML = '<p class="note">' + t('Add a leg to see the scenario grid.') + '</p>';
     return;
   }
 
@@ -2114,7 +2136,7 @@ function renderScenarios() {
 
   const panels = s.panels.map(panel => {
     const head = s.days.map(d =>
-      '<th class="num">' + (d === 0 ? 'Today' : d + 'd') + '</th>').join('');
+      '<th class="num">' + (d === 0 ? t('Today') : t('{n}d', { n: d })) + '</th>').join('');
     const rows = panel.rows.slice().reverse().map(r => {
       const label = fmtPrice(r.price) +
         ' <span class="muted">(' + (r.pct >= 0 ? '+' : '') + fmt(r.pct * 100, 0) + '%)</span>';
@@ -2124,21 +2146,21 @@ function renderScenarios() {
     }).join('');
 
     const title = panel.volShift === 0
-      ? 'Volatility unchanged'
-      : 'Volatility ' + (panel.volShift > 0 ? '+' : '') + panel.volShift + ' points';
+      ? t('Volatility unchanged')
+      : t('Volatility {shift} points', { shift: (panel.volShift > 0 ? '+' : '') + panel.volShift });
     return '<div class="scenario-panel"><h3>' + title + '</h3>' +
       '<div class="table-scroll"><table class="scenario"><thead><tr>' +
-      '<th>Underlying</th>' + head + '</tr></thead><tbody>' + rows +
+      '<th>' + t('Underlying') + '</th>' + head + '</tr></thead><tbody>' + rows +
       '</tbody></table></div></div>';
   }).join('');
 
   const note = legs.length
-    ? 'P&L at each date assumes the volatility shift happens immediately and holds. ' +
-      'The last column is the nearest expiry among your legs (' + s.horizon + ' days). ' +
+    ? t('P&L at each date assumes the volatility shift happens immediately and holds.') + ' ' +
+      t('The last column is the nearest expiry among your legs ({n} days).', { n: s.horizon }) + ' ' +
       (state.financing.mode === 'none'
-        ? 'The P&L is nominal: the premium carries no interest.'
-        : 'Each date includes the premium\'s interest up to it, at ' + fmt(premiumRate() * 100, 2) + '%.')
-    : 'Only the underlying is in the position, so volatility and time do nothing.';
+        ? t('The P&L is nominal: the premium carries no interest.')
+        : t('Each date includes the premium\'s interest up to it, at {rate}%.', { rate: fmt(premiumRate() * 100, 2) }))
+    : t('Only the underlying is in the position, so volatility and time do nothing.');
 
   $('scenarios').innerHTML = panels;
   $('scenarioHelp').textContent = note;
@@ -2162,9 +2184,9 @@ function renderChartSafely(a) {
     chartBroken = true;
     const box = $('payoffChart') && $('payoffChart').closest('.chart-box');
     if (box) {
-      box.innerHTML = '<p class="note">The chart library could not be loaded, so the ' +
+      box.innerHTML = '<p class="note">' + t('The chart library could not be loaded, so the ' +
         'payoff graph is unavailable. Everything else on this page still works - the ' +
-        'numbers below and the scenario grid are computed locally.</p>';
+        'numbers below and the scenario grid are computed locally.') + '</p>';
     }
   }
 }
@@ -2277,17 +2299,17 @@ function pick(x, allowed, fallback) {
  * profit and loss. Any other key only has to be a number - a rate or a yield
  * may well be negative. */
 function inputProblem(key, v) {
-  if (!isNum(v)) return 'Enter a number.';
+  if (!isNum(v)) return t('Enter a number.');
   switch (key) {
     case 'S':
     case 'under':
-      return v > 0 ? '' : 'A price must be above zero: these models are lognormal and cannot price a contract at or below zero.';
+      return v > 0 ? '' : t('A price must be above zero: these models are lognormal and cannot price a contract at or below zero.');
     case 'strike':
-      return v > 0 ? '' : 'A strike must be above zero.';
+      return v > 0 ? '' : t('A strike must be above zero.');
     case 'size':
-      return v > 0 ? '' : 'Units per contract must be above zero.';
+      return v > 0 ? '' : t('Units per contract must be above zero.');
     case 'vol':
-      return v >= 0 ? '' : 'Volatility cannot be negative.';
+      return v >= 0 ? '' : t('Volatility cannot be negative.');
     default:
       return '';
   }
@@ -2397,10 +2419,10 @@ async function applyRate() {
   state.rate = +r.continuous.toFixed(3);
   state.sources.rate = {
     live: true,
-    text: `US Treasury par curve ${curve.date}, interpolated at ${state.days}d = ` +
-      `${r.par.toFixed(2)}% par (semi-annual) -> ${r.continuous.toFixed(3)}% continuous`
+    text: t('US Treasury par curve {date}, interpolated at {days}d = {par}% par (semi-annual) -> {rate}% continuous',
+      { date: curve.date, days: state.days, par: r.par.toFixed(2), rate: r.continuous.toFixed(3) })
   };
-  return { message: `risk-free rate ${state.rate}% (Treasury ${curve.date})` };
+  return { message: t('risk-free rate {rate}% (Treasury {date})', { rate: state.rate, date: curve.date }) };
 }
 
 /* The one way the reference price changes, so the price, the listed contract
@@ -2433,12 +2455,12 @@ function typeMarketInput(key, v) {
 
 async function applyFuturesPrice() {
   const q = await proxyGet('quote', state.commodity, 5 * 60e3);
-  if (!isNum(q.price) || q.price === 0) throw new Error('no price returned');
+  if (!isNum(q.price) || q.price === 0) throw new Error(t('no price returned'));
   // A real quote can be below zero - WTI settled at -37.63 in April 2020 - and
   // no model here can price one, so say that rather than "no price".
   if (inputProblem('S', q.price)) {
-    throw new Error(`${q.name || q.symbol || 'the contract'} last ${fmtPrice(q.price)}, ` +
-      'below zero, which these lognormal models cannot price');
+    throw new Error(t('{name} last {price}, below zero, which these lognormal models cannot price',
+      { name: q.name || q.symbol || t('the contract'), price: fmtPrice(q.price) }));
   }
 
   // Yahoo reports USX for cents-quoted contracts. Trust it over our table:
@@ -2447,17 +2469,17 @@ async function applyFuturesPrice() {
   const wanted = q.currency === 'USX' ? 'cents' : q.currency === 'USD' ? 'USD' : null;
   if (wanted && wanted !== state.quote) {
     state.quote = wanted;
-    unitNote = `, quoting switched to ${wanted} to match the contract`;
+    unitNote = ', ' + t('quoting switched to {quote} to match the contract', { quote: wanted });
   }
 
   // The continuous front month, so no listed month is picked any more.
   setReferencePrice(q.price, {
     live: true,
-    text: `${q.name || q.symbol} last ${fmtPrice(q.price)}` +
+    text: t('{name} last {price}', { name: q.name || q.symbol, price: fmtPrice(q.price) }) +
       (q.currency ? ` ${q.currency}` : '') +
       (q.asOf ? `, ${q.asOf.slice(0, 16).replace('T', ' ')} UTC` : '') + unitNote
   }, '');
-  return { message: `${q.name || q.symbol} at ${fmtPrice(q.price)}${unitNote}` };
+  return { message: t('{name} at {price}', { name: q.name || q.symbol, price: fmtPrice(q.price) }) + unitNote };
 }
 
 /* Realised vol from the real futures series, falling back to Alpha Vantage's
@@ -2470,19 +2492,20 @@ async function applyVol(opts) {
   try {
     const h = await proxyGet('history', state.commodity, 60 * 60e3);
     const rv = realisedVol(h.series || [], win);
-    if (!rv) throw new Error('not enough history');
+    if (!rv) throw new Error(t('not enough history'));
     const chosen = rv[est];
-    if (!(chosen > 0)) throw new Error('estimator unavailable for this series');
+    if (!(chosen > 0)) throw new Error(t('estimator unavailable for this series'));
 
     state.vol = chosen;
     state.sources.vol = {
       live: true,
-      text: `${est} realised vol, ${rv.days}d window on ${h.symbol} ` +
-        `(front-month futures; roll gaps can inflate it slightly), last close ${rv.last}. ` +
-        `close-to-close ${rv.close.toFixed(1)}% / EWMA ${rv.ewma.toFixed(1)}%` +
+      text: t('{estimator} realised vol, {days}d window on {symbol} ' +
+        '(front-month futures; roll gaps can inflate it slightly), last close {last}. ' +
+        'close-to-close {close}% / EWMA {ewma}%',
+      { estimator: est, days: rv.days, symbol: h.symbol, last: rv.last, close: rv.close.toFixed(1), ewma: rv.ewma.toFixed(1) }) +
         (rv.parkinson ? ` / Parkinson ${rv.parkinson.toFixed(1)}%` : '')
     };
-    return { message: `volatility ${volField(state.vol, 4)}% from ${h.symbol}` };
+    return { message: t('volatility {vol}% from {symbol}', { vol: volField(state.vol, 4), symbol: h.symbol }) };
   } catch (proxyErr) {
     if (!opts.avKey) throw proxyErr;
     return applyVolFromAlphaVantage(opts);
@@ -2494,27 +2517,28 @@ async function applyVolFromAlphaVantage(opts) {
   const est = opts.estimator;
   const meta = commodityMeta(state.commodity);
   const symbol = (opts.symbol || meta.priceSymbol || '').toUpperCase();
-  if (!symbol) throw new Error('no ticker to read prices from');
+  if (!symbol) throw new Error(t('no ticker to read prices from'));
   storeAvKey(opts.avKey);
 
   const series = await fetchDailySeries(symbol, opts.avKey);
   const rv = realisedVol(series, win);
-  if (!rv) throw new Error('not enough history');
+  if (!rv) throw new Error(t('not enough history'));
   const chosen = rv[est];
-  if (!(chosen > 0)) throw new Error('estimator unavailable for this series');
+  if (!(chosen > 0)) throw new Error(t('estimator unavailable for this series'));
 
   // Only describe the built-in proxy when that is actually the symbol used.
   const isDefaultProxy = symbol === (meta.priceSymbol || '').toUpperCase();
-  const proxyText = isDefaultProxy && meta.proxy ? meta.proxy : 'symbol entered by you';
+  const proxyText = isDefaultProxy && meta.proxy ? t(meta.proxy) : t('symbol entered by you');
 
   state.vol = chosen;
   state.sources.vol = {
     live: true,
-    text: `${est} realised vol, ${rv.days}d window on ${symbol} (${proxyText}), ` +
-      `last close ${rv.last}. close-to-close ${rv.close.toFixed(1)}% / EWMA ${rv.ewma.toFixed(1)}%` +
+    text: t('{estimator} realised vol, {days}d window on {symbol} ({proxy}), ' +
+      'last close {last}. close-to-close {close}% / EWMA {ewma}%',
+    { estimator: est, days: rv.days, symbol, proxy: proxyText, last: rv.last, close: rv.close.toFixed(1), ewma: rv.ewma.toFixed(1) }) +
       (rv.parkinson ? ` / Parkinson ${rv.parkinson.toFixed(1)}%` : '')
   };
-  return { message: `volatility ${volField(state.vol, 4)}% from ${symbol} (ETF proxy)` };
+  return { message: t('volatility {vol}% from {symbol} (ETF proxy)', { vol: volField(state.vol, 4), symbol }) };
 }
 
 /* Convenience yield from the real futures curve: two listed contracts give
@@ -2523,17 +2547,20 @@ async function applyCurveYield() {
   const { near, far } = await nearestContracts(state.commodity);
   const days = contractGapDays(near, far);
   const y = impliedConvenienceYield(near.price, far.price, days, state.rate);
-  if (!isFinite(y)) throw new Error('the two contracts did not give a usable spread');
+  if (!isFinite(y)) throw new Error(t('the two contracts did not give a usable spread'));
   state.yield = +y.toFixed(3);
   state.sources.yield = {
     live: true,
-    text: `implied by the futures curve: ${near.name || near.symbol} ${fmtPrice(near.price)} vs ` +
-      `${far.name || far.symbol} ${fmtPrice(far.price)}, ${days}d apart (expiries approximated to ` +
-      `mid-month), r=${state.rate}% -> y=${y.toFixed(3)}%`
+    text: t('implied by the futures curve: {near} {nearPrice} vs {far} {farPrice}, {days}d apart ' +
+      '(expiries approximated to mid-month), r={rate}% -> y={yield}%', {
+      near: near.name || near.symbol, nearPrice: fmtPrice(near.price),
+      far: far.name || far.symbol, farPrice: fmtPrice(far.price),
+      days, rate: state.rate, yield: y.toFixed(3)
+    })
   };
   // The working, for the manual carry boxes, so the number is auditable.
   return {
-    message: `convenience yield ${state.yield}% from the curve`,
+    message: t('convenience yield {yield}% from the curve', { yield: state.yield }),
     carry: { near: near.price, far: far.price, days: days }
   };
 }
@@ -2546,12 +2573,12 @@ async function applyCurveYield() {
  * picker once this resolves. */
 async function loadContractMonths() {
   const contracts = await listedContracts(state.commodity);
-  if (!contracts.length) throw new Error('no listed contract quoted');
+  if (!contracts.length) throw new Error(t('no listed contract quoted'));
   state.session.strip = contracts;
   if (state.contractMonth && !contracts.some(m => m.symbol === state.contractMonth)) {
     state.contractMonth = '';
   }
-  return { message: contracts.length + ' listed months loaded' };
+  return { message: t('{n} listed months loaded', { n: contracts.length }) };
 }
 
 /* Another market: its strip is not this one's, and presets reset the rest -
@@ -2576,7 +2603,7 @@ function useContractMonth(symbol) {
     live: true,
     text: `${hit.name || hit.symbol} ${fmtPrice(hit.price)} ${hit.currency || ''}`.trim() +
       (hit.asOf ? `, ${hit.asOf.slice(0, 10)}` : '') +
-      ' - one listed contract, not the continuous series'
+      ' - ' + t('one listed contract, not the continuous series')
   }, hit.symbol);
 }
 
@@ -2599,7 +2626,7 @@ function typeLegPrice(leg, v) {
   const s = state.sources.legs;
   if (!state.legs.some(l => l.under != null)) state.sources.legs = null;
   else if (s && !s.edited) {
-    state.sources.legs = { live: s.live, text: s.text + '; edited by hand since', edited: true };
+    state.sources.legs = { live: s.live, text: s.text + '; ' + t('edited by hand since'), edited: true };
   }
 }
 
@@ -2665,13 +2692,15 @@ function fillLegsFromStrip(opts) {
   }
   const first = strip[0], last = strip[strip.length - 1];
   const tail = beyond
-    ? `, extrapolated past the last listed month for the ${beyond}d leg`
+    ? ', ' + t('extrapolated past the last listed month for the {days}d leg', { days: beyond })
     : '';
   return {
     live: true,
-    text: `legs interpolated across ${strip.length} listed contracts, ` +
-      `${first.name || first.symbol} ${fmtPrice(first.price)} to ` +
-      `${last.name || last.symbol} ${fmtPrice(last.price)}${tail}`
+    text: t('legs interpolated across {n} listed contracts, {first} {firstPrice} to {last} {lastPrice}', {
+      n: strip.length,
+      first: first.name || first.symbol, firstPrice: fmtPrice(first.price),
+      last: last.name || last.symbol, lastPrice: fmtPrice(last.price)
+    }) + tail
   };
 }
 
@@ -2683,18 +2712,18 @@ function fillLegsFromStrip(opts) {
  * reports on its own source line; the panel price's line is left alone. */
 async function applyLegPrices() {
   const opts = state.legs.filter(l => l.kind !== 'underlying');
-  if (!opts.length) throw new Error('add an option leg first');
+  if (!opts.length) throw new Error(t('add an option leg first'));
 
   // With the listed strip in hand, interpolate between real quotes.
   if (state.session.strip.length >= 2) {
     state.sources.legs = fillLegsFromStrip(opts);
-    return { message: `leg prices from ${state.session.strip.length} listed contracts` };
+    return { message: t('leg prices from {n} listed contracts', { n: state.session.strip.length }) };
   }
 
   const { near, far } = await nearestContracts(state.commodity);
   const gapDays = contractGapDays(near, far);
   if (!(gapDays > 0) || !(near.price > 0) || !(far.price > 0)) {
-    throw new Error('the two contracts did not give a usable spread');
+    throw new Error(t('the two contracts did not give a usable spread'));
   }
   const slope = logSlope(near.price, far.price, gapDays);
 
@@ -2706,15 +2735,17 @@ async function applyLegPrices() {
 
   const pct = (slope * 100).toFixed(2);
   const beyond = furthest > gapDays
-    ? `, extrapolated past the ${gapDays}d observed span for the ${furthest}d leg`
+    ? ', ' + t('extrapolated past the {span}d observed span for the {days}d leg', { span: gapDays, days: furthest })
     : '';
   state.sources.legs = {
     live: true,
-    text: `from ${fmtPrice(state.S)} in the panel, priced along the curve at ` +
-      `${pct}%/yr from ${near.name || near.symbol} ${fmtPrice(near.price)} vs ` +
-      `${far.name || far.symbol} ${fmtPrice(far.price)}${beyond}`
+    text: t('from {price} in the panel, priced along the curve at {pct}%/yr from {near} {nearPrice} vs {far} {farPrice}', {
+      price: fmtPrice(state.S), pct,
+      near: near.name || near.symbol, nearPrice: fmtPrice(near.price),
+      far: far.name || far.symbol, farPrice: fmtPrice(far.price)
+    }) + beyond
   };
-  return { message: `leg prices from a ${pct}%/yr curve` };
+  return { message: t('leg prices from a {pct}%/yr curve', { pct }) };
 }
 
 /* Every input it can fill, each on its own: one that fails never stops the
@@ -2722,10 +2753,10 @@ async function applyLegPrices() {
  * two lists for the status line, what was updated and what was left as it was. */
 async function autoFill(vol) {
   const steps = [
-    ['risk-free rate', () => applyRate()],
-    ['futures price', () => applyFuturesPrice()],
-    ['volatility', () => applyVol(vol)],
-    ['convenience yield', () => applyCurveYield()]   // uses the rate fetched above
+    [t('risk-free rate'), () => applyRate()],
+    [t('futures price'), () => applyFuturesPrice()],
+    [t('volatility'), () => applyVol(vol)],
+    [t('convenience yield'), () => applyCurveYield()]   // uses the rate fetched above
   ];
   const results = [], done = [], failed = [];
   for (const [name, step] of steps) {
@@ -2743,14 +2774,15 @@ async function autoFill(vol) {
 function applyCarryYield(S, F, days) {
   const y = impliedConvenienceYield(S, F, days, state.rate);
   if (!isFinite(y)) {
-    throw new Error('Enter a spot price, a futures price and the days to the futures expiry.');
+    throw new Error(t('Enter a spot price, a futures price and the days to the futures expiry.'));
   }
   state.yield = +y.toFixed(3);
   state.sources.yield = {
     live: true,
-    text: `implied by carry: F=${fmtPrice(F)}, S=${fmtPrice(S)}, ${days}d, r=${state.rate}% -> y=${y.toFixed(3)}%`
+    text: t('implied by carry: F={F}, S={S}, {days}d, r={rate}% -> y={yield}%',
+      { F: fmtPrice(F), S: fmtPrice(S), days, rate: state.rate, yield: y.toFixed(3) })
   };
-  return { message: 'Convenience yield implied from the spot/futures basis: ' + y.toFixed(3) + '%.' };
+  return { message: t('Convenience yield implied from the spot/futures basis: {yield}%.', { yield: y.toFixed(3) }) };
 }
 
 /* Back to the commodity's long-run typical values, labelled as not market data. */
@@ -2764,8 +2796,8 @@ function applyPreset() {
   // curve's prices on the legs left the sources panel claiming "not market
   // data" while every leg still priced off a live curve.
   clearLegPrices();
-  state.sources.vol = { live: false, text: 'preset long-run average (' + meta.vol + '%) - not market data' };
-  state.sources.yield = { live: false, text: 'preset (' + meta.yield + '%) - not market data' };
+  state.sources.vol = { live: false, text: t('preset long-run average ({vol}%) - not market data', { vol: meta.vol }) };
+  state.sources.yield = { live: false, text: t('preset ({yield}%) - not market data', { yield: meta.yield }) };
   // The price is kept but no longer vouched for: presets also run when the
   // commodity changes, and the old market's quote must not describe it.
   setReferencePrice(state.S, null, '');
@@ -2802,7 +2834,7 @@ function holdButton(button) {
   const text = button.textContent, was = button.disabled;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
-  button.textContent = 'Fetching…';
+  button.textContent = t('Fetching…');
   return () => {
     button.disabled = was;
     button.removeAttribute('aria-busy');
@@ -2848,7 +2880,7 @@ function showResult(r) {
 function resetProxyFields() {
   const meta = commodityMeta(state.commodity);
   $('volSymbol').value = meta.priceSymbol || '';
-  $('proxyNote').textContent = meta.proxy || '';
+  $('proxyNote').textContent = meta.proxy ? t(meta.proxy) : '';
 }
 
 /* Thin wrapper so every single-field button behaves the same way. `where` is
@@ -2861,9 +2893,9 @@ function runAction(label, step, where) {
       const r = await step();
       showResult(r);
       renderAll();
-      setStatus('Updated ' + r.message + '.', 'ok', where);
+      setStatus(t('Updated {what}.', { what: r.message }), 'ok', where);
     } catch (err) {
-      setStatus(label + ' failed: ' + err.message + '. The current value is unchanged.', 'err', where);
+      setStatus(t('{label} failed: {error}. The current value is unchanged.', { label, error: err.message }), 'err', where);
     } finally {
       release();
     }
@@ -2873,15 +2905,15 @@ function runAction(label, step, where) {
 /* One button that fills everything it can, reporting each field separately. */
 async function actionAutoFill(e) {
   const release = holdButton(e && (e.currentTarget || e.target));
-  setStatus('Fetching market data...', 'busy');
+  setStatus(t('Fetching market data...'), 'busy');
   try {
     const r = await autoFill(volInputs());
     r.results.forEach(showResult);
     renderAll();
 
     const parts = [];
-    if (r.done.length) parts.push('Updated ' + r.done.join('; ') + '.');
-    if (r.failed.length) parts.push('Left unchanged: ' + r.failed.join('; ') + '.');
+    if (r.done.length) parts.push(t('Updated {what}.', { what: r.done.join('; ') }));
+    if (r.failed.length) parts.push(t('Left unchanged: {what}.', { what: r.failed.join('; ') }));
     setStatus(parts.join(' '), r.failed.length ? (r.done.length ? '' : 'err') : 'ok');
   } finally {
     release();
@@ -2920,7 +2952,7 @@ function bindInputs() {
     renderAll();
   });
 
-  $('loadMonths').addEventListener('click', runAction('Contract months', async () => {
+  $('loadMonths').addEventListener('click', runAction(t('Contract months'), async () => {
     const r = await loadContractMonths();
     renderMonths();
     return r;
@@ -3003,7 +3035,7 @@ function bindInputs() {
       if (!problem) return;
       // The value in use, as renderInputs() shows it.
       const shown = key === 'vol' ? volField(state.vol, 4) : state[key];
-      $(id + 'Problem').textContent = problem + ' Still using ' + shown + unit + '.';
+      $(id + 'Problem').textContent = problem + ' ' + t('Still using {value}.', { value: shown + unit });
       openFolded($(id + 'Problem'));
       e.target.value = shown;
     });
@@ -3048,7 +3080,7 @@ function bindInputs() {
     removedLegs = state.legs;
     state.legs = [];
     renderAll();
-    setStatus(removedLegs.length === 1 ? 'The leg was removed.' : 'All ' + removedLegs.length + ' legs were removed.',
+    setStatus(removedLegs.length === 1 ? t('The leg was removed.') : t('All {n} legs were removed.', { n: removedLegs.length }),
       'ok', 'legStatus');
     $('undoRemove').hidden = false;
   });
@@ -3092,18 +3124,18 @@ function bindInputs() {
   });
 
   $('autoFill').addEventListener('click', actionAutoFill);
-  $('fetchPrice').addEventListener('click', runAction('Futures price', applyFuturesPrice));
-  $('fetchRate').addEventListener('click', runAction('Risk-free rate', applyRate));
-  $('fetchVol').addEventListener('click', runAction('Volatility', () => applyVol(volInputs())));
+  $('fetchPrice').addEventListener('click', runAction(t('Futures price'), applyFuturesPrice));
+  $('fetchRate').addEventListener('click', runAction(t('Risk-free rate'), applyRate));
+  $('fetchVol').addEventListener('click', runAction(t('Volatility'), () => applyVol(volInputs())));
   // Emptying the key field forgets the key; a new one is kept once it is used.
   $('avKey').addEventListener('input', e => {
     if (!e.target.value.trim()) storeAvKey('');
   });
-  $('fetchCurve').addEventListener('click', runAction('Convenience yield', applyCurveYield));
-  $('fillLegPrices').addEventListener('click', runAction('Leg prices', applyLegPrices, 'legStatus'));
+  $('fetchCurve').addEventListener('click', runAction(t('Convenience yield'), applyCurveYield));
+  $('fillLegPrices').addEventListener('click', runAction(t('Leg prices'), applyLegPrices, 'legStatus'));
   $('clearLegPrices').addEventListener('click', () => {
     clearLegPrices();
-    setStatus('Every leg is back on the contract in the left panel.', 'ok', 'legStatus');
+    setStatus(t('Every leg is back on the contract in the left panel.'), 'ok', 'legStatus');
     renderAll();
   });
   $('skewOn').addEventListener('change', e => {
@@ -3116,7 +3148,7 @@ function bindInputs() {
   // Where the system share sheet exists - phones, and some desktops - it reaches
   // LinkedIn, WhatsApp or mail in one tap; elsewhere the link is copied.
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
-  if (canShare) $('share').textContent = 'Share link';
+  if (canShare) $('share').textContent = t('Share link');
   $('share').addEventListener('click', async () => {
     const url = shareLink();
     location.hash = url.split('#')[1];
@@ -3133,9 +3165,9 @@ function bindInputs() {
     }
     try {
       await navigator.clipboard.writeText(url);
-      setSaveStatus('Shareable link copied to the clipboard.', 'ok');
+      setSaveStatus(t('Shareable link copied to the clipboard.'), 'ok');
     } catch (e) {
-      setSaveStatus('Link is in the address bar - copy it from there.');
+      setSaveStatus(t('Link is in the address bar - copy it from there.'));
     }
   });
 
@@ -3156,9 +3188,9 @@ function bindInputs() {
       try {
         restore(JSON.parse(fr.result));
         renderAll();
-        setSaveStatus('Strategy loaded.', 'ok');
+        setSaveStatus(t('Strategy loaded.'), 'ok');
       } catch (err) {
-        setSaveStatus('That file is not a valid strategy export.', 'err');
+        setSaveStatus(t('That file is not a valid strategy export.'), 'err');
       }
     };
     fr.readAsText(file);
@@ -3192,22 +3224,22 @@ function onLegEvent(e) {
   if (f === 'iv') {
     const target = leg.entry;
     if (target == null) {
-      setStatus('Enter the market premium in the Entry column first, then press IV.', 'err', 'legStatus');
+      setStatus(t('Enter the market premium in the Entry column first, then press IV.'), 'err', 'legStatus');
       return;
     }
     const iv = legImpliedVol(leg, target);
     if (!isFinite(iv)) {
       setStatus(legNoTimeValue(leg, target)
-        ? 'That premium has no time value - it is what the option is worth at zero volatility - so ' +
+        ? t('That premium has no time value - it is what the option is worth at zero volatility - so ' +
           'every volatility up to some level prices it alike and none can be implied. The leg keeps ' +
-          'its volatility.'
-        : 'No implied volatility solves that premium (check the price and the strike).', 'err', 'legStatus');
+          'its volatility.')
+        : t('No implied volatility solves that premium (check the price and the strike).'), 'err', 'legStatus');
       return;
     }
     // Kept exact, so the leg is worth its premium; the table shows two decimals.
     leg.vol = iv * 100;
-    setStatus('Implied volatility for that leg: ' + volField(leg.vol, 4) + '%. The table shows it ' +
-      'to two decimals; the leg is priced at the exact figure, so it is worth its premium.', 'ok', 'legStatus');
+    setStatus(t('Implied volatility for that leg: {vol}%. The table shows it ' +
+      'to two decimals; the leg is priced at the exact figure, so it is worth its premium.', { vol: volField(leg.vol, 4) }), 'ok', 'legStatus');
     renderAll();
     return;
   }
@@ -3219,7 +3251,7 @@ function onLegEvent(e) {
     const v = parseFloat(el.value);
     const problem = isFinite(v) ? inputProblem(f, v) : '';
     if (problem) {
-      $('legProblem').textContent = problem + ' The leg keeps its previous value.';
+      $('legProblem').textContent = problem + ' ' + t('The leg keeps its previous value.');
       renderAll();
       return;
     }
@@ -3242,10 +3274,10 @@ function init() {
   pruneCache(CACHE_MAX_AGE);
   // Commodity dropdown
   $('commodity').innerHTML = Object.keys(COMMODITIES)
-    .map(k => `<option value="${k}">${COMMODITIES[k].label}</option>`).join('');
+    .map(k => `<option value="${k}">${escapeHtml(t(COMMODITIES[k].label))}</option>`).join('');
   // Strategy dropdown
-  $('strategy').innerHTML = '<option value="">Choose a strategy…</option>' +
-    Object.keys(STRATEGIES).map(k => `<option value="${k}">${STRATEGIES[k].label}</option>`).join('');
+  $('strategy').innerHTML = '<option value="">' + t('Choose a strategy…') + '</option>' +
+    Object.keys(STRATEGIES).map(k => `<option value="${k}">${escapeHtml(t(STRATEGIES[k].label))}</option>`).join('');
 
   const saved = readHash() || (() => {
     try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { return null; }

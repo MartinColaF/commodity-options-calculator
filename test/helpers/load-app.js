@@ -6,8 +6,10 @@ const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const APP = path.join(ROOT, 'app.js');
-/* Loaded first, as index.html does: app.js reads its table at load time. */
+/* Loaded first, as index.html does: app.js reads its table at load time, and
+ * writes its words through i18n.js. */
 const TABLE = path.join(ROOT, 'commodities.js');
+const WORDS = path.join(ROOT, 'i18n.js');
 const STYLES = path.join(ROOT, 'styles.css');
 
 /* app.js is deliberately a plain browser script with no module system, so the
@@ -49,8 +51,13 @@ function cssVariables(scheme) {
  * otherwise refused, and `opts.protocol` for the page's (file: in place of
  * https:). `opts.elements` maps ids to stand-in elements and `opts.globals`
  * adds globals such as a fake Chart. The stylesheet is styles.css in
- * `opts.scheme`, 'light' unless it says 'dark'. The returned app carries
- * `storage`, the Map behind localStorage. */
+ * `opts.scheme`, 'light' unless it says 'dark'. `opts.lang` is the page's
+ * <html lang>, and `opts.words` adds tables to i18n.js's, by language. The
+ * returned app carries `storage`, the Map behind localStorage.
+ *
+ * A t() whose text names a {placeholder} it is given no value for throws here,
+ * where on the page it would show the braces: every test that renders or runs
+ * an action checks the words it used. */
 function loadApp(opts) {
   const o = opts || {};
   const store = new Map();
@@ -61,7 +68,7 @@ function loadApp(opts) {
     document: {
       addEventListener() { },
       getElementById: id => (Object.prototype.hasOwnProperty.call(elements, id) ? elements[id] : null),
-      documentElement: {}
+      documentElement: { lang: o.lang || 'en' }
     },
     getComputedStyle: () => {
       const vars = cssVariables(o.scheme);
@@ -84,6 +91,17 @@ function loadApp(opts) {
   // Two scripts in one context share their top-level bindings, as two
   // <script> tags on one page do, so app.js sees the table's const.
   vm.runInContext(fs.readFileSync(TABLE, 'utf8'), sandbox, { filename: 'commodities.js' });
+  vm.runInContext(fs.readFileSync(WORDS, 'utf8'), sandbox, { filename: 'i18n.js' });
+  Object.assign(vm.runInContext('TRANSLATIONS', sandbox), o.words || {});
+  const t = sandbox.t;
+  sandbox.t = (text, params) => {
+    for (const m of String(text).matchAll(/\{(\w+)\}/g)) {
+      if (!params || !Object.prototype.hasOwnProperty.call(params, m[1])) {
+        throw new Error(`t(${JSON.stringify(text)}) has no value for {${m[1]}}`);
+      }
+    }
+    return t(text, params);
+  };
   vm.runInContext(fs.readFileSync(APP, 'utf8') + EPILOGUE, sandbox, { filename: 'app.js' });
   const app = {};
   for (const k of Object.keys(sandbox)) {
@@ -121,7 +139,7 @@ function wired(opts) {
   const el = id => made[id] || (made[id] = element(id));
   const app = loadApp(Object.assign({}, opts, {
     globals: Object.assign({
-      document: { addEventListener: listen('document'), getElementById: el, documentElement: {} },
+      document: { addEventListener: listen('document'), getElementById: el, documentElement: { lang: (opts && opts.lang) || 'en' } },
       window: { matchMedia: () => ({ addEventListener() { } }) },
       requestAnimationFrame: () => { }
     }, opts && opts.globals)
