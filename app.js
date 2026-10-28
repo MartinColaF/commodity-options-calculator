@@ -1100,6 +1100,21 @@ function analyse() {
   const tail = tailGrid(t, wx[wx.length - 1]);
   for (const x of tail) wx.push(x);
   const wy = wx.map(p => pnl(p, t));
+  // Past that the P&L is a straight line at the far slope. Where the line has
+  // yet to cross zero - a profit at the last point and the P&L falling away, or
+  // a loss and it rising - one more point, as far past the crossing as the
+  // crossing is past the last one, lets the breakevens and the probability
+  // below find it. They used to carry the last point's sign to infinity: three
+  // long futures against three calls on a month 13% dearer, at 77% vol over 480
+  // days, lost the breakeven at 556.41, just past the grid's 552.03, and showed
+  // a 59.27% chance of profit for 57.07%.
+  const upSlope = farSlope(t);
+  const last = wx.length - 1;
+  if (upSlope !== 0 && wy[last] !== 0 && (wy[last] > 0) !== (upSlope > 0)) {
+    const x = wx[last] - 2 * wy[last] / upSlope;
+    wx.push(x);
+    wy.push(pnl(x, t));
+  }
   const n = wy.length;
 
   let maxP = -Infinity, minP = Infinity;
@@ -1122,7 +1137,6 @@ function analyse() {
   // alone said the same of a naked call, losing $100 a point, and a European
   // call calendar, whose far leg is worth its discounted intrinsic up there and
   // so bleeds $0.33 a point.
-  const upSlope = farSlope(t);
   const unlimitedProfit = upSlope > 0;
   const unlimitedLoss = upSlope < 0;
 

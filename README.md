@@ -188,8 +188,9 @@ some browsers restrict cross-origin requests from `file://`.
   of your own or none, a futures leg carrying nothing, the chart's leg curves adding up
   to the position, what the page says in each mode, and old scenarios restoring nominal.
 - `test/probability.test.js` — the probability of profit against closed forms, on
-  either tail and between breakevens, measured at the volatility of the option nearest
-  the money at the horizon, and the summary naming that volatility.
+  either tail and between breakevens, a breakeven past the top of the statistics grid
+  included, measured at the volatility of the option nearest the money at the
+  horizon, and the summary naming that volatility.
 - `test/skew.test.js` — the skew curve reproducing the 25-delta quotes it was built
   from, the wings under a butterfly, the clamp on an extreme risk reversal, every
   strike read where the curve and its delta agree, the note naming strikes a curve too
