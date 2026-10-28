@@ -173,6 +173,20 @@ button:hover { filter: brightness(1.08); }
 button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--field-border); }
 button.icon { width: auto; padding: 3px 7px; font-size: .78rem; }
 button.icon.danger { background: var(--neg); color: #fff; }
+/* An action that throws work away: plain red text, not a button the size and
+ * weight of the one beside it that adds a leg. */
+button.text-danger { background: transparent; color: var(--neg); border: 1px solid transparent; }
+/* Where there is a pointer to hover with: on a touch screen the hover sticks after the tap. */
+@media (hover: hover) { button.text-danger:hover { border-color: var(--neg); filter: none; } }
+button.undo { width: auto; margin-top: 8px; }
+
+/* Settings folded under a line that says what they are set to. */
+details.advanced { margin-top: 16px; border-top: 1px solid var(--line); }
+details.advanced > summary { cursor: pointer; padding: 12px 0 8px; font-weight: 600; font-size: .9rem; }
+details.advanced > summary .summary-line {
+  display: block; margin-top: 2px; font-weight: 400; font-size: .78rem; color: var(--muted);
+}
+details.advanced[open] > summary { margin-bottom: 4px; }
 
 /* A file input dressed as a ghost button: the browser's own control read
  * "Choose Fil" on a phone, beside two buttons. The input stays focusable. */
@@ -403,5 +417,5 @@ footer a { color: var(--muted); }
   #legs input[type=checkbox] { width: 24px; }
   /* IV and remove, on their own line at the card's foot. */
   #legs tbody td:last-child { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
-  #legs tbody td[colspan] { grid-column: 1 / -1; }
+  #legs tbody td[colspan] { grid-column: 1 / -1; align-items: center; text-align: center; }
 }

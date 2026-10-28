@@ -64,30 +64,6 @@
         <select id="commodity"></select>
         <p class="note" id="proxyNote"></p>
 
-        <label for="model">Model</label>
-        <select id="model">
-          <option value="b76">Black-76 (option on futures)</option>
-          <option value="bs">Black-Scholes-Merton (spot + carry)</option>
-        </select>
-        <p class="note">Black-76 is the market standard for options on commodity futures. Use Black-Scholes only when your underlying is the physical spot price.</p>
-
-        <label for="style">Exercise</label>
-        <select id="style">
-          <option value="american">American (early exercise allowed)</option>
-          <option value="european">European (expiry only)</option>
-        </select>
-        <p class="note" id="styleNote"></p>
-
-        <label for="contractMonth">Contract month</label>
-        <div class="row tight">
-          <select id="contractMonth">
-            <option value="">Front month (continuous)</option>
-          </select>
-          <button id="loadMonths" class="ghost">Load</button>
-        </div>
-        <div class="status" id="monthStatus" role="status"></div>
-        <p class="note" id="monthNote">The continuous front-month series by default. Load the listed months to price against one specific delivery month &mdash; which is what an option quote on a broker's screen refers to.</p>
-
         <label for="spot"><span id="spotLabel">Futures price</span></label>
         <input type="number" id="spot" step="any" value="4000">
         <p class="problem" id="spotProblem" role="alert"></p>
@@ -99,39 +75,70 @@
         <input type="number" id="vol" step="any" value="15">
         <p class="problem" id="volProblem" role="alert"></p>
 
-        <label for="rate">Risk-free rate (% continuous)</label>
-        <input type="number" id="rate" step="any" value="4">
+        <!-- The four above decide a first result; these refine it, with defaults
+             right for each market. The summary says what they are, so folding them
+             hides no assumption. -->
+        <details class="advanced" id="contractAdvanced">
+          <summary>Model and contract settings <span class="summary-line" id="contractSummary"></span></summary>
 
-        <label for="financing">Premium financing</label>
-        <select id="financing">
-          <option value="rate">At the risk-free rate</option>
-          <option value="custom">At my own rate</option>
-          <option value="none">None (nominal P&amp;L)</option>
-        </select>
-        <label for="financingRate">Your financing rate (% continuous)</label>
-        <input type="number" id="financingRate" step="any" value="4">
-        <p class="note" id="financingNote"></p>
+          <label for="model">Model</label>
+          <select id="model">
+            <option value="b76">Black-76 (option on futures)</option>
+            <option value="bs">Black-Scholes-Merton (spot + carry)</option>
+          </select>
+          <p class="note">Black-76 is the market standard for options on commodity futures. Use Black-Scholes only when your underlying is the physical spot price.</p>
 
-        <label for="yield">Convenience yield (%)</label>
-        <input type="number" id="yield" step="any" value="0.3">
-        <p class="note" id="yieldNote"></p>
+          <label for="style">Exercise</label>
+          <select id="style">
+            <option value="american">American (early exercise allowed)</option>
+            <option value="european">European (expiry only)</option>
+          </select>
+          <p class="note" id="styleNote"></p>
 
-        <h3>Contract size</h3>
-        <div class="row">
-          <div>
-            <label for="size">Units per contract</label>
-            <input type="number" id="size" step="any" value="100">
-            <p class="problem" id="sizeProblem" role="alert"></p>
-          </div>
-          <div>
-            <label for="quote">Price quoted in</label>
-            <select id="quote">
-              <option value="USD">USD</option>
-              <option value="cents">cents</option>
+          <label for="contractMonth">Contract month</label>
+          <div class="row tight">
+            <select id="contractMonth">
+              <option value="">Front month (continuous)</option>
             </select>
+            <button id="loadMonths" class="ghost">Load</button>
           </div>
-        </div>
-        <p class="note" id="multInfo"></p>
+          <div class="status" id="monthStatus" role="status"></div>
+          <p class="note" id="monthNote">The continuous front-month series by default. Load the listed months to price against one specific delivery month &mdash; which is what an option quote on a broker's screen refers to.</p>
+
+          <label for="rate">Risk-free rate (% continuous)</label>
+          <input type="number" id="rate" step="any" value="4">
+
+          <label for="financing">Premium financing</label>
+          <select id="financing">
+            <option value="rate">At the risk-free rate</option>
+            <option value="custom">At my own rate</option>
+            <option value="none">None (nominal P&amp;L)</option>
+          </select>
+          <label for="financingRate">Your financing rate (% continuous)</label>
+          <input type="number" id="financingRate" step="any" value="4">
+          <p class="note" id="financingNote"></p>
+
+          <label for="yield">Convenience yield (%)</label>
+          <input type="number" id="yield" step="any" value="0.3">
+          <p class="note" id="yieldNote"></p>
+
+          <h3>Contract size</h3>
+          <div class="row">
+            <div>
+              <label for="size">Units per contract</label>
+              <input type="number" id="size" step="any" value="100">
+              <p class="problem" id="sizeProblem" role="alert"></p>
+            </div>
+            <div>
+              <label for="quote">Price quoted in</label>
+              <select id="quote">
+                <option value="USD">USD</option>
+                <option value="cents">cents</option>
+              </select>
+            </div>
+          </div>
+          <p class="note" id="multInfo"></p>
+        </details>
       </div>
 
       <div class="card" id="cardMarket">
@@ -149,60 +156,64 @@
         <div class="status" id="dataStatus" role="status"></div>
         <p class="note">Futures prices come from the front-month contract; the convenience yield is implied by two listed contracts on the real curve. The rate is the US Treasury daily par yield curve, interpolated to your expiry. When the two contracts sit close together, a small price gap annualises into a large yield &mdash; the two prices used are shown below so you can judge it.</p>
 
-        <h3>Volatility settings</h3>
-        <div class="row tight">
-          <div>
-            <label for="volWindow">Window</label>
-            <select id="volWindow">
-              <option value="20">20d</option>
-              <option value="30" selected>30d</option>
-              <option value="60">60d</option>
-              <option value="90">90d</option>
-            </select>
-          </div>
-          <div>
-            <label for="volEstimator">Estimator</label>
-            <select id="volEstimator">
-              <option value="close">Close-to-close</option>
-              <option value="ewma">EWMA (0.94)</option>
-              <option value="parkinson">Parkinson</option>
-            </select>
-          </div>
-        </div>
-        <p class="note">Historical (realised) volatility, not implied. Measured on the front-month futures itself, so roll gaps can inflate it slightly.</p>
+        <details class="advanced" id="marketAdvanced">
+          <summary>Volatility, skew and carry settings <span class="summary-line" id="marketSummary"></span></summary>
 
-        <h3>Skew</h3>
-        <label class="inline"><input type="checkbox" id="skewOn"> Interpolate volatility by strike</label>
-        <div class="row tight">
-          <div>
-            <label for="skewRr">25&Delta; risk reversal</label>
-            <input type="number" id="skewRr" step="any" value="0">
+          <h3>Volatility settings</h3>
+          <div class="row tight">
+            <div>
+              <label for="volWindow">Window</label>
+              <select id="volWindow">
+                <option value="20">20d</option>
+                <option value="30" selected>30d</option>
+                <option value="60">60d</option>
+                <option value="90">90d</option>
+              </select>
+            </div>
+            <div>
+              <label for="volEstimator">Estimator</label>
+              <select id="volEstimator">
+                <option value="close">Close-to-close</option>
+                <option value="ewma">EWMA (0.94)</option>
+                <option value="parkinson">Parkinson</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label for="skewBf">25&Delta; butterfly</label>
-            <input type="number" id="skewBf" step="any" value="0">
+          <p class="note">Historical (realised) volatility, not implied. Measured on the front-month futures itself, so roll gaps can inflate it slightly.</p>
+
+          <h3>Skew</h3>
+          <label class="inline"><input type="checkbox" id="skewOn"> Interpolate volatility by strike</label>
+          <div class="row tight">
+            <div>
+              <label for="skewRr">25&Delta; risk reversal</label>
+              <input type="number" id="skewRr" step="any" value="0">
+            </div>
+            <div>
+              <label for="skewBf">25&Delta; butterfly</label>
+              <input type="number" id="skewBf" step="any" value="0">
+            </div>
           </div>
-        </div>
-        <p class="note" id="skewNote"></p>
-        <p class="problem" id="skewWarning" role="status"></p>
+          <p class="note" id="skewNote"></p>
+          <p class="problem" id="skewWarning" role="status"></p>
 
-        <h3>Carry, checked by hand</h3>
-        <div class="row tight">
-          <div><label for="carryS">Near</label><input type="number" id="carryS" step="any" placeholder="F1"></div>
-          <div><label for="carryF">Far</label><input type="number" id="carryF" step="any" placeholder="F2"></div>
-          <div><label for="carryDays">Days</label><input type="number" id="carryDays" step="1" placeholder="90"></div>
-        </div>
-        <button id="implyYield" class="ghost" style="margin-top:8px">Imply convenience yield from these</button>
-        <div class="status" id="carryStatus" role="status"></div>
-        <p class="note">Inverts F = S&middot;e<sup>(r&minus;y)T</sup>, net of storage costs. The Yield button above fills these boxes with the two contracts it used, so you can check its work or override it.</p>
+          <h3>Carry, checked by hand</h3>
+          <div class="row tight">
+            <div><label for="carryS">Near</label><input type="number" id="carryS" step="any" placeholder="F1"></div>
+            <div><label for="carryF">Far</label><input type="number" id="carryF" step="any" placeholder="F2"></div>
+            <div><label for="carryDays">Days</label><input type="number" id="carryDays" step="1" placeholder="90"></div>
+          </div>
+          <button id="implyYield" class="ghost" style="margin-top:8px">Imply convenience yield from these</button>
+          <div class="status" id="carryStatus" role="status"></div>
+          <p class="note">Inverts F = S&middot;e<sup>(r&minus;y)T</sup>, net of storage costs. The Yield button above fills these boxes with the two contracts it used, so you can check its work or override it.</p>
 
-        <details style="margin-top:14px">
-          <summary class="muted small">Fallback: Alpha Vantage (for custom tickers, or if the futures proxy is down)</summary>
-          <label for="avKey">API key <span class="muted">(free, stored only in this browser; empty the field to delete it)</span></label>
-          <input type="password" id="avKey" placeholder="paste your key" autocomplete="off">
-          <label for="volSymbol">Ticker to measure</label>
-          <input type="text" id="volSymbol" placeholder="e.g. GLD">
-          <p class="note"><a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">Get a free key</a> - 25 requests/day, cached 12 h. This path uses ETF proxies for their <em>returns</em> only: their price level is not the futures price.</p>
+          <details style="margin-top:14px">
+            <summary class="muted small">Fallback: Alpha Vantage (for custom tickers, or if the futures proxy is down)</summary>
+            <label for="avKey">API key <span class="muted">(free, stored only in this browser; empty the field to delete it)</span></label>
+            <input type="password" id="avKey" placeholder="paste your key" autocomplete="off">
+            <label for="volSymbol">Ticker to measure</label>
+            <input type="text" id="volSymbol" placeholder="e.g. GLD">
+            <p class="note"><a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">Get a free key</a> - 25 requests/day, cached 12 h. This path uses ETF proxies for their <em>returns</em> only: their price level is not the futures price.</p>
+          </details>
         </details>
 
         <button id="usePreset" class="ghost" style="margin-top:12px">Reset to commodity presets</button>
@@ -222,7 +233,7 @@
         <div class="row strategy-row">
           <select id="strategy"></select>
           <button id="addLeg" class="ghost">+ Add leg</button>
-          <button id="clearLegs" class="ghost">Clear</button>
+          <button id="clearLegs" class="text-danger">Remove all legs</button>
         </div>
 
         <div class="table-scroll" style="margin-top:12px">
@@ -239,12 +250,13 @@
         </div>
         <p class="problem" id="legProblem" role="alert"></p>
         <div class="status" id="legStatus" role="status"></div>
-        <p class="note">Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Under</strong> is that leg's own delivery month price &mdash; blank uses the contract on the left, and the <em>Leg prices</em> button below fills it from the real curve. <strong>Entry</strong> overrides the theoretical premium with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
+        <button id="undoRemove" class="ghost undo" hidden>Undo: put the legs back</button>
+        <p class="note">Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Under</strong> is that leg's own delivery month price &mdash; blank uses the contract on the left, and the <strong>Fill leg prices</strong> button below fills it from the real curve. <strong>Entry</strong> overrides the theoretical premium with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
         <div class="row tight">
           <button id="fillLegPrices" class="ghost">Fill leg prices from the futures curve</button>
           <button id="clearLegPrices" class="ghost">Clear leg prices</button>
         </div>
-        <p class="note">In a real commodity calendar each month trades at its own price. This reads the listed curve, measures its slope, and prices every leg at its own expiry. The payoff chart then moves all months together, in proportion. <strong>Clear</strong> puts every leg back on the contract in the left panel, which is what you want when you are pricing options on one specific delivery month.</p>
+        <p class="note">In a real commodity calendar each month trades at its own price. This reads the listed curve, measures its slope, and prices every leg at its own expiry. The payoff chart then moves all months together, in proportion. <strong>Clear leg prices</strong> puts every leg back on the contract in the left panel, which is what you want when you are pricing options on one specific delivery month.</p>
       </div>
 
       <div class="card" id="cardResults">
