@@ -67,3 +67,31 @@ test('every third party the page may contact is named in the policy', () => {
     assert.match(policy, named[h], `${h} is contacted but the policy does not name it`);
   }
 });
+
+/* ---- the Spanish translation, es/privacy.html ---- */
+
+const traduccion = read('es/privacy.html')
+  .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+  .replace(/<[^>]+>/g, ' ')
+  .replace(/\s+/g, ' ');
+
+test('the Spanish policy is a translation of this one, which prevails', () => {
+  assert.match(traduccion, /Esta es una traducción; ante cualquier diferencia prevalece la versión en inglés/);
+  assert.match(read('es/privacy.html'), /prevalece la <a href="\/privacy.html" hreflang="en">versión en inglés<\/a>/);
+  // Section for section, from the same date.
+  const sections = html => Array.from(html.matchAll(/<h2>(\w+)\./g), m => m[1]);
+  assert.deepStrictEqual(sections(read('es/privacy.html')), sections(read('privacy.html')));
+  assert.match(policy, /Effective Date: October 26, 2026/);
+  assert.match(traduccion, /Fecha de entrada en vigor: 26 de octubre de 2026/,
+    'a new effective date in English needs one here too');
+  const links = html => Array.from(html.matchAll(/<a href="(https:[^"]+)"/g), m => m[1]);
+  assert.deepStrictEqual(links(read('es/privacy.html')), links(read('privacy.html')));
+});
+
+test('the Spanish policy makes the same promises as the English one', () => {
+  assert.match(traduccion, /no establece ninguna cookie/);
+  const loadsAds = /googlesyndication\.com|adsbygoogle/i.test(page);
+  assert.strictEqual(/todavía no está activ/i.test(traduccion), !loadsAds, 'ads described as the English policy does');
+  assert.match(traduccion, /\/api\/market/);
+  for (const name of [/jsDelivr/, /home\.treasury\.gov/, /alphavantage\.co/]) assert.match(traduccion, name);
+});

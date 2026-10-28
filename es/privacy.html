@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Política de privacidad - Calculadora de opciones sobre commodities</title>
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/es/privacy.html">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/privacy.html">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/privacy.html">
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 2rem;
+      line-height: 1.6;
+      max-width: 800px;
+    }
+    h1 {
+      color: #333;
+    }
+    #revealContact {
+      font: inherit;
+      font-size: .95rem;
+      padding: 6px 12px;
+      border: 1px solid #999;
+      border-radius: 6px;
+      background: #f4f4f4;
+      cursor: pointer;
+    }
+    #revealContact:hover {
+      background: #e9e9e9;
+    }
+  </style>
+</head>
+<body>
+  <!-- A translation of privacy.html, section for section. The English text is
+       the policy: when it changes, this page changes with it, effective date
+       included. test/privacy.test.js holds the two together. -->
+  <p><a href="/privacy.html" hreflang="en" lang="en">English</a></p>
+  <h1>Política de privacidad</h1>
+  <p><strong>Fecha de entrada en vigor:</strong> 26 de octubre de 2026</p>
+  <p><em>Esta es una traducción; ante cualquier diferencia prevalece la <a href="/privacy.html" hreflang="en">versión en inglés</a>.</em></p>
+
+  <p>Gracias por visitar la <em>Calculadora de opciones sobre commodities</em>. Este sitio ofrece una herramienta educativa para simular la valuación de opciones sobre futuros de commodities: metales, energía, granos, softs y ganado.</p>
+
+  <h2>1. Información que recopilamos</h2>
+  <p><strong>No</strong> recopilamos información personal de los usuarios. La calculadora funciona en el navegador. La única parte de este sitio que funciona en un servidor es la función de datos de mercado que describe la sección 3. Recibe solo el nombre del mercado consultado, junto con lo que lleva cualquier solicitud web, que explica la sección 3.</p>
+  <p>Este sitio todavía no muestra anuncios. Tenemos previsto mostrarlos mediante Google AdSense; la sección 2 explica qué significará eso, y esta política se actualizará antes de activarlos.</p>
+
+  <h2>1b. Datos guardados en el navegador</h2>
+  <p>Para conservar el trabajo entre visitas, la calculadora guarda lo siguiente en el <em>almacenamiento local</em> del navegador, solo en el dispositivo. Nunca se nos transmite:</p>
+  <ul>
+    <li>Los datos ingresados en la calculadora y las patas de las opciones.</li>
+    <li>Respuestas de datos de mercado guardadas en caché (para evitar consultas repetidas).</li>
+    <li>La clave de API de Alpha Vantage, una vez ingresada y usada. Vaciar el campo de la clave la borra.</li>
+  </ul>
+  <p>Borrar los datos del sitio en el navegador elimina todo esto. Con el botón "Copiar enlace para compartir", los datos ingresados quedan codificados en el propio enlace, así que cualquier persona que lo reciba puede verlos. La clave de API nunca forma parte de un enlace compartido ni de un archivo exportado.</p>
+
+  <h2>2. Uso de cookies</h2>
+  <p>Hoy este sitio no establece <strong>ninguna cookie</strong>. La calculadora guarda lo que necesita en el almacenamiento local del navegador, como describe la sección 1b.</p>
+  <ul>
+    <li><strong>Publicidad</strong> (prevista, todavía no está activa): cuando se activen los anuncios, Google AdSense y sus socios podrán usar cookies para mostrar anuncios según las visitas anteriores a este u otros sitios web.</li>
+    <li><strong>Analítica:</strong> no usamos ninguna. Si eso cambia, esta política se actualizará antes.</li>
+  </ul>
+  <p>La configuración del navegador permite bloquear o borrar cookies y datos de sitios en cualquier momento. Para la publicidad de Google, ver los enlaces de la sección 5.</p>
+
+  <h2>3. Servicios de terceros</h2>
+  <p>Usamos los siguientes servicios de terceros:</p>
+  <ul>
+    <li><strong>Google AdSense</strong>: previsto, para mostrar anuncios. Todavía no está activo: hoy este sitio no carga nada de Google.<br/>
+      <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener">
+        Más información: cómo usa Google la información de los sitios que usan sus servicios
+      </a>
+    </li>
+    <li><strong>jsDelivr</strong>: red de distribución de contenidos que se usa para cargar la biblioteca de gráficos. Ve la dirección IP, como en cualquier solicitud web.</li>
+    <li><strong>Departamento del Tesoro de EE. UU.</strong> (home.treasury.gov): el navegador lo consulta solo cuando se pide la tasa libre de riesgo, para leer la curva diaria de rendimientos publicada. No se envía ninguna información personal más allá de la propia solicitud.</li>
+    <li><strong>Nuestra propia función de datos de mercado</strong> (<code>/api/market</code>, alojada en Vercel): al pedir un precio de futuros, una volatilidad o un rendimiento de conveniencia, el navegador consulta este sitio, y este sitio lee cotizaciones públicas de futuros de Yahoo Finance. El navegador nunca se conecta con Yahoo, y no le enviamos nada sobre quien consulta. Nuestro proveedor de hosting (Vercel) registra la solicitud igual que cualquier solicitud de página, y las respuestas se guardan en caché para que las consultas repetidas no salgan de este sitio.</li>
+    <li><strong>Alpha Vantage</strong> (alphavantage.co): un respaldo opcional, que el navegador consulta solo si se ingresó una clave de API propia y la función anterior no está disponible. La clave y el ticker elegido van directamente del navegador a Alpha Vantage, nunca a través nuestro.</li>
+  </ul>
+  <p>Estas consultas de datos de mercado son opcionales: la calculadora funciona sin ellas.</p>
+
+  <h2>4. Seguridad de los datos</h2>
+  <p>No recopilamos ni guardamos datos personales. Todo tratamiento de datos por parte de terceros se rige por sus respectivas políticas de privacidad.</p>
+
+  <h2>5. Derechos de los usuarios</h2>
+  <p>Según el lugar de residencia, puede existir el derecho a:</p>
+  <ul>
+    <li>Solicitar acceso a los datos que guardan terceros, o su eliminación.</li>
+    <li>Rechazar la publicidad personalizada.</li>
+  </ul>
+  <p>
+    Las preferencias de anuncios se administran en <a href="https://youradchoices.com/" target="_blank">YourAdChoices</a> o en la
+    <a href="https://adssettings.google.com/" target="_blank">configuración de anuncios de Google</a>.
+  </p>
+
+  <h2>6. Contacto</h2>
+  <p>
+    Para preguntas sobre esta política, sobre cómo la calculadora maneja los datos o sobre la
+    herramienta en sí, la mejor vía es abrir un issue en el repositorio público del proyecto:
+  </p>
+  <p>
+    <a href="https://github.com/MartinColaF/commodity-options-calculator/issues" target="_blank" rel="noopener">
+      github.com/MartinColaF/commodity-options-calculator/issues
+    </a>
+  </p>
+  <p>
+    Los issues son públicos y requieren una cuenta de GitHub. Para un pedido de privacidad que
+    se prefiera no hacer en público &mdash; saber qué datos se guardan sobre una persona, o pedir
+    que se borren &mdash; está la dirección privada de abajo. Se muestra a pedido en lugar de estar
+    escrita en la página, para mantenerla lejos de los recolectores de direcciones.
+  </p>
+  <p>
+    <button type="button" id="revealContact">Mostrar la dirección de contacto privada</button>
+    <span id="contactAddress" hidden></span>
+  </p>
+  <noscript>
+    <p>
+      JavaScript está desactivado, así que la dirección no se puede mostrar. Se puede usar el
+      enlace de issues de arriba, o activar JavaScript en esta página para verla.
+    </p>
+  </noscript>
+
+  <!-- The address is assembled at click time from parts that never appear together in the
+       markup, so a crawler reading this page's HTML does not come away with a mailbox.
+       This stops bulk harvesters, not a determined scraper that runs JavaScript. -->
+  <script>
+    (function () {
+      var button = document.getElementById('revealContact');
+      var target = document.getElementById('contactAddress');
+      button.addEventListener('click', function () {
+        var user = ['martin', 'projects', '1'].join('');
+        var host = ['gmail', 'com'].join('.');
+        var link = document.createElement('a');
+        link.href = 'mail' + 'to:' + user + String.fromCharCode(64) + host;
+        link.textContent = user + String.fromCharCode(64) + host;
+        target.textContent = '';
+        target.appendChild(link);
+        target.hidden = false;
+        button.hidden = true;
+        link.focus();
+      });
+    })();
+  </script>
+</body>
+</html>

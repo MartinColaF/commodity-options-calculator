@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta name="google-adsense-account" content="ca-pub-9252193330548483">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The Spanish page: index.html's markup with its words in Spanish, and the
+       same ids, scripts and policy. test/pages.test.js holds the two together,
+       so a change to one is made to both. app.js writes its own words through
+       t(), from words.js. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js; style-src 'self' file: 'unsafe-inline'; connect-src 'self' https://home.treasury.gov https://www.alphavantage.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="description" content="Calculadora gratuita de opciones sobre commodities: valuación Black-76 y Black-Scholes, griegas, gráficos de payoff de estrategias de varias patas y tasas diarias del Tesoro de EE. UU.">
+  <title>Calculadora de opciones sobre commodities</title>
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/es/">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/">
+  <link rel="alternate" hreflang="x-default" href="https://commodity-options-calculator.vercel.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Calculadora de opciones sobre commodities">
+  <meta property="og:url" content="https://commodity-options-calculator.vercel.app/es/">
+  <meta property="og:title" content="Calculadora de opciones sobre commodities: precio, griegas y payoff de opciones sobre futuros">
+  <meta property="og:description" content="Valuación Black-76 y Barone-Adesi-Whaley, griegas, gráficos de payoff de varias patas y tablas de escenarios para 14 mercados de futuros: metales, energía, granos, softs y ganado. Precios de futuros y la curva diaria del Tesoro de EE. UU. con un clic. Gratis.">
+  <meta property="og:image" content="https://commodity-options-calculator.vercel.app/es/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="627">
+  <meta property="og:image:alt" content="Gráfico de payoff de un bull call spread sobre futuros de oro, hecho con la calculadora">
+  <meta property="og:locale" content="es_LA">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+  <link rel="stylesheet" href="../styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"
+          integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG"
+          crossorigin="anonymous"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="lang-switch"><a href="/" hreflang="en" lang="en">English</a></p>
+    <h1>Calculadora de opciones sobre commodities</h1>
+    <p>Valuación Black-76 / Black-Scholes, griegas y payoff de varias patas para opciones sobre futuros.</p>
+  </header>
+
+  <div class="grid">
+
+    <!-- ============ left column: inputs ============ -->
+    <div>
+
+      <div class="card" id="cardContract">
+        <h2>Contrato</h2>
+
+        <label for="commodity">Mercado</label>
+        <select id="commodity"></select>
+        <p class="note" id="proxyNote"></p>
+
+        <label for="spot"><span id="spotLabel">Precio del futuro</span></label>
+        <input type="number" id="spot" step="any" value="4000">
+        <p class="problem" id="spotProblem" role="alert"></p>
+
+        <label for="days">Días al vencimiento (por defecto para las patas nuevas)</label>
+        <input type="number" id="days" min="0" step="1" value="30">
+
+        <label for="vol">Volatilidad (% anualizada)</label>
+        <input type="number" id="vol" step="any" value="15">
+        <p class="problem" id="volProblem" role="alert"></p>
+
+        <details class="advanced" id="contractAdvanced">
+          <summary>Modelo y contrato <span class="summary-line" id="contractSummary"></span></summary>
+
+          <div class="label-row">
+            <label for="model">Modelo</label>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="modelHelp" aria-label="Sobre el modelo">?</button>
+          </div>
+          <select id="model">
+            <option value="b76">Black-76 (opción sobre futuros)</option>
+            <option value="bs">Black-Scholes-Merton (spot + carry)</option>
+          </select>
+          <p class="note help" id="modelHelp" hidden>Black-76 es el estándar del mercado para opciones sobre futuros de commodities. Black-Scholes corresponde solo cuando el subyacente es el precio spot del físico.</p>
+
+          <div class="label-row">
+            <label for="style">Ejercicio</label>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="styleNote" aria-label="Sobre el tipo de ejercicio">?</button>
+          </div>
+          <select id="style">
+            <option value="american">Americano (se puede ejercer antes)</option>
+            <option value="european">Europeo (solo al vencimiento)</option>
+          </select>
+          <p class="note help" id="styleNote" hidden></p>
+
+          <div class="label-row">
+            <label for="contractMonth">Mes del contrato</label>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="monthNote" aria-label="Sobre el mes del contrato">?</button>
+          </div>
+          <div class="row tight">
+            <select id="contractMonth">
+              <option value="">Primer vencimiento (continuo)</option>
+            </select>
+            <button id="loadMonths" class="ghost">Cargar</button>
+          </div>
+          <div class="status" id="monthStatus" role="status"></div>
+          <p class="note help" id="monthNote" hidden>Por defecto, la serie continua del primer vencimiento. Cargar los meses listados permite valuar contra un mes de entrega específico, que es al que se refiere la cotización de una opción en la pantalla de un broker.</p>
+
+          <label for="rate">Tasa libre de riesgo (% continua)</label>
+          <input type="number" id="rate" step="any" value="4">
+
+          <div class="label-row">
+            <label for="financing">Financiamiento de la prima</label>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="financingNote" aria-label="Sobre el financiamiento de la prima">?</button>
+          </div>
+          <select id="financing">
+            <option value="rate">A la tasa libre de riesgo</option>
+            <option value="custom">A una tasa propia</option>
+            <option value="none">Ninguno (P&amp;L nominal)</option>
+          </select>
+          <label for="financingRate">Tasa de financiamiento propia (% continua)</label>
+          <input type="number" id="financingRate" step="any" value="4">
+          <p class="note help" id="financingNote" hidden></p>
+
+          <label for="yield">Rendimiento de conveniencia (%)</label>
+          <input type="number" id="yield" step="any" value="0.3">
+          <p class="note" id="yieldNote"></p>
+
+          <h3>Tamaño del contrato</h3>
+          <div class="row">
+            <div>
+              <label for="size">Unidades por contrato</label>
+              <input type="number" id="size" step="any" value="100">
+              <p class="problem" id="sizeProblem" role="alert"></p>
+            </div>
+            <div>
+              <label for="quote">Precio expresado en</label>
+              <select id="quote">
+                <option value="USD">USD</option>
+                <option value="cents">centavos</option>
+              </select>
+            </div>
+          </div>
+          <p class="note" id="multInfo"></p>
+        </details>
+      </div>
+
+      <div class="card" id="cardMarket">
+        <div class="title-row">
+          <h2>Datos de mercado</h2>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="marketHelp" aria-label="Cómo funcionan los datos de mercado">?</button>
+        </div>
+        <div class="help" id="marketHelp" hidden>
+          <p class="note">Completa de una vez el precio del futuro, la tasa libre de riesgo, la volatilidad y el rendimiento de conveniencia del mercado elegido. Cada campo indica su propia fuente más abajo, y lo que falla queda como estaba.</p>
+          <p class="note">Los precios de futuros son del contrato del primer vencimiento; el rendimiento de conveniencia surge de dos contratos listados de la curva real. La tasa es la curva diaria de rendimientos par del Tesoro de EE. UU., interpolada al vencimiento. Cuando los dos contratos están muy cerca, una diferencia de precio chica se anualiza en un rendimiento grande: los dos precios usados se muestran abajo para poder juzgarlo.</p>
+        </div>
+
+        <button id="autoFill">Completar con datos de mercado</button>
+
+        <div class="row tight">
+          <button id="fetchPrice" class="ghost">Precio</button>
+          <button id="fetchRate" class="ghost">Tasa</button>
+          <button id="fetchVol" class="ghost">Volatilidad</button>
+          <button id="fetchCurve" class="ghost">Rendimiento</button>
+        </div>
+        <div class="status" id="dataStatus" role="status"></div>
+
+        <details class="advanced" id="marketAdvanced">
+          <summary>Volatilidad, skew y carry <span class="summary-line" id="marketSummary"></span></summary>
+
+          <h3>Volatilidad</h3>
+          <div class="row tight">
+            <div>
+              <label for="volWindow">Ventana</label>
+              <select id="volWindow">
+                <option value="20">20d</option>
+                <option value="30" selected>30d</option>
+                <option value="60">60d</option>
+                <option value="90">90d</option>
+              </select>
+            </div>
+            <div>
+              <label for="volEstimator">Estimador</label>
+              <select id="volEstimator">
+                <option value="close">Close-to-close</option>
+                <option value="ewma">EWMA (0.94)</option>
+                <option value="parkinson">Parkinson</option>
+              </select>
+            </div>
+          </div>
+          <p class="note">Volatilidad histórica (realizada), no implícita. Se mide sobre el propio futuro del primer vencimiento, así que los saltos del roll pueden inflarla un poco.</p>
+
+          <div class="title-row">
+            <h3>Skew</h3>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="skewNote" aria-label="Sobre el skew">?</button>
+          </div>
+          <label class="inline"><input type="checkbox" id="skewOn"> Interpolar la volatilidad por strike</label>
+          <div class="row tight">
+            <div>
+              <label for="skewRr">Risk reversal 25&Delta;</label>
+              <input type="number" id="skewRr" step="any" value="0">
+            </div>
+            <div>
+              <label for="skewBf">Butterfly 25&Delta;</label>
+              <input type="number" id="skewBf" step="any" value="0">
+            </div>
+          </div>
+          <p class="note help" id="skewNote" hidden></p>
+          <p class="problem" id="skewWarning" role="status"></p>
+
+          <div class="title-row">
+            <h3>Carry, controlado a mano</h3>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="carryHelp" aria-label="Sobre el control del carry">?</button>
+          </div>
+          <div class="row tight">
+            <div><label for="carryS">Cercano</label><input type="number" id="carryS" step="any" placeholder="F1"></div>
+            <div><label for="carryF">Lejano</label><input type="number" id="carryF" step="any" placeholder="F2"></div>
+            <div><label for="carryDays">Días</label><input type="number" id="carryDays" step="1" placeholder="90"></div>
+          </div>
+          <button id="implyYield" class="ghost" style="margin-top:8px">Calcular el rendimiento de conveniencia implícito</button>
+          <div class="status" id="carryStatus" role="status"></div>
+          <p class="note help" id="carryHelp" hidden>Invierte F = S&middot;e<sup>(r&minus;y)T</sup>, neto de costos de almacenamiento. El botón Rendimiento de arriba completa estas casillas con los dos contratos que usó, para poder revisar su cálculo o reemplazarlo.</p>
+
+          <details style="margin-top:14px">
+            <summary class="muted small">Respaldo: Alpha Vantage (para tickers propios, o si el proxy de futuros no responde)</summary>
+            <label for="avKey">Clave de API <span class="muted">(gratuita, se guarda solo en este navegador; vaciar el campo la borra)</span></label>
+            <input type="password" id="avKey" placeholder="pegar la clave" autocomplete="off">
+            <label for="volSymbol">Ticker a medir</label>
+            <input type="text" id="volSymbol" placeholder="p. ej. GLD">
+            <p class="note"><a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">Obtener una clave gratuita</a> - 25 consultas por día, guardadas 12 h. Esta vía usa ETF como proxy solo por sus <em>rendimientos</em>: su nivel de precio no es el del futuro.</p>
+          </details>
+        </details>
+
+        <button id="usePreset" class="ghost" style="margin-top:12px">Volver a los valores predeterminados del mercado</button>
+
+        <div id="sources"></div>
+      </div>
+
+    </div>
+
+    <!-- ============ right column: strategy, results, chart ============ -->
+    <div>
+
+      <div class="card" id="legs">
+        <div class="title-row">
+          <h2>Estrategia</h2>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="legsHelp" aria-label="Cómo funciona la tabla de patas">?</button>
+        </div>
+        <p class="note help" id="legsHelp" hidden>Con <strong>Vol</strong> vacía se usa la volatilidad general; con un valor por pata se modela un skew. <strong>Días</strong> puede variar por pata, para los calendar spreads. <strong>Subyac.</strong> es el precio del mes de entrega propio de esa pata: vacío usa el contrato de la izquierda, y el botón <strong>Precios de las patas desde la curva</strong> de abajo lo toma de la curva real. <strong>Entrada</strong> reemplaza la prima teórica por el precio efectivamente pagado; <strong>IV</strong> calcula su volatilidad implícita.</p>
+        <p class="note context"><span id="legsContext"></span> <a href="#cardContract">Editar el contrato</a></p>
+        <label for="strategy" class="sr-only">Modelo de estrategia</label>
+        <div class="row strategy-row">
+          <select id="strategy"></select>
+          <button id="addLeg" class="ghost">+ Agregar pata</button>
+          <button id="clearLegs" class="text-danger">Quitar todas las patas</button>
+        </div>
+
+        <div class="table-scroll" style="margin-top:12px">
+          <table>
+            <thead>
+              <tr>
+                <th><span class="sr-only">Incluir</span></th><th>Operación</th><th>Tipo</th><th>Cant.</th><th>Strike</th>
+                <th>Días</th><th>Vol %</th><th>Subyac.</th><th>Entrada</th>
+                <th class="num">Teór.</th><th class="num">Delta</th><th class="num">Costo $</th><th><span class="sr-only">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody id="legsBody"></tbody>
+          </table>
+        </div>
+        <p class="problem" id="legProblem" role="alert"></p>
+        <div class="status" id="legStatus" role="status"></div>
+        <button id="undoRemove" class="ghost undo" hidden>Deshacer: volver a poner las patas</button>
+        <div class="row tight with-help">
+          <button id="fillLegPrices" class="ghost">Precios de las patas desde la curva</button>
+          <button id="clearLegPrices" class="ghost">Borrar precios de las patas</button>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="legPricesHelp" aria-label="Sobre los precios de las patas desde la curva">?</button>
+        </div>
+        <p class="note help" id="legPricesHelp" hidden>En un calendar real de commodities cada mes cotiza a su propio precio. Esto lee la curva listada, mide su pendiente y valúa cada pata en su propio vencimiento. El gráfico de payoff después mueve todos los meses juntos, en proporción. <strong>Borrar precios de las patas</strong> vuelve a poner todas las patas sobre el contrato del panel izquierdo, que es lo que corresponde al valuar opciones sobre un mes de entrega específico.</p>
+      </div>
+
+      <div class="card" id="cardResults">
+        <h2>Resultados</h2>
+        <div id="summary"></div>
+        <div id="greeks" style="margin-top:14px"></div>
+      </div>
+
+      <div class="card" id="cardPayoff">
+        <div class="title-row">
+          <h2>Payoff</h2>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="payoffHelp" aria-label="Cómo leer este gráfico">?</button>
+        </div>
+        <p class="note help" id="payoffHelp" hidden>La línea continua es el P&amp;L al vencimiento más cercano entre las patas; la punteada es la valuación a mercado en la fecha de evaluación elegida. Las dos incluyen el interés de la prima hasta su fecha, salvo que <em>Financiamiento de la prima</em>, en el panel Contrato, esté en Ninguno. Las marcas verticales muestran los strikes y el precio actual.</p>
+        <div class="chart-controls">
+          <div>
+            <label for="chartMode">Mostrar</label>
+            <select id="chartMode">
+              <option value="payoff">Ganancia / pérdida</option>
+              <option value="delta">Perfil de delta</option>
+              <option value="gamma">Perfil de gamma</option>
+              <option value="vega">Perfil de vega</option>
+              <option value="theta">Perfil de theta</option>
+            </select>
+          </div>
+          <div>
+            <label for="tDays">Evaluar</label>
+            <input type="range" id="tDays" min="0" max="30" step="1" value="0">
+            <span id="tDaysLabel" class="muted"></span>
+          </div>
+          <div>
+            <label for="range">Rango</label>
+            <input type="range" id="range" min="10" max="80" step="5" value="40">
+            <span id="rangeLabel" class="muted"></span>
+          </div>
+          <div>
+            <label for="showLegs">Patas</label>
+            <input type="checkbox" id="showLegs" checked>
+          </div>
+        </div>
+        <div class="chart-box">
+          <p class="chart-empty" id="chartEmpty" hidden>Todavía no hay patas para graficar. Elegir una estrategia o agregar una pata.</p>
+          <canvas id="payoffChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card" id="cardScenarios">
+        <div class="title-row">
+          <h2>Tabla de escenarios</h2>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="scenarioHelp" aria-label="Cómo funciona la tabla de escenarios">?</button>
+        </div>
+        <p class="note help" id="scenarioHelp" hidden>El P&amp;L de cada fecha supone que el cambio de volatilidad ocurre de inmediato y se mantiene.</p>
+        <div class="row tight">
+          <div>
+            <label for="scenPct">Rango de precio &plusmn;%</label>
+            <input type="number" id="scenPct" min="1" max="90" step="1" value="20">
+          </div>
+          <div>
+            <label for="scenVol">Cambio de volatilidad (puntos)</label>
+            <input type="number" id="scenVol" min="0" max="60" step="1" value="5">
+          </div>
+        </div>
+        <div id="scenarios"></div>
+      </div>
+
+      <div class="card" id="cardSave">
+        <h2>Guardar y compartir</h2>
+        <div class="row">
+          <button id="share" class="ghost">Copiar enlace para compartir</button>
+          <button id="exportJson" class="ghost">Exportar JSON</button>
+          <label class="file-button">
+            Importar JSON
+            <input type="file" id="importJson" accept="application/json">
+          </label>
+        </div>
+        <p class="note" id="saveStatus" role="status"></p>
+        <p class="note">Los datos ingresados también se guardan automáticamente en este navegador.</p>
+      </div>
+
+      <div class="disclaimer">
+        <strong>No es asesoramiento de inversión.</strong> Los precios salen de un modelo teórico, y las herramientas de datos de
+        mercado dan valores históricos o de referencia, no cotizaciones en vivo ni volatilidad implícita. Conviene verificarlos con
+        el broker antes de operar. Los precios americanos usan la aproximación de Barone-Adesi-Whaley: en general dentro del 0.01%
+        del subyacente frente a un árbol binomial, y dentro del 0.6% en el peor caso, en contratos a dos años de alta volatilidad.
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <p><a href="/es/privacy.html">Política de privacidad</a></p>
+  </footer>
+</div>
+
+<!-- commodities.js first: app.js reads its table as soon as it loads. words.js
+     fills i18n.js's table, which app.js reads every time it writes a word. -->
+<script src="../commodities.js"></script>
+<script src="../i18n.js"></script>
+<script src="words.js"></script>
+<script src="../app.js"></script>
+</body>
+</html>

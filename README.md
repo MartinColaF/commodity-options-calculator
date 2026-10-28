@@ -1,7 +1,7 @@
 # commodity-options-calculator
 
 Options calculator for commodity futures. Static site, no build step, no backend:
-open `index.html` or serve the folder.
+open `index.html` or serve the folder. In Spanish at `/es/`.
 
 ## What it does
 
@@ -147,6 +147,9 @@ Notes and limitations, stated plainly in the UI as well:
 - `app.js` — pricing engine, strategy analytics, data providers, rendering
 - `api/market.js` — serverless futures data proxy (Vercel)
 - `privacy.html` — privacy policy
+- `i18n.js` — `t()`, through which `app.js` writes every word, keyed by its English text
+- `es/` — the Spanish page, its words (`words.js`), the policy in Spanish and its
+  preview image
 
 ## Development
 
