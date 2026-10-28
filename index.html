@@ -81,21 +81,30 @@
         <details class="advanced" id="contractAdvanced">
           <summary>Model and contract settings <span class="summary-line" id="contractSummary"></span></summary>
 
-          <label for="model">Model</label>
+          <div class="label-row">
+            <label for="model">Model</label>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="modelHelp" aria-label="About the model">?</button>
+          </div>
           <select id="model">
             <option value="b76">Black-76 (option on futures)</option>
             <option value="bs">Black-Scholes-Merton (spot + carry)</option>
           </select>
-          <p class="note">Black-76 is the market standard for options on commodity futures. Use Black-Scholes only when your underlying is the physical spot price.</p>
+          <p class="note help" id="modelHelp" hidden>Black-76 is the market standard for options on commodity futures. Use Black-Scholes only when your underlying is the physical spot price.</p>
 
-          <label for="style">Exercise</label>
+          <div class="label-row">
+            <label for="style">Exercise</label>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="styleNote" aria-label="About the exercise style">?</button>
+          </div>
           <select id="style">
             <option value="american">American (early exercise allowed)</option>
             <option value="european">European (expiry only)</option>
           </select>
-          <p class="note" id="styleNote"></p>
+          <p class="note help" id="styleNote" hidden></p>
 
-          <label for="contractMonth">Contract month</label>
+          <div class="label-row">
+            <label for="contractMonth">Contract month</label>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="monthNote" aria-label="About the contract month">?</button>
+          </div>
           <div class="row tight">
             <select id="contractMonth">
               <option value="">Front month (continuous)</option>
@@ -103,12 +112,15 @@
             <button id="loadMonths" class="ghost">Load</button>
           </div>
           <div class="status" id="monthStatus" role="status"></div>
-          <p class="note" id="monthNote">The continuous front-month series by default. Load the listed months to price against one specific delivery month &mdash; which is what an option quote on a broker's screen refers to.</p>
+          <p class="note help" id="monthNote" hidden>The continuous front-month series by default. Load the listed months to price against one specific delivery month &mdash; which is what an option quote on a broker's screen refers to.</p>
 
           <label for="rate">Risk-free rate (% continuous)</label>
           <input type="number" id="rate" step="any" value="4">
 
-          <label for="financing">Premium financing</label>
+          <div class="label-row">
+            <label for="financing">Premium financing</label>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="financingNote" aria-label="About premium financing">?</button>
+          </div>
           <select id="financing">
             <option value="rate">At the risk-free rate</option>
             <option value="custom">At my own rate</option>
@@ -116,7 +128,7 @@
           </select>
           <label for="financingRate">Your financing rate (% continuous)</label>
           <input type="number" id="financingRate" step="any" value="4">
-          <p class="note" id="financingNote"></p>
+          <p class="note help" id="financingNote" hidden></p>
 
           <label for="yield">Convenience yield (%)</label>
           <input type="number" id="yield" step="any" value="0.3">
@@ -142,10 +154,16 @@
       </div>
 
       <div class="card" id="cardMarket">
-        <h2>Market data</h2>
+        <div class="title-row">
+          <h2>Market data</h2>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="marketHelp" aria-label="How the market data works">?</button>
+        </div>
+        <div class="help" id="marketHelp" hidden>
+          <p class="note">Fills the futures price, risk-free rate, volatility and convenience yield for the selected commodity in one go. Each field reports its own source below, and anything that fails is left untouched.</p>
+          <p class="note">Futures prices come from the front-month contract; the convenience yield is implied by two listed contracts on the real curve. The rate is the US Treasury daily par yield curve, interpolated to your expiry. When the two contracts sit close together, a small price gap annualises into a large yield &mdash; the two prices used are shown below so you can judge it.</p>
+        </div>
 
         <button id="autoFill">Auto-fill from market data</button>
-        <p class="note">Fills the futures price, risk-free rate, volatility and convenience yield for the selected commodity in one go. Each field reports its own source below, and anything that fails is left untouched.</p>
 
         <div class="row tight">
           <button id="fetchPrice" class="ghost">Price</button>
@@ -154,7 +172,6 @@
           <button id="fetchCurve" class="ghost">Yield</button>
         </div>
         <div class="status" id="dataStatus" role="status"></div>
-        <p class="note">Futures prices come from the front-month contract; the convenience yield is implied by two listed contracts on the real curve. The rate is the US Treasury daily par yield curve, interpolated to your expiry. When the two contracts sit close together, a small price gap annualises into a large yield &mdash; the two prices used are shown below so you can judge it.</p>
 
         <details class="advanced" id="marketAdvanced">
           <summary>Volatility, skew and carry settings <span class="summary-line" id="marketSummary"></span></summary>
@@ -181,7 +198,10 @@
           </div>
           <p class="note">Historical (realised) volatility, not implied. Measured on the front-month futures itself, so roll gaps can inflate it slightly.</p>
 
-          <h3>Skew</h3>
+          <div class="title-row">
+            <h3>Skew</h3>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="skewNote" aria-label="About the skew">?</button>
+          </div>
           <label class="inline"><input type="checkbox" id="skewOn"> Interpolate volatility by strike</label>
           <div class="row tight">
             <div>
@@ -193,10 +213,13 @@
               <input type="number" id="skewBf" step="any" value="0">
             </div>
           </div>
-          <p class="note" id="skewNote"></p>
+          <p class="note help" id="skewNote" hidden></p>
           <p class="problem" id="skewWarning" role="status"></p>
 
-          <h3>Carry, checked by hand</h3>
+          <div class="title-row">
+            <h3>Carry, checked by hand</h3>
+            <button type="button" class="help-btn" aria-expanded="false" aria-controls="carryHelp" aria-label="About the carry check">?</button>
+          </div>
           <div class="row tight">
             <div><label for="carryS">Near</label><input type="number" id="carryS" step="any" placeholder="F1"></div>
             <div><label for="carryF">Far</label><input type="number" id="carryF" step="any" placeholder="F2"></div>
@@ -204,7 +227,7 @@
           </div>
           <button id="implyYield" class="ghost" style="margin-top:8px">Imply convenience yield from these</button>
           <div class="status" id="carryStatus" role="status"></div>
-          <p class="note">Inverts F = S&middot;e<sup>(r&minus;y)T</sup>, net of storage costs. The Yield button above fills these boxes with the two contracts it used, so you can check its work or override it.</p>
+          <p class="note help" id="carryHelp" hidden>Inverts F = S&middot;e<sup>(r&minus;y)T</sup>, net of storage costs. The Yield button above fills these boxes with the two contracts it used, so you can check its work or override it.</p>
 
           <details style="margin-top:14px">
             <summary class="muted small">Fallback: Alpha Vantage (for custom tickers, or if the futures proxy is down)</summary>
@@ -227,7 +250,11 @@
     <div>
 
       <div class="card" id="legs">
-        <h2>Strategy</h2>
+        <div class="title-row">
+          <h2>Strategy</h2>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="legsHelp" aria-label="How the legs table works">?</button>
+        </div>
+        <p class="note help" id="legsHelp" hidden>Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Under</strong> is that leg's own delivery month price &mdash; blank uses the contract on the left, and the <strong>Fill leg prices</strong> button below fills it from the real curve. <strong>Entry</strong> overrides the theoretical premium with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
         <p class="note context"><span id="legsContext"></span> <a href="#cardContract">Edit contract</a></p>
         <label for="strategy" class="sr-only">Strategy template</label>
         <div class="row strategy-row">
@@ -251,12 +278,12 @@
         <p class="problem" id="legProblem" role="alert"></p>
         <div class="status" id="legStatus" role="status"></div>
         <button id="undoRemove" class="ghost undo" hidden>Undo: put the legs back</button>
-        <p class="note">Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Under</strong> is that leg's own delivery month price &mdash; blank uses the contract on the left, and the <strong>Fill leg prices</strong> button below fills it from the real curve. <strong>Entry</strong> overrides the theoretical premium with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
-        <div class="row tight">
+        <div class="row tight with-help">
           <button id="fillLegPrices" class="ghost">Fill leg prices from the futures curve</button>
           <button id="clearLegPrices" class="ghost">Clear leg prices</button>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="legPricesHelp" aria-label="About leg prices from the curve">?</button>
         </div>
-        <p class="note">In a real commodity calendar each month trades at its own price. This reads the listed curve, measures its slope, and prices every leg at its own expiry. The payoff chart then moves all months together, in proportion. <strong>Clear leg prices</strong> puts every leg back on the contract in the left panel, which is what you want when you are pricing options on one specific delivery month.</p>
+        <p class="note help" id="legPricesHelp" hidden>In a real commodity calendar each month trades at its own price. This reads the listed curve, measures its slope, and prices every leg at its own expiry. The payoff chart then moves all months together, in proportion. <strong>Clear leg prices</strong> puts every leg back on the contract in the left panel, which is what you want when you are pricing options on one specific delivery month.</p>
       </div>
 
       <div class="card" id="cardResults">
@@ -266,7 +293,11 @@
       </div>
 
       <div class="card" id="cardPayoff">
-        <h2>Payoff</h2>
+        <div class="title-row">
+          <h2>Payoff</h2>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="payoffHelp" aria-label="How to read this chart">?</button>
+        </div>
+        <p class="note help" id="payoffHelp" hidden>The solid line is the P&amp;L at the nearest expiry among your legs; the dashed line is the mark-to-market value at the evaluation date you pick. Both carry the premium's interest up to their date, unless <em>Premium financing</em> in the Contract panel is set to None. Vertical marks show the strikes and the current price.</p>
         <div class="chart-controls">
           <div>
             <label for="chartMode">Show</label>
@@ -297,11 +328,14 @@
           <p class="chart-empty" id="chartEmpty" hidden>No legs to chart yet. Choose a strategy or add a leg.</p>
           <canvas id="payoffChart"></canvas>
         </div>
-        <p class="note">The solid line is the P&amp;L at the nearest expiry among your legs; the dashed line is the mark-to-market value at the evaluation date you pick. Both carry the premium's interest up to their date, unless <em>Premium financing</em> in the Contract panel is set to None. Vertical marks show the strikes and the current price.</p>
       </div>
 
       <div class="card" id="cardScenarios">
-        <h2>Scenario grid</h2>
+        <div class="title-row">
+          <h2>Scenario grid</h2>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="scenarioHelp" aria-label="How the scenario grid works">?</button>
+        </div>
+        <p class="note help" id="scenarioHelp" hidden>P&amp;L at each date assumes the volatility shift happens immediately and holds.</p>
         <div class="row tight">
           <div>
             <label for="scenPct">Price range &plusmn;%</label>
