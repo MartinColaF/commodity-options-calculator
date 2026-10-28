@@ -216,6 +216,7 @@
       <div class="card" id="legs">
         <h2>Strategy</h2>
         <p class="note context"><span id="legsContext"></span> <a href="#cardContract">Edit contract</a></p>
+        <label for="strategy" class="sr-only">Strategy template</label>
         <div class="row strategy-row">
           <select id="strategy"></select>
           <button id="addLeg" class="ghost">+ Add leg</button>
@@ -226,9 +227,9 @@
           <table>
             <thead>
               <tr>
-                <th></th><th>Side</th><th>Type</th><th>Qty</th><th>Strike</th>
+                <th><span class="sr-only">Include</span></th><th>Side</th><th>Type</th><th>Qty</th><th>Strike</th>
                 <th>Days</th><th>Vol %</th><th>Under</th><th>Entry</th>
-                <th class="num">Theo.</th><th class="num">Delta</th><th class="num">Cost $</th><th></th>
+                <th class="num">Theo.</th><th class="num">Delta</th><th class="num">Cost $</th><th><span class="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody id="legsBody"></tbody>

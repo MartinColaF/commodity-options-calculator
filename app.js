@@ -1668,39 +1668,43 @@ function escapeHtml(s) {
  * restore() already guarantees numbers: this is where the markup is built,
  * and it should not depend on every source of a leg getting its types right.
  * Only literal attribute words (selected, checked, disabled) skip it. */
-function legRowHtml(leg, mult) {
+function legRowHtml(leg, mult, n) {
   const g = legGreeks(leg);
   const entry = legEntry(leg);
   const isU = leg.kind === 'underlying';
   const a = v => escapeHtml(v == null ? '' : v);
+  // A screen reader hears the column and the leg, not "edit text": the header
+  // row does not name an input. n is the leg's place in the table.
+  const name = what => `aria-label="${a(what + (n ? ', leg ' + n : ''))}"`;
+  // data-label heads each cell where a phone shows the leg as a card.
   return `<tr data-id="${a(leg.id)}" class="${leg.on ? '' : 'off'}">
-      <td><input type="checkbox" data-f="on" ${leg.on ? 'checked' : ''} title="Include in the strategy"></td>
-      <td><select data-f="side">
+      <td data-label="Include"><input type="checkbox" data-f="on" ${leg.on ? 'checked' : ''} title="Include in the strategy" ${name('Include')}></td>
+      <td data-label="Side"><select data-f="side" ${name('Side')}>
         <option value="1" ${leg.side === 1 ? 'selected' : ''}>Long</option>
         <option value="-1" ${leg.side === -1 ? 'selected' : ''}>Short</option>
       </select></td>
-      <td><select data-f="kind">
+      <td data-label="Type"><select data-f="kind" ${name('Type')}>
         <option value="call" ${leg.kind === 'call' ? 'selected' : ''}>Call</option>
         <option value="put" ${leg.kind === 'put' ? 'selected' : ''}>Put</option>
         <option value="underlying" ${isU ? 'selected' : ''}>Underlying</option>
       </select></td>
-      <td><input type="number" data-f="qty" value="${a(leg.qty)}" min="0" step="1"></td>
-      <td><input type="number" data-f="strike" value="${isU ? '' : a(leg.strike)}" ${isU ? 'disabled' : ''} step="any"></td>
-      <td><input type="number" data-f="days" value="${isU ? '' : a(leg.days)}" ${isU ? 'disabled' : ''} min="0" step="1"></td>
-      <td><input type="number" data-f="vol" value="${a(volField(leg.vol, 2))}" placeholder="${a(fmt(legVolPct(leg), 1))}" ${isU ? 'disabled' : ''} step="any"></td>
-      <td><input type="number" data-f="under" value="${a(leg.under)}" placeholder="${a(fmtPrice(state.S))}" step="any" title="This leg's own contract price today. Blank uses the contract in the left panel."></td>
-      <td><input type="number" data-f="entry" value="${a(leg.entry)}" placeholder="${a(fmtPrice(isU ? state.S : g.price))}" step="any"></td>
-      <td class="num">${isU ? '-' : a(fmtPrice(g.price))}</td>
-      <td class="num">${a(fmt(g.delta * leg.side * leg.qty, 3))}</td>
-      <td class="num">${a(fmt(leg.side * leg.qty * mult * (isU ? 0 : entry), 0))}</td>
-      <td><button class="icon" data-f="iv" title="Solve implied volatility from the entry price" ${isU ? 'disabled' : ''}>IV</button>
-          <button class="icon danger" data-f="del" title="Remove leg">x</button></td>
+      <td data-label="Qty"><input type="number" data-f="qty" value="${a(leg.qty)}" min="0" step="1" ${name('Quantity')}></td>
+      <td data-label="Strike"><input type="number" data-f="strike" value="${isU ? '' : a(leg.strike)}" ${isU ? 'disabled' : ''} step="any" ${name('Strike')}></td>
+      <td data-label="Days"><input type="number" data-f="days" value="${isU ? '' : a(leg.days)}" ${isU ? 'disabled' : ''} min="0" step="1" ${name('Days to expiry')}></td>
+      <td data-label="Vol %"><input type="number" data-f="vol" value="${a(volField(leg.vol, 2))}" placeholder="${a(fmt(legVolPct(leg), 1))}" ${isU ? 'disabled' : ''} step="any" ${name('Volatility %')}></td>
+      <td data-label="Under"><input type="number" data-f="under" value="${a(leg.under)}" placeholder="${a(fmtPrice(state.S))}" step="any" title="This leg's own contract price today. Blank uses the contract in the left panel." ${name('Underlying price')}></td>
+      <td data-label="Entry"><input type="number" data-f="entry" value="${a(leg.entry)}" placeholder="${a(fmtPrice(isU ? state.S : g.price))}" step="any" ${name('Entry price')}></td>
+      <td class="num" data-label="Theo.">${isU ? '-' : a(fmtPrice(g.price))}</td>
+      <td class="num" data-label="Delta">${a(fmt(g.delta * leg.side * leg.qty, 3))}</td>
+      <td class="num" data-label="Cost $">${a(fmt(leg.side * leg.qty * mult * (isU ? 0 : entry), 0))}</td>
+      <td><button class="icon" data-f="iv" title="Solve implied volatility from the entry price" ${isU ? 'disabled' : ''} ${name('Implied volatility from the entry price')}>IV</button>
+          <button class="icon danger" data-f="del" title="Remove leg" ${name('Remove')}>×</button></td>
     </tr>`;
 }
 
 function renderLegs() {
   const mult = dollarMultiplier(currentCommodity());
-  const body = state.legs.map(leg => legRowHtml(leg, mult)).join('');
+  const body = state.legs.map((leg, i) => legRowHtml(leg, mult, i + 1)).join('');
   // Rebuilding the tbody destroys the element being edited, so remember where
   // the caret was and put it back afterwards.
   const ae = document.activeElement;
@@ -1770,7 +1774,7 @@ function renderResults() {
   const perDay = carried ? premiumInterestPerDay(0) : 0;
   $('greeks').innerHTML = `
     <table class="greeks">
-      <tr><th></th><th>Per unit</th><th>Position ($)</th><th>Meaning</th></tr>
+      <tr><th><span class="sr-only">Greek</span></th><th>Per unit</th><th>Position ($)</th><th>Meaning</th></tr>
       <tr><td>Delta</td><td class="num">${fmt(g.unit.delta, 4)}</td><td class="num">${money(g.money.delta)}</td><td class="muted">$ P&L per 1 point move</td></tr>
       <tr><td>Gamma</td><td class="num">${fmt(g.unit.gamma, 6)}</td><td class="num">${money(g.money.gamma)}</td><td class="muted">delta change per 1 point move</td></tr>
       <tr><td>Vega</td><td class="num">${fmt(g.unit.vega, 4)}</td><td class="num">${money(g.money.vega)}</td><td class="muted">$ per +1 vol point</td></tr>
