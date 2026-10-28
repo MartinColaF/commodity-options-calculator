@@ -100,3 +100,30 @@ test('the summary says which volatility the probability was measured at', () => 
   app.renderResults();
   assert.match(elements.summary.innerHTML, /Prob\. of profit<\/span><strong>28\.6%<\/strong><small>risk-neutral, at 40\.0% vol<\/small>/);
 });
+
+test('a breakeven past the top of the grid is found, and the probability stops at it', () => {
+  // Three futures against three calls on a month 5% dearer: once the calls are
+  // in the money the position moves 0.15 of a point against the futures' side
+  // per point, so a profit still left at the grid's top - four times the price
+  // - runs out further up, at 20 times the call's premium. The breakevens and
+  // the probability used to stop at the top and carry its sign to infinity.
+  const t = 480 / 365, vol = 0.6;
+  const over = B => app.normCdf((Math.log(4000 / B) - vol * vol * t / 2) / (vol * Math.sqrt(t)));
+  for (const side of [1, -1]) {
+    resetState(app, { style: 'european', vol: 60, financing: { mode: 'none' } });
+    state.legs = [
+      newLeg({ kind: 'underlying', side, qty: 3, days: 480 }),
+      newLeg({ kind: 'call', side: -side, qty: 3, strike: 4000, days: 480, under: 4200 })
+    ];
+    const c = app.legEntry(state.legs[1]);
+    const a = app.analyse();
+    const lower = 4000 - c, upper = 20 * c;
+    assert.ok(upper > Math.max(...app.statsGrid()), 'the upper one lies past the grid');
+    assert.strictEqual(a.breakevens.length, 2, `${side > 0 ? 'long' : 'short'} futures: both breakevens`);
+    assert.ok(Math.abs(a.breakevens[0] - lower) < 1e-6, `${a.breakevens[0]} vs ${lower}`);
+    assert.ok(Math.abs(a.breakevens[1] - upper) < 1e-6, `${a.breakevens[1]} vs ${upper}`);
+    // Long the futures, it gains between them; short, outside them.
+    near(a.pop, side > 0 ? over(lower) - over(upper) : 1 - over(lower) + over(upper),
+      side > 0 ? 'no profit counted past the upper breakeven' : 'the profit past it counted');
+  }
+});

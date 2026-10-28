@@ -190,7 +190,12 @@ calendars 196 read Unlimited though bounded, 30 with the sign reversed and one b
 though not. For the same reason `tailGrid()` carries the search on, geometrically, while
 an option outlives the horizon, to where every leg has settled: a diagonal under
 Black-Scholes with a small yield does its worst from 31,383, where the grid stopped at
-16,000 and read $9,177.49 of a $15,234.29 loss.
+16,000 and read $9,177.49 of a $15,234.29 loss. **Past the last point the P&L is a line
+at the far slope**, so where that line has yet to cross zero `analyse()` adds one point
+beyond the crossing, and the breakevens and the probability of profit find it. They
+used to carry the last point's sign to infinity: futures against calls on a month 13%
+dearer lost the breakeven at 556.41, just past the grid's 552.03, and read a 59.27%
+chance of profit for 57.07%.
 
 **The horizon is the nearest expiry among active legs**, which is what makes calendar
 spreads read correctly — the far leg still holds time value there.
