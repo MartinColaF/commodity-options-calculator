@@ -22,9 +22,10 @@ export default [
     }
   },
   {
-    // The table: a plain browser script whose module.exports is guarded, so the
-    // market function can require() it as well.
-    files: ['commodities.js'],
+    // The table, and the page's words: plain browser scripts whose
+    // module.exports is guarded, so the market function and the tests can
+    // require() them as well.
+    files: ['commodities.js', 'i18n.js'],
     languageOptions: {
       ecmaVersion: PAGE_ES,
       sourceType: 'script',
@@ -38,7 +39,7 @@ export default [
     languageOptions: {
       ecmaVersion: PAGE_ES,
       sourceType: 'script',
-      globals: { ...globals.browser, COMMODITIES: 'readonly', Chart: 'readonly' }
+      globals: { ...globals.browser, COMMODITIES: 'readonly', Chart: 'readonly', t: 'readonly' }
     },
     rules: {
       // Its top-level functions are globals, and a few exist for the tests

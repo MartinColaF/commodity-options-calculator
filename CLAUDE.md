@@ -11,6 +11,7 @@ for users; this file covers what is easy to get wrong when changing it.
 | `index.html` | markup only; every input has a stable `id` that `app.js` binds by hand |
 | `styles.css` | light/dark theming via CSS variables, the chart's colours included |
 | `commodities.js` | the one table of markets, read by the page and by the function |
+| `i18n.js` | `t()` and the page's words in each language other than English |
 | `app.js` | pricing engine, strategy analytics, data providers, rendering |
 | `api/market.js` | serverless futures-data proxy (Vercel) |
 | `test/` | `node --test` suite, no framework |
@@ -196,6 +197,24 @@ Spanish browser showed "4.211,30" and "0,1325" beside "11.2%", which goes throug
 `toFixed()`, on an English page whose fields take a decimal point. A page in another
 language decides its own. `test/locale.test.js` runs the formatting in a child process
 started in Spanish.
+
+**Every word a reader sees goes through `t()`, keyed by its English text.** `i18n.js`
+holds a table per language and `PAGE_LANG`, read from `<html lang>`. The English page has
+no table, so `t('Max profit')` is `'Max profit'` and the code still reads in English. A key
+is a whole sentence, with `{name}` for what fills it in: `t('{n} listed months loaded',
+{ n })`. Never build a sentence from translated pieces, because another language orders
+them differently; a translation keeps the same names, in its own order.
+- **Keys are literals.** Write a key out as a string literal, or as literals joined with
+  `+`: `test/i18n.test.js` reads every key off the source. It allows an expression only
+  where the word comes from data: a market's label, unit or proxy, a strategy's name, or
+  the market function's own error.
+- **Placeholders must be filled.** Under the tests, a `t()` that names a placeholder it is
+  not given throws; on the page it would show the braces. `loadApp({ lang, words })` loads
+  the app as a page in another language.
+- **Markup.** A key that holds markup (`<strong>`, `&amp;`) goes into `innerHTML` as it
+  is. A plain key goes through `escapeHtml()`, like anything else.
+- **What is not translated.** Market terms (call, put, the greeks, Black-76) are not
+  translated. Numbers stay in `NUMBER_LOCALE`.
 
 **Strategy statistics use an economic price grid, not the chart window.** `analyse()`
 scans from a price near zero to well past the highest strike. That is why a long put
@@ -418,7 +437,7 @@ derives that list from the table, the function `require`s the same file, and add
 market is **one entry**. The file is a plain script with a guarded `module.exports`, so
 it works as a browser global (from `file://` too) and as a Node module. Keep it that
 way, not ESM. `index.html` must load it **before** `app.js`, which reads it at load
-time, and the test loader does the same. Vercel's file tracer bundles it with the
+time, and `i18n.js` between them; the test loader does the same. Vercel's file tracer bundles it with the
 function because of the `require`, so do not read it with `fs`, which the tracer may
 miss. `test/commodities.test.js` pins the page and the function to the table.
 
