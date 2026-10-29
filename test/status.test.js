@@ -35,7 +35,7 @@ test('a market button says it is fetching, stays held until done, and reports be
   assert.strictEqual(el('fetchRate').disabled, false);
   assert.strictEqual(el('fetchRate').textContent, 'Rate', 'its own label back');
   assert.strictEqual(el('fetchRate').getAttribute('aria-busy'), null);
-  assert.match(el('dataStatus').textContent, /^Risk-free rate failed: .*The current value is unchanged\.$/);
+  assert.strictEqual(el('dataStatus').textContent, 'Risk-free rate: could not reach the US Treasury curve. Still using 4.00%.');
   assert.strictEqual(el('dataStatus').className, 'status err');
 });
 
@@ -46,7 +46,11 @@ test('Auto-fill is held the same way, and lets go when every source has failed',
   assert.strictEqual(el('autoFill').disabled, true);
   await settled(() => !el('autoFill').disabled);
   assert.strictEqual(el('autoFill').textContent, 'Auto-fill from market data');
-  assert.match(el('dataStatus').textContent, /^Left unchanged: /);
+  // Said once per service, not once per input in the service's own words.
+  assert.strictEqual(el('dataStatus').textContent,
+    'Could not reach the US Treasury curve, so these are unchanged: risk-free rate. ' +
+    'Could not reach the futures data service, so these are unchanged: futures price, volatility and convenience yield. ' +
+    'You can type any of them in.');
 });
 
 test('a button the page had disabled stays disabled after its fetch', async () => {
@@ -61,7 +65,8 @@ test('the month picker, the carry check and the legs table each report under the
   const { app, el, fire } = wired({ fetch: () => Promise.reject(new Error('offline')) });
   fire('loadMonths', 'click');
   await settled(() => !el('loadMonths').disabled);
-  assert.match(el('monthStatus').textContent, /^Contract months failed: /);
+  assert.strictEqual(el('monthStatus').textContent,
+    'Contract months: could not reach the futures data service. The list of months is unchanged.');
   assert.strictEqual(el('dataStatus').textContent, '');
 
   el('carryS').value = ''; el('carryF').value = ''; el('carryDays').value = '';
@@ -110,4 +115,31 @@ test('with no legs, the chart draws no curve and says why in its place', () => {
   assert.ok(app.chartConfig(app.analyse()).data.datasets.length > 0);
   app.renderChartSafely(app.analyse());
   assert.strictEqual(el('chartEmpty').hidden, true);
+});
+
+test('a reason about the data is given as it is, and a service that answered is not blamed', async () => {
+  // The futures function answers, but with too short a history to measure.
+  const reply = body => Promise.resolve({ ok: true, status: 200, json: async () => body, text: async () => JSON.stringify(body) });
+  const { el, fire } = wired({
+    fetch: url => (String(url).includes('fn=history') ? reply({ symbol: 'GC=F', series: [] })
+      : Promise.reject(new Error('offline')))
+  });
+  el('volWindow').value = '20';
+  el('volEstimator').value = 'close';
+  fire('fetchVol', 'click');
+  await settled(() => !el('fetchVol').disabled);
+  assert.strictEqual(el('dataStatus').textContent, 'Volatility: not enough history. Still using 15%.');
+
+  fire('autoFill', 'click');
+  await settled(() => !el('autoFill').disabled);
+  assert.match(el('dataStatus').textContent, / The volatility is unchanged: not enough history\. You can type any of them in\.$/);
+  assert.doesNotMatch(el('dataStatus').textContent, /unchanged: [^.]*volatility/, 'not counted with the futures that did not answer');
+});
+
+test("a service's own full stop is not doubled", () => {
+  const { app } = wired();
+  assert.strictEqual(app.reasonOf(new Error('Our standard API rate limit is 25 requests per day.')),
+    'Our standard API rate limit is 25 requests per day');
+  assert.strictEqual(app.listOf(['a']), 'a');
+  assert.strictEqual(app.listOf(['a', 'b', 'c']), 'a, b and c');
 });

@@ -502,7 +502,8 @@ test('auto-fill reports each input on its own and keeps going past a failure', a
   });
   const r = await app.autoFill({ window: 20, estimator: 'close', avKey: '', symbol: '' });
   assert.strictEqual(r.done.length, 3);
-  assert.deepStrictEqual(Array.from(r.failed), ['futures price (Upstream market data unavailable)']);
+  assert.deepStrictEqual(Array.from(r.failed, f => [f.name, f.error.service, f.error.message]),
+    [['futures price', 'futures', 'Upstream market data unavailable']], 'the input, and the service that did not answer');
   assert.strictEqual(state.S, 4000, 'the price that failed kept its value');
   assert.ok(r.results.some(x => x.carry), 'the curve\'s working comes back for the carry boxes');
   // The yield is computed with the rate fetched a step earlier.

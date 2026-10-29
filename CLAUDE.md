@@ -566,6 +566,14 @@ once, which on a phone sat 948 px below Auto-fill, so a tap seemed to do nothing
 `runAction()` and `actionAutoFill()` hold the clicked button while they wait, through
 `holdButton()`: it reads "Fetching…", is disabled and `aria-busy`, and gets its own label
 and disabled state back after. A failing fetch took nine seconds with the button still live.
+**A failure says what failed and what is still in use.** An error from a service that did
+not answer is made by `serviceError()` with its `service` ('futures', 'treasury',
+'alphavantage'); `failureLines()` says each once, "Could not reach the futures data
+service, so these are unchanged: futures price, volatility and convenience yield", and
+gives any other reason as it is. A single button adds what is still in use, through the
+`kept` it passes `runAction()`. Auto-fill once wrote "Left unchanged: …" with the server's
+"Upstream quote unavailable" three times over. A new fetch tags its transport failures
+with `serviceError()`, and a new button passes its `kept`.
 
 **With no legs there are no numbers.** `renderResults()` says how to start instead of
 showing $0.00 in green and red and a 0.0% chance of profit, `chartConfig()` returns no

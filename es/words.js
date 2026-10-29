@@ -344,10 +344,20 @@ const SPANISH = {
   /* ---- status lines ---- */
   'Fetching…': 'Consultando…',
   'Updated {what}.': 'Actualizado: {what}.',
-  '{label} failed: {error}. The current value is unchanged.':
-    '{label}: no se pudo actualizar ({error}). El valor actual no cambió.',
+  '{label}: could not reach {service}.': '{label}: no se pudo consultar {service}.',
+  '{label}: {reason}.': '{label}: {reason}.',
+  'Nothing was changed.': 'No se cambió nada.',
+  'the US Treasury curve': 'la curva del Tesoro de EE. UU.',
+  'Alpha Vantage': 'Alpha Vantage',
+  'the futures data service': 'el servicio de datos de futuros',
+  '{list} and {last}': '{list} y {last}',
+  'The {field} is unchanged: {reason}.': 'Sin cambios en {field}: {reason}.',
+  'Could not reach {service}, so these are unchanged: {fields}.':
+    'No se pudo consultar {service}, así que no cambiaron: {fields}.',
+  'You can type any of them in.': 'Cualquiera se puede escribir a mano.',
+  'The list of months is unchanged.': 'La lista de meses no cambió.',
+  'The legs keep their prices.': 'Las patas conservan sus precios.',
   'Fetching market data…': 'Consultando datos de mercado…',
-  'Left unchanged: {what}.': 'Sin cambios: {what}.',
   'Contract months': 'Meses del contrato',
   'The leg was removed.': 'Se quitó la pata.',
   'All {n} legs were removed.': 'Se quitaron las {n} patas.',
