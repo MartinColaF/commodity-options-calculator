@@ -108,7 +108,7 @@ test('each policy wears the site\'s style, dark scheme included, and leads back 
     const html = read(file);
     assert.match(html, new RegExp(`<link rel="stylesheet" href="${sheet.replace(/\./g, '\\.')}">`), file);
     assert.doesNotMatch(html, /<style\b/, `${file} keeps no style of its own`);
-    const nav = html.match(/<nav class="policy-nav">([\s\S]*?)<\/nav>/);
+    const nav = html.match(/<nav class="doc-nav">([\s\S]*?)<\/nav>/);
     assert.ok(nav, `${file} has its nav`);
     assert.match(nav[1], new RegExp(`<a href="${home}">&larr; `), `${file} links back to ${home}`);
     assert.match(nav[1], new RegExp(`<a href="${other}" hreflang="`), `${file} links the other language`);

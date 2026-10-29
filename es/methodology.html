@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Metodología - Calculadora de opciones sobre commodities</title>
+  <meta name="description" content="Cómo valúa la Calculadora de opciones sobre commodities las opciones sobre futuros: los modelos, las griegas, las estadísticas de la estrategia, de dónde salen los datos de mercado y qué no modela.">
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/es/methodology.html">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/methodology.html">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/methodology.html">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<!-- A translation of methodology.html, section for section. -->
+<div class="wrap doc">
+  <nav class="doc-nav">
+    <a href="/es/">&larr; Volver a la calculadora</a>
+    <a href="/methodology.html" hreflang="en" lang="en">English</a>
+  </nav>
+  <main class="card">
+  <h1>Metodología</h1>
+  <p>Cómo valúa la calculadora una opción, qué significa cada número de la página, de dónde salen los datos de mercado y qué no modela. Todo precio es teórico: es lo que da un modelo para los datos de la página, no una cotización. Nada de esto es asesoramiento de inversión.</p>
+
+  <h2>1. Modelos de valuación</h2>
+  <ul>
+    <li><strong>Black-76</strong>, el estándar del mercado para opciones sobre futuros, es el modelo por defecto. El precio del futuro ya incorpora el costo de almacenamiento y de financiamiento, así que no interviene ningún rendimiento de conveniencia.</li>
+    <li><strong>Black-Scholes-Merton</strong> valúa una opción sobre el precio spot del físico, con un costo de carry igual a la tasa libre de riesgo menos un rendimiento de conveniencia neto.</li>
+    <li>Los dos son una misma fórmula, Black-Scholes-Merton generalizado, con el costo de carry en cero para Black-76.</li>
+    <li><strong>El ejercicio americano</strong>, que permite la mayoría de las opciones listadas sobre futuros de commodities, usa la aproximación de Barone-Adesi-Whaley. Frente a un árbol binomial de 3,000 pasos sobre 300 contratos (de un mes a dos años, volatilidad del 15% al 60%, tasas del 2% al 8%), se aparta una mediana de 0.008% del subyacente, y 0.58% en el peor caso, en contratos a dos años con 60% de volatilidad. Valuar esos contratos como europeos se aparta hasta 2.6%.</li>
+    <li>Sin volatilidad o sin tiempo restante, una opción es un único flujo de fondos, y se valúa como tal.</li>
+  </ul>
+
+  <h2>2. Griegas</h2>
+  <ul>
+    <li><strong>Delta</strong> y <strong>gamma</strong> por punto del subyacente; <strong>vega</strong> por punto de volatilidad; <strong>theta</strong> por día calendario; <strong>rho</strong> por punto de tasa.</li>
+    <li>Las griegas de la posición son las de cada pata, por su cantidad y por el multiplicador en dólares del contrato: el tamaño del contrato, dividido por 100 en los mercados que cotizan en centavos.</li>
+    <li>Una pata valuada sobre su propio mes de entrega se mueve en proporción con el contrato del panel izquierdo, y su delta y su gamma se escalan a ese contrato, como en el gráfico.</li>
+  </ul>
+
+  <h2>3. Resultados de la estrategia</h2>
+  <ul>
+    <li><strong>El horizonte</strong> es el vencimiento más cercano entre las patas. La pata lejana de un calendar todavía tiene valor tiempo en ese momento.</li>
+    <li><strong>La ganancia y la pérdida máximas</strong> se buscan desde un precio cercano a cero hasta bastante más allá del strike más alto, porque un commodity no puede cotizar por debajo de cero. Un máximo es ilimitado solo si la posición sigue ganando o perdiendo a medida que el precio sube sin límite, y la página dice a qué ritmo.</li>
+    <li><strong>Los puntos de equilibrio</strong> son donde el P&amp;L al horizonte cruza el cero.</li>
+    <li><strong>La probabilidad de ganancia</strong> es neutral al riesgo: la probabilidad, con un precio lognormal a la volatilidad de la propia posición, de que el P&amp;L al horizonte sea mayor que cero. No es un pronóstico.</li>
+    <li><strong>El interés de la prima.</strong> Una prima se paga o se cobra hoy, así que un P&amp;L leído en una fecha posterior incluye el interés que devengó desde entonces: a la tasa libre de riesgo por defecto, a una tasa elegida, o ninguno.</li>
+  </ul>
+
+  <h2>4. Volatilidad</h2>
+  <ul>
+    <li>Cada pata toma la volatilidad escrita en ella, o si no la del panel izquierdo.</li>
+    <li>Con el skew activado, una pata sin volatilidad propia la lee de una curva fijada por tres números: el nivel at-the-money, el risk reversal de 25 delta y el butterfly de 25 delta (la cuadrática de Malz en delta). La curva se lee al precio de hoy y queda fija mientras el escenario se mueve (sticky strike).</li>
+    <li><strong>IV</strong> calcula la volatilidad que valúa una pata a su prima de entrada. Una prima sin valor tiempo no implica ninguna volatilidad, y la página lo dice.</li>
+  </ul>
+
+  <h2>5. Datos de mercado</h2>
+  <ul>
+    <li><strong>Precios e historia de futuros:</strong> Yahoo Finance, leído por la propia función de servidor de este sitio, para el contrato del primer vencimiento y los meses de entrega listados.</li>
+    <li><strong>Tasa libre de riesgo:</strong> la curva diaria de rendimientos par del Tesoro de EE. UU., interpolada al vencimiento y convertida de su base semestral equivalente de bono a una tasa continua, <em>r</em> = 2&nbsp;ln(1 + <em>y</em>/2).</li>
+    <li><strong>Volatilidad:</strong> volatilidad realizada (histórica) del futuro del primer vencimiento, close-to-close, EWMA (&lambda; = 0.94) o Parkinson, en una ventana de 20 a 90 días. <strong>No es volatilidad implícita</strong>, para la que la calculadora no tiene fuente, y el paso de un contrato al siguiente (el roll) puede inflarla un poco.</li>
+    <li><strong>Rendimiento de conveniencia:</strong> implícito en dos contratos listados de la curva real.</li>
+    <li><strong>Precios de las patas:</strong> el mes de entrega propio de cada pata, interpolado en escala logarítmica entre los contratos listados, o sobre la pendiente entre los dos más cercanos cuando la lista no está cargada. Más allá del último mes listado es una extrapolación, y la página lo dice.</li>
+    <li><strong>Respaldo:</strong> Alpha Vantage, con una clave gratuita propia, mide la volatilidad sobre un ETF que sigue al mercado. Solo se usan sus rendimientos, nunca su precio.</li>
+    <li>Cada valor muestra su fuente y su fecha. Un valor predeterminado dice "no es dato de mercado". Ninguno es una cotización en vivo.</li>
+  </ul>
+
+  <h2>6. Qué no modela</h2>
+  <ul>
+    <li>Barone-Adesi-Whaley es una aproximación, no un árbol exacto; su error está arriba.</li>
+    <li>La curva se mueve en paralelo: en el gráfico, cada mes de entrega se mueve en proporción con el contrato del panel izquierdo. Las curvas reales también cambian de forma.</li>
+    <li>El skew no se mueve con el precio, y las superficies de volatilidad reales sí.</li>
+    <li>Los vencimientos de los contratos se aproximan a mitad de su mes.</li>
+    <li>La ganancia y la pérdida máximas se leen sobre una grilla de 1,200 puntos; en una posición curva el extremo real puede quedar entre dos de ellos, por $12.84 como máximo sobre una pérdida de $24,768, en 1,000 diagonales y ratio calendars americanos al azar.</li>
+    <li>El interés de la prima corre desde hoy, porque no hay fecha de operación.</li>
+    <li>Todos los modelos son lognormales, así que el precio debe ser mayor que cero. El WTI cerró a −37.63 en abril de 2020, lo que requeriría un modelo normal (Bachelier).</li>
+  </ul>
+
+  <h2>7. Cómo se controla</h2>
+  <p>Un conjunto de tests automáticos corre con cada cambio: los precios contra fórmulas cerradas y contra el árbol binomial, las griegas contra las derivadas del propio P&amp;L del gráfico, la probabilidad de ganancia contra integrales exactas, y los pasos de datos de mercado contra respuestas grabadas. El <a href="https://github.com/MartinColaF/commodity-options-calculator" target="_blank" rel="noopener">código fuente</a> es público, y un <a href="https://github.com/MartinColaF/commodity-options-calculator/issues" target="_blank" rel="noopener">issue</a> es la vía para reportar un número que parezca incorrecto.</p>
+  <p class="muted">Metodología revisada por última vez en octubre de 2026.</p>
+  </main>
+  <footer><p><a href="/es/">Calculadora de opciones sobre commodities</a></p></footer>
+</div>
+</body>
+</html>
