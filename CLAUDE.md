@@ -495,7 +495,12 @@ price field used to make every derived strike `NaN` and poison the whole curve.
 **Never overwrite the field being typed in.** `setField()` skips
 `document.activeElement`; without it, typing `4000.` ate the decimal point and moved
 the caret. `renderLegs()` rebuilds the table body, so it saves and restores focus and
-selection by leg id and field name.
+selection by leg id and field name, and it leaves the table alone while one of its fields
+has been typed in and not committed: the wiring marks the field (`data-editing`) on
+`input`, `onLegEvent()` clears the mark on its change, and leaving the field without one
+draws the table again. Chromium commits a field it removes, so a price arriving while
+"4100" was typed made the strike 41, and the commit drew the table inside the drawing
+that was removing it, which threw. `test/typing.test.js` covers both paths.
 
 **The Contract and Market data cards fold what refines a result.** The four fields that
 decide a first result (commodity, price, days, volatility), Auto-fill and its buttons, the
@@ -548,7 +553,9 @@ line, which sits a card away, out of sight — and marks the field: red, `aria-i
 used to go back to the number in use, and what was typed vanished. The reason and the marks
 last until the user's next edit, choice or button anywhere: a capture-phase listener on the
 document runs `clearRefusals()` before that action's own handler, so a refusal can set them
-again, and the redrawing the action causes shows the number in use. Kept any longer, it would say "Still using 100" under the 1000 a new market set.
+again, and the redrawing the action causes shows the number in use. `setField()` writes
+nothing into a marked field: left within the frame of its last keystroke, the drawing that
+keystroke asked for came after the refusal and put the number in use back. Kept any longer, it would say "Still using 100" under the 1000 a new market set.
 A new input with a range goes through `inputProblem()` and gets its own reason element.
 `test/inputs.test.js` drives the page through `wired()` in the test loader, which runs
 listeners in the page's capture and bubble order.

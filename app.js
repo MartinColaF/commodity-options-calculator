@@ -1566,7 +1566,11 @@ function volField(v, dp) {
  * values like "4000." and moves the caret. */
 function setField(id, value) {
   const el = $(id);
-  if (el !== document.activeElement) el.value = value;
+  // A refused field keeps what was typed until the next thing done clears its
+  // mark (clearRefusals()). Left within the frame of its last keystroke, the
+  // drawing that keystroke asked for came after the refusal and wrote the
+  // number in use over it.
+  if (el !== document.activeElement && el.getAttribute('aria-invalid') !== 'true') el.value = value;
 }
 
 /* Opens the folded settings an element sits in: a reason or a warning inside
@@ -1782,19 +1786,6 @@ function legRowHtml(leg, mult, n) {
 }
 
 function renderLegs() {
-  const mult = dollarMultiplier(currentCommodity());
-  const body = state.legs.map((leg, i) => legRowHtml(leg, mult, i + 1)).join('');
-  // Rebuilding the tbody destroys the element being edited, so remember where
-  // the caret was and put it back afterwards.
-  const ae = document.activeElement;
-  const inTable = ae && $('legsBody').contains(ae) && ae.closest('tr');
-  const focus = inTable
-    ? { id: ae.closest('tr').dataset.id, f: ae.dataset.f, start: ae.selectionStart, end: ae.selectionEnd }
-    : null;
-
-  $('legsBody').innerHTML = body ||
-    '<tr><td colspan="13" class="muted">' + escapeHtml(t('No legs. Add one or pick a strategy.')) + '</td></tr>';
-
   // Show the way out before it is needed: the button sits there greyed until a
   // leg actually carries its own price, then lights up.
   $('clearLegPrices').disabled = !state.legs.some(l => l.under != null);
@@ -1806,6 +1797,25 @@ function renderLegs() {
         'an option quote on a broker\'s screen refers to.'))
     : t('The continuous front-month series by default. Load the listed months to price against one ' +
       'specific delivery month - which is what an option quote on a broker\'s screen refers to.');
+
+  const ae = document.activeElement;
+  const inTable = ae && $('legsBody').contains(ae) && ae.closest('tr');
+  // A field typed in and not yet committed is left as it is, and the table
+  // with it, until it is committed or left (the wiring marks it). Rebuilding
+  // the tbody removed it, and the browser committed what it held - "41" on the
+  // way to "4100" - and drew the table again inside this drawing, which threw.
+  if (inTable && ae.dataset.editing) return;
+
+  // Rebuilding the tbody destroys the element being edited, so remember where
+  // the caret was and put it back afterwards.
+  const mult = dollarMultiplier(currentCommodity());
+  const body = state.legs.map((leg, i) => legRowHtml(leg, mult, i + 1)).join('');
+  const focus = inTable
+    ? { id: ae.closest('tr').dataset.id, f: ae.dataset.f, start: ae.selectionStart, end: ae.selectionEnd }
+    : null;
+
+  $('legsBody').innerHTML = body ||
+    '<tr><td colspan="13" class="muted">' + escapeHtml(t('No legs. Add one or pick a strategy.')) + '</td></tr>';
 
   if (focus) {
     const el = $('legsBody').querySelector(
@@ -3211,6 +3221,16 @@ function bindInputs() {
   $('legsBody').addEventListener('click', e => {
     if (e.target.matches('button[data-f]')) onLegEvent(e);
   });
+  // A field typed in is marked until its change commits it (onLegEvent()), and
+  // renderLegs() leaves the table alone while it is. Left without a change, it
+  // is drawn again, in case something else moved the page meanwhile. A field
+  // still focused lost nothing: the window did, and the typing goes on.
+  $('legsBody').addEventListener('input', e => { e.target.dataset.editing = 'true'; });
+  $('legsBody').addEventListener('focusout', e => {
+    if (!e.target.dataset.editing || e.target === document.activeElement) return;
+    delete e.target.dataset.editing;
+    scheduleRender();
+  });
 
   $('chartMode').addEventListener('change', e => {
     state.chart.mode = e.target.value;
@@ -3324,6 +3344,8 @@ function bindInputs() {
 }
 
 function onLegEvent(e) {
+  // Committed: the drawing this causes may rebuild the field (renderLegs()).
+  delete e.target.dataset.editing;
   const tr = e.target.closest('tr');
   if (!tr) return;
   const leg = state.legs.find(l => l.id === +tr.dataset.id);
