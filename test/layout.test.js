@@ -98,3 +98,25 @@ test('on a phone the strategy says which contract it prices', () => {
   app.renderInputs();
   assert.strictEqual(el('legsContext').textContent, 'Gold (COMEX GC) · spot 4,000 · vol 18.4721% · American');
 });
+
+test('a hint reads as a hint and an idle field as idle, both still legible', () => {
+  // The legs table's placeholders, what a blank field takes from the panel, read
+  // as values typed in; "90" in the carry check as 90 days; and a field faded to
+  // half opacity read as an empty one.
+  assert.match(css, /::placeholder\s*\{[^}]*color:\s*var\(--muted\);[^}]*font-style:\s*italic/);
+  assert.match(css, /input:disabled, select:disabled\s*\{[^}]*background:\s*var\(--bg\);[^}]*border-style:\s*dashed/);
+  const vars = block => Object.fromEntries(Array.from(block.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g), m => [m[1], m[2].trim()]));
+  const light = vars(css.match(/^:root\s*\{([^}]*)\}/m)[1]);
+  const dark = Object.assign({}, light, vars(css.match(/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/)[1]));
+  for (const [name, v] of [['light', light], ['dark', dark]]) {
+    const r = contrast(v['--muted'], v['--field']);
+    assert.ok(r >= 4.5, `${name}: a placeholder against its field is ${r.toFixed(2)}:1`);
+  }
+  for (const file of ['index.html', 'es/index.html']) {
+    const page = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+    for (const id of ['carryS', 'carryF', 'carryDays']) {
+      const hint = page.match(new RegExp(`id="${id}"[^>]*placeholder="([^"]+)"`))[1];
+      assert.doesNotMatch(hint, /^[\d.,]+$/, `${file} #${id}: "${hint}" is not a bare number`);
+    }
+  }
+});
