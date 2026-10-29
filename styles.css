@@ -397,6 +397,17 @@ footer a { color: var(--muted); }
   color: var(--muted);
 }
 
+/* The privacy policy, in both languages: the page's own look, at a width a long
+ * text reads at, with a way back to the calculator above it. It had a style of
+ * its own, light only and with no link back. */
+.policy { max-width: 760px; }
+.policy-nav { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 14px; font-size: .92rem; }
+.policy .card { padding: 20px 22px; line-height: 1.6; }
+.policy h1 { font-size: 1.4rem; margin: 0 0 8px; font-weight: 650; }
+.policy h2 { font-size: 1.05rem; margin: 28px 0 8px; font-weight: 650; }
+.policy li { margin: 4px 0; }
+.policy button { width: auto; }
+
 /* Phones and touch screens. Last in the file, so these sizes win over the ones above. */
 
 /* iOS Safari zooms the page into any field under 16px when it takes focus, and
@@ -418,7 +429,7 @@ footer a { color: var(--muted); }
   /* IV and remove sit side by side: a slip should not delete the leg. */
   #legs button.icon + button.icon { margin-left: 8px; }
   details > summary { padding: 10px 0; }
-  footer a, .note a, .lang-switch a { display: inline-block; padding: 13px 4px; margin: -13px -4px; }
+  footer a, .note a, .lang-switch a, .policy-nav a { display: inline-block; padding: 13px 4px; margin: -13px -4px; }
   label.file-button { min-height: 44px; }
 }
 
@@ -452,4 +463,9 @@ footer a { color: var(--muted); }
   /* IV and remove, on their own line at the card's foot. */
   #legs tbody td:last-child { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
   #legs tbody td[colspan] { grid-column: 1 / -1; align-items: center; text-align: center; }
+}
+
+/* The policy's text gets the width on a phone: the card's own padding takes less. */
+@media (max-width: 600px) {
+  .policy .card { padding: 16px; }
 }

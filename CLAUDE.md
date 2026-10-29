@@ -231,7 +231,9 @@ usted), with market terms left in English.
   Each page links the other at its top and names it with `hreflang`.
 - **The privacy policy.** `es/privacy.html` translates it section for section, and says
   the English one prevails. `test/privacy.test.js` holds the two together: when the
-  English policy changes, effective date included, the translation changes with it.
+  English policy changes, effective date included, the translation changes with it. Both
+  wear `styles.css` (`.policy`), so they follow the dark scheme, and lead back to their
+  own calculator; they had a light-only style of their own and no way back.
 
 **Strategy statistics use an economic price grid, not the chart window.** `analyse()`
 scans from a price near zero to well past the highest strike. That is why a long put

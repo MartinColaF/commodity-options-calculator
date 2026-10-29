@@ -95,3 +95,23 @@ test('the Spanish policy makes the same promises as the English one', () => {
   assert.match(traduccion, /\/api\/market/);
   for (const name of [/jsDelivr/, /home\.treasury\.gov/, /alphavantage\.co/]) assert.match(traduccion, name);
 });
+
+/* ---- how both policies look ---- */
+
+test('each policy wears the site\'s style, dark scheme included, and leads back to its calculator', () => {
+  // It had a style of its own, light only, and no link back: a reader who came
+  // from the footer in the dark scheme landed on a white page with no way out.
+  for (const [file, sheet, home, other] of [
+    ['privacy.html', 'styles.css', '/', '/es/privacy.html'],
+    ['es/privacy.html', '../styles.css', '/es/', '/privacy.html']
+  ]) {
+    const html = read(file);
+    assert.match(html, new RegExp(`<link rel="stylesheet" href="${sheet.replace(/\./g, '\\.')}">`), file);
+    assert.doesNotMatch(html, /<style\b/, `${file} keeps no style of its own`);
+    const nav = html.match(/<nav class="policy-nav">([\s\S]*?)<\/nav>/);
+    assert.ok(nav, `${file} has its nav`);
+    assert.match(nav[1], new RegExp(`<a href="${home}">&larr; `), `${file} links back to ${home}`);
+    assert.match(nav[1], new RegExp(`<a href="${other}" hreflang="`), `${file} links the other language`);
+    assert.match(html, /<main class="card">[\s\S]*<h1>[\s\S]*<\/main>/, `${file} sets the policy in a card`);
+  }
+});
