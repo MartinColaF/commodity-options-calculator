@@ -246,11 +246,22 @@ const SPANISH = {
   'Now': 'Hoy',
   'Underlying price at horizon': 'Precio del subyacente al horizonte',
   'Price {price}': 'Precio {price}',
+  'Payoff chart: no legs yet.': 'Gráfico de payoff: todavía no hay patas.',
+  '{greek} profile of the position, for an underlying price from {lo} to {hi}.':
+    'Perfil de {greek} de la posición, para un precio del subyacente de {lo} a {hi}.',
+  'no breakeven': 'sin punto de equilibrio',
+  'breakeven at {price}': 'punto de equilibrio en {price}',
+  'breakevens at {prices}': 'puntos de equilibrio en {prices}',
+  'Payoff chart: profit and loss at the {n}-day horizon, for an underlying price from {lo} to {hi}: maximum profit {max}, maximum loss {min}, {breakevens}.':
+    'Gráfico de payoff: ganancia y pérdida al horizonte de {n} días, para un precio del subyacente de {lo} a {hi}: ganancia máxima {max}, pérdida máxima {min}, {breakevens}.',
+  'The scenario grid below gives the profit and loss as a table.':
+    'La tabla de escenarios de abajo da la ganancia y la pérdida en forma de tabla.',
   'The chart library could not be loaded, so the payoff graph is unavailable. Everything else on this page still works - the numbers below and the scenario grid are computed locally.':
     'No se pudo cargar la biblioteca de gráficos, así que el gráfico de resultados no está disponible. Todo lo demás funciona: los números de abajo y la tabla de escenarios se calculan en este navegador.',
 
   /* ---- the scenario grid ---- */
   'Add a leg to see the scenario grid.': 'Agregar una pata para ver la tabla de escenarios.',
+  'Scenario grid, {title}': 'Tabla de escenarios, {title}',
   'Today': 'Hoy',
   '{n}d': '{n}d',
   'Volatility unchanged': 'Volatilidad sin cambios',

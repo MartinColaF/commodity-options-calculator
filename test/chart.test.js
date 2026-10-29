@@ -21,7 +21,7 @@ FakeChart.prototype.update = function (mode) { this.updates.push(mode); };
 FakeChart.prototype.destroy = function () { this.destroyed = true; };
 
 const box = { innerHTML: '' };
-const canvas = { getContext: () => ({}), closest: () => box };
+const canvas = { getContext: () => ({}), closest: () => box, setAttribute() { } };
 const app = loadApp({ globals: { Chart: FakeChart }, elements: { payoffChart: canvas } });
 const { state } = app;
 
@@ -95,7 +95,7 @@ test('without Chart.js the chart gives way to a note and nothing throws', () => 
   // failed integrity check. A theme change used to call renderChart() bare
   // and throw here; it now goes through renderChartSafely() as well.
   const noteBox = { innerHTML: '' };
-  const bare = loadApp({ elements: { payoffChart: { getContext: () => ({}), closest: () => noteBox } } });
+  const bare = loadApp({ elements: { payoffChart: { getContext: () => ({}), closest: () => noteBox, setAttribute() { } } } });
   resetState(bare, { S: 4000 });
   bare.state.legs = [bare.newLeg({ kind: 'call', strike: 4000 })];
   assert.doesNotThrow(() => bare.renderChartSafely(bare.analyse()));

@@ -28,7 +28,7 @@ function media(query) {
 }
 
 test('every card has a place in the phone order, results before inputs', () => {
-  const cards = Array.from(html.matchAll(/<div class="card" id="(\w+)">/g), m => m[1]);
+  const cards = Array.from(html.matchAll(/<section class="card" id="(\w+)"/g), m => m[1]);
   assert.strictEqual(cards.length, (html.match(/class="card"/g) || []).length, 'every card has an id');
   const phone = media('(max-width: 900px)').body;
   const order = {};

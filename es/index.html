@@ -44,13 +44,14 @@
     <p>Valuación Black-76 / Black-Scholes, griegas y payoff de varias patas para opciones sobre futuros.</p>
   </header>
 
+  <main>
   <div class="grid">
 
     <!-- ============ left column: inputs ============ -->
     <div>
 
-      <div class="card" id="cardContract">
-        <h2>Contrato</h2>
+      <section class="card" id="cardContract" aria-labelledby="hContract">
+        <h2 id="hContract">Contrato</h2>
 
         <label for="commodity">Mercado</label>
         <select id="commodity"></select>
@@ -140,11 +141,11 @@
           </div>
           <p class="note" id="multInfo"></p>
         </details>
-      </div>
+      </section>
 
-      <div class="card" id="cardMarket">
+      <section class="card" id="cardMarket" aria-labelledby="hMarket">
         <div class="title-row">
-          <h2>Datos de mercado</h2>
+          <h2 id="hMarket">Datos de mercado</h2>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="marketHelp" aria-label="Cómo funcionan los datos de mercado">?</button>
         </div>
         <div class="help" id="marketHelp" hidden>
@@ -231,16 +232,16 @@
         <button id="usePreset" class="ghost" style="margin-top:12px">Volver a los valores predeterminados del mercado</button>
 
         <div id="sources"></div>
-      </div>
+      </section>
 
     </div>
 
     <!-- ============ right column: strategy, results, chart ============ -->
     <div>
 
-      <div class="card" id="legs">
+      <section class="card" id="legs" aria-labelledby="hLegs">
         <div class="title-row">
-          <h2>Estrategia</h2>
+          <h2 id="hLegs">Estrategia</h2>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="legsHelp" aria-label="Cómo funciona la tabla de patas">?</button>
         </div>
         <p class="note help" id="legsHelp" hidden>Con <strong>Vol</strong> vacía se usa la volatilidad general; con un valor por pata se modela un skew. <strong>Días</strong> puede variar por pata, para los calendar spreads. <strong>Subyac.</strong> es el precio del mes de entrega propio de esa pata: vacío usa el contrato de la izquierda, y el botón <strong>Precios de las patas desde la curva</strong> de abajo lo toma de la curva real. <strong>Entrada</strong> reemplaza la prima teórica por el precio efectivamente pagado; <strong>IV</strong> calcula su volatilidad implícita.</p>
@@ -273,17 +274,17 @@
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="legPricesHelp" aria-label="Sobre los precios de las patas desde la curva">?</button>
         </div>
         <p class="note help" id="legPricesHelp" hidden>En un calendar real de commodities cada mes cotiza a su propio precio. Esto lee la curva listada, mide su pendiente y valúa cada pata en su propio vencimiento. El gráfico de payoff después mueve todos los meses juntos, en proporción. <strong>Borrar precios de las patas</strong> vuelve a poner todas las patas sobre el contrato del panel izquierdo, que es lo que corresponde al valuar opciones sobre un mes de entrega específico.</p>
-      </div>
+      </section>
 
-      <div class="card" id="cardResults">
-        <h2>Resultados</h2>
+      <section class="card" id="cardResults" aria-labelledby="hResults">
+        <h2 id="hResults">Resultados</h2>
         <div id="summary"></div>
         <div id="greeks" style="margin-top:14px"></div>
-      </div>
+      </section>
 
-      <div class="card" id="cardPayoff">
+      <section class="card" id="cardPayoff" aria-labelledby="hPayoff">
         <div class="title-row">
-          <h2>Payoff</h2>
+          <h2 id="hPayoff">Payoff</h2>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="payoffHelp" aria-label="Cómo leer este gráfico">?</button>
         </div>
         <p class="note help" id="payoffHelp" hidden>La línea continua es el P&amp;L al vencimiento más cercano entre las patas; la punteada es la valuación a mercado en la fecha de evaluación elegida. Las dos incluyen el interés de la prima hasta su fecha, salvo que <em>Financiamiento de la prima</em>, en el panel Contrato, esté en Ninguno. Las marcas verticales muestran los strikes y el precio actual.</p>
@@ -315,13 +316,13 @@
         </div>
         <div class="chart-box">
           <p class="chart-empty" id="chartEmpty" hidden>Todavía no hay patas para graficar. Elegir una estrategia o agregar una pata.</p>
-          <canvas id="payoffChart"></canvas>
+          <canvas id="payoffChart" role="img" aria-label="Gráfico de payoff"></canvas>
         </div>
-      </div>
+      </section>
 
-      <div class="card" id="cardScenarios">
+      <section class="card" id="cardScenarios" aria-labelledby="hScenarios">
         <div class="title-row">
-          <h2>Tabla de escenarios</h2>
+          <h2 id="hScenarios">Tabla de escenarios</h2>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="scenarioHelp" aria-label="Cómo funciona la tabla de escenarios">?</button>
         </div>
         <p class="note help" id="scenarioHelp" hidden>El P&amp;L de cada fecha supone que el cambio de volatilidad ocurre de inmediato y se mantiene.</p>
@@ -336,10 +337,10 @@
           </div>
         </div>
         <div id="scenarios"></div>
-      </div>
+      </section>
 
-      <div class="card" id="cardSave">
-        <h2>Guardar y compartir</h2>
+      <section class="card" id="cardSave" aria-labelledby="hSave">
+        <h2 id="hSave">Guardar y compartir</h2>
         <div class="row">
           <button id="share" class="ghost">Copiar enlace para compartir</button>
           <button id="exportJson" class="ghost">Exportar JSON</button>
@@ -350,7 +351,7 @@
         </div>
         <p class="note" id="saveStatus" role="status"></p>
         <p class="note">Los datos ingresados también se guardan automáticamente en este navegador.</p>
-      </div>
+      </section>
 
       <div class="disclaimer">
         <strong>No es asesoramiento de inversión.</strong> Los precios salen de un modelo teórico, y las herramientas de datos de
@@ -361,6 +362,7 @@
 
     </div>
   </div>
+  </main>
 
   <footer>
     <p class="footer-links">
