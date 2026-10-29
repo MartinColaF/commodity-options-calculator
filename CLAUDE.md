@@ -341,7 +341,9 @@ base sizes above them would otherwise win: written in the middle, they did nothi
 put `maximum-scale=1` in the viewport to stop the zoom; it stops everyone zooming.
 
 **A field's edge is `--field-border`, not `--line`.** WCAG asks 3:1 of a control's
-boundary, and `--line` is 1.29:1; it stays for dividers. `test/layout.test.js` checks the
+boundary, and `--line` is 1.29:1; it stays for dividers. A placeholder is a hint, muted
+and italic: the legs table puts in it what a blank field takes from the panel, which read
+as a value typed in. A disabled field is dashed on the page's ground, not only faded. `test/layout.test.js` checks the
 ratio in both schemes, the phone order and where the phone sizes sit.
 
 **A shared link's preview is in the markup.** LinkedIn, X and messaging apps read the

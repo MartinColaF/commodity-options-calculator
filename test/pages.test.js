@@ -66,7 +66,7 @@ test('every word of the Spanish page is in Spanish, apart from names and market 
   const words = Array.from(es.matchAll(/\b(?:aria-label|placeholder|title)="([^"]+)"/g), m => m[1]);
   const english = Array.from(en.matchAll(/\b(?:aria-label|placeholder|title)="([^"]+)"/g), m => m[1]);
   assert.strictEqual(words.length, english.length);
-  words.forEach((w, i) => { if (w === english[i]) assert.match(w, /^(F1|F2|90)$/, `still in English: ${w}`); });
+  words.forEach((w, i) => { if (w === english[i]) assert.fail(`still in English: ${w}`); });
 });
 
 test('the Spanish page speaks to no one in particular', () => {
