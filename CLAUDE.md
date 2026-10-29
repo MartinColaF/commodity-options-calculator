@@ -495,7 +495,12 @@ price field used to make every derived strike `NaN` and poison the whole curve.
 **Never overwrite the field being typed in.** `setField()` skips
 `document.activeElement`; without it, typing `4000.` ate the decimal point and moved
 the caret. `renderLegs()` rebuilds the table body, so it saves and restores focus and
-selection by leg id and field name.
+selection by leg id and field name, and it leaves the table alone while one of its fields
+has been typed in and not committed: the wiring marks the field (`data-editing`) on
+`input`, `onLegEvent()` clears the mark on its change, and leaving the field without one
+draws the table again. Chromium commits a field it removes, so a price arriving while
+"4100" was typed made the strike 41, and the commit drew the table inside the drawing
+that was removing it, which threw. `test/typing.test.js` covers both paths.
 
 **The Contract and Market data cards fold what refines a result.** The four fields that
 decide a first result (commodity, price, days, volatility), Auto-fill and its buttons, the

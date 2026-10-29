@@ -120,7 +120,8 @@ function loadApp(opts) {
  * the stand-in itself unless given, and `el(id)` is the stand-in, holding what
  * the wiring wrote into it. A redraw is real when the wiring asks for one with
  * renderAll(); one scheduled for the next frame never comes, since there are
- * no frames. */
+ * no frames, unless `opts.globals` gives a requestAnimationFrame. `doc` is the
+ * document, whose `activeElement` a test sets to give a stand-in the focus. */
 function wired(opts) {
   const listeners = {};
   const listen = on => (type, fn, capture) => {
@@ -138,9 +139,13 @@ function wired(opts) {
     getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attributes, k) ? this.attributes[k] : null; }
   });
   const el = id => made[id] || (made[id] = element(id));
+  const doc = {
+    addEventListener: listen('document'), getElementById: el, activeElement: null,
+    documentElement: { lang: (opts && opts.lang) || 'en' }
+  };
   const app = loadApp(Object.assign({}, opts, {
     globals: Object.assign({
-      document: { addEventListener: listen('document'), getElementById: el, documentElement: { lang: (opts && opts.lang) || 'en' } },
+      document: doc,
       window: { matchMedia: () => ({ addEventListener() { } }) },
       requestAnimationFrame: () => { }
     }, opts && opts.globals)
@@ -153,7 +158,7 @@ function wired(opts) {
       (listeners[key] || []).forEach(fn => fn(e));
     }
   };
-  return { app, el, fire };
+  return { app, el, fire, doc };
 }
 
 /* Reset the shared state object to a known contract before each test. */
