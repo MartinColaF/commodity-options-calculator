@@ -2349,13 +2349,13 @@ function inputProblem(key, v) {
   switch (key) {
     case 'S':
     case 'under':
-      return v > 0 ? '' : t('A price must be above zero: these models are lognormal and cannot price a contract at or below zero.');
+      return v > 0 ? '' : t('Enter a price above zero. These lognormal models cannot price a contract at or below zero.');
     case 'strike':
-      return v > 0 ? '' : t('A strike must be above zero.');
+      return v > 0 ? '' : t('Enter a strike above zero.');
     case 'size':
-      return v > 0 ? '' : t('Units per contract must be above zero.');
+      return v > 0 ? '' : t('Enter units per contract above zero.');
     case 'vol':
-      return v >= 0 ? '' : t('Volatility cannot be negative.');
+      return v >= 0 ? '' : t('Enter a volatility of zero or more.');
     default:
       return '';
   }
@@ -2894,6 +2894,31 @@ function isHelpButton(el) {
   return !!(el && el.classList && el.classList.contains('help-btn'));
 }
 
+/* A refused field: marked in red, tied to the reason beside it for a screen
+ * reader, and left showing what was typed so it can be put right. Only the
+ * reason used to change: the field looked as before, and went back to the
+ * number in use, so what had been typed vanished. The next thing done on the
+ * page clears the reason and the marks together (clearRefusals()), and the
+ * redrawing it causes puts the number in use back in the field. */
+const refusedFields = [];
+
+function refuse(field, reasonId, text) {
+  $(reasonId).textContent = text;
+  openFolded($(reasonId));
+  if (!field) return;
+  field.setAttribute('aria-invalid', 'true');
+  field.setAttribute('aria-describedby', reasonId);
+  refusedFields.push(field);
+}
+
+function clearRefusals() {
+  ['spotProblem', 'volProblem', 'sizeProblem', 'legProblem'].forEach(id => { $(id).textContent = ''; });
+  refusedFields.splice(0).forEach(field => {
+    field.removeAttribute('aria-invalid');
+    field.removeAttribute('aria-describedby');
+  });
+}
+
 /* What a share or an import did, under the buttons that did it. On a phone the
  * market-data status line is 3,400px above them, out of sight. */
 function setSaveStatus(msg, kind) {
@@ -3098,30 +3123,28 @@ function bindInputs() {
   // market has set 1000. Listening on the document, in the capture phase,
   // clears it before that action's own handler runs, so a refusal can say
   // why again.
-  const clearProblems = () => {
-    ['spotProblem', 'volProblem', 'sizeProblem', 'legProblem'].forEach(id => { $(id).textContent = ''; });
-  };
-  document.addEventListener('input', clearProblems, true);
-  document.addEventListener('change', clearProblems, true);
+  document.addEventListener('input', clearRefusals, true);
+  document.addEventListener('change', clearRefusals, true);
   // Not the "?" buttons: opening an explanation should not erase the reason
   // it explains.
   document.addEventListener('click', e => {
     const b = e.target.closest('button');
-    if (b && !isHelpButton(b)) clearProblems();
+    if (b && !isHelpButton(b)) clearRefusals();
   }, true);
 
   // A number inputProblem() refuses never reaches the state while it is being
   // typed - "0.45" passes through "0" on the way - so the reason is given once
-  // the field is committed, and the field goes back to the value in use.
-  [['spot', 'S', ''], ['vol', 'vol', '%'], ['size', 'size', '']].forEach(([id, key, unit]) => {
+  // the field is committed, with the value still in use.
+  const inUse = {
+    S: () => fmtPrice(state.S),
+    vol: () => volField(state.vol, 4) + '%',
+    size: () => fmt(state.size, 0)
+  };
+  [['spot', 'S'], ['vol', 'vol'], ['size', 'size']].forEach(([id, key]) => {
     $(id).addEventListener('change', e => {
       const problem = inputProblem(key, num(e.target, state[key]));
       if (!problem) return;
-      // The value in use, as renderInputs() shows it.
-      const shown = key === 'vol' ? volField(state.vol, 4) : state[key];
-      $(id + 'Problem').textContent = problem + ' ' + t('Still using {value}.', { value: shown + unit });
-      openFolded($(id + 'Problem'));
-      e.target.value = shown;
+      refuse($(id), id + 'Problem', problem + ' ' + t('Still using {value}.', { value: inUse[key]() }));
     });
   });
 
@@ -3337,13 +3360,17 @@ function onLegEvent(e) {
 
   const el = e.target;
   // A number the pricer cannot take is refused, with the reason under the
-  // table, and drawing the table again puts the leg's value back in the field.
+  // table. Drawing the table again keeps the leg's value, so what was typed is
+  // put back into the redrawn field, marked, until the next thing done.
   if (f === 'strike' || f === 'vol' || f === 'under') {
     const v = parseFloat(el.value);
     const problem = isFinite(v) ? inputProblem(f, v) : '';
     if (problem) {
-      $('legProblem').textContent = problem + ' ' + t('The leg keeps its previous value.');
+      const typed = el.value;
       renderAll();
+      const field = $('legsBody').querySelector('tr[data-id="' + leg.id + '"] [data-f="' + f + '"]');
+      if (field) field.value = typed;
+      refuse(field, 'legProblem', problem + ' ' + t('The leg keeps its previous value.'));
       return;
     }
   }

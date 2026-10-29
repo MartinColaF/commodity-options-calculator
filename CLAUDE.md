@@ -538,12 +538,14 @@ is the design, not a bug.
 must be above zero and a volatility not below it; any other key only has to be a number,
 since a rate or a yield may be negative. The panel, the legs table, `restore()` and the
 quote all ask it. Nothing checked before, and a price of −100 valued a 4000 put at
-4086.54. A refused number never reaches `state`: the field goes back to the value in use
-and the reason appears beside it, in `spotProblem`, `volProblem`, `sizeProblem` or
-`legProblem` — not on the status line, which sits a card away, out of sight. The reason
-lasts until the user's next edit, choice or button anywhere: a capture-phase listener on
-the document clears it before that action's own handler runs, so a refusal can set it
-again. Kept any longer, it would say "Still using 100" under the 1000 a new market set.
+4086.54. A refused number never reaches `state`. `refuse()` puts the reason beside the
+field, in `spotProblem`, `volProblem`, `sizeProblem` or `legProblem` — not on the status
+line, which sits a card away, out of sight — and marks the field: red, `aria-invalid`, and
+`aria-describedby` its reason. The field keeps what was typed, so it can be put right; it
+used to go back to the number in use, and what was typed vanished. The reason and the marks
+last until the user's next edit, choice or button anywhere: a capture-phase listener on the
+document runs `clearRefusals()` before that action's own handler, so a refusal can set them
+again, and the redrawing the action causes shows the number in use. Kept any longer, it would say "Still using 100" under the 1000 a new market set.
 A new input with a range goes through `inputProblem()` and gets its own reason element.
 `test/inputs.test.js` drives the page through `wired()` in the test loader, which runs
 listeners in the page's capture and bubble order.
