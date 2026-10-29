@@ -45,5 +45,23 @@ test('±, ×, an ellipsis, and a word for no breakeven', () => {
   assert.match(el('greeks').innerHTML, /per-unit greek × quantity × \$100\.00 multiplier/);
   app.state.legs.push(app.newLeg({ kind: 'underlying' }));
   app.renderLegs();
-  assert.match(el('legsBody').innerHTML, /data-label="Theo\.">—</, 'the underlying has no theoretical value of its own');
+  assert.match(el('legsBody').innerHTML, /data-label="Theo\. value">—</, 'the underlying has no theoretical value of its own');
+});
+
+test('the English is American English, as the exchanges these contracts trade on write it', () => {
+  // CME, ICE US and NYMEX write "annualized" and "realized"; the page wrote
+  // "annualised" and "realised".
+  const fs = require('fs');
+  const path = require('path');
+  const { calls } = require('./helpers/words');
+  const read = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+  const text = f => read(f).replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]+>/g, ' ');
+  const src = read('app.js');
+  const words = ['t', 'w', 'name'].reduce((all, fn) => all.concat(calls(src, fn).map(c => c.key || '')), []);
+  const british = /\b\w*(annualis|realis|generalis|modell|labell|behaviour|colour|centre|optimis|minimis|maximis)\w*/i;
+  for (const [where, body] of [['index.html', text('index.html')], ['methodology.html', text('methodology.html')],
+    ['privacy.html', text('privacy.html')], ['app.js', words.join('\n')]]) {
+    const hit = body.match(british);
+    assert.ok(!hit, `${where}: "${hit && hit[0]}"`);
+  }
 });

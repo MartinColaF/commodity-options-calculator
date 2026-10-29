@@ -33,7 +33,7 @@ test('every "?" names what it opens, starts closed, and its explanation follows 
 test('what a number is, where it came from and what went wrong stay in view', () => {
   const shown = [
     /<p class="note" id="proxyNote">/, /<p class="note" id="yieldNote">/, /<p class="note" id="multInfo">/,
-    /<p class="note">Historical \(realised\) volatility, not implied\./, /<div id="sources">/,
+    /<p class="note">Historical \(realized\) volatility, not implied\./, /<div id="sources">/,
     /<p class="note" id="saveStatus"/, /<div class="disclaimer">/, /<p class="problem" id="spotProblem"/
   ];
   for (const re of shown) {

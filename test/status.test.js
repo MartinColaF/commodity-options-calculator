@@ -143,3 +143,21 @@ test("a service's own full stop is not doubled", () => {
   assert.strictEqual(app.listOf(['a']), 'a');
   assert.strictEqual(app.listOf(['a', 'b', 'c']), 'a, b and c');
 });
+
+test('on the Spanish page too, with no full stop doubled after the name of a service', async () => {
+  const SPANISH = require('../es/words.js');
+  const { app, el, fire } = wired({ lang: 'es', words: { es: SPANISH }, fetch: () => Promise.reject(new Error('offline')) });
+  // A service's name sits inside a sentence, before that sentence's own full
+  // stop: "la curva del Tesoro de EE. UU." read "EE. UU.." on the page.
+  for (const service of ['treasury', 'futures', 'alphavantage']) {
+    assert.doesNotMatch(app.serviceName(service), /\.$/, service);
+  }
+  fire('fetchRate', 'click');
+  await settled(() => !el('fetchRate').disabled);
+  assert.strictEqual(el('dataStatus').textContent,
+    'Tasa libre de riesgo: no se pudo consultar la curva del Tesoro estadounidense. Se sigue usando 4.00%.');
+  fire('autoFill', 'click');
+  await settled(() => !el('autoFill').disabled);
+  assert.match(el('dataStatus').textContent, /^No se pudo consultar la curva del Tesoro estadounidense, así que no cambiaron: /);
+  assert.doesNotMatch(el('dataStatus').textContent, /\.\./);
+});

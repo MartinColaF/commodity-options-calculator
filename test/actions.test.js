@@ -213,7 +213,7 @@ test('volatility comes from the futures series, with the chosen window and estim
     // What the estimator measured, not its rounding to 0.01 (REVISION_2_LOGICA.md, L15).
     assert.strictEqual(state.vol, expected, `${estimator} over ${window}d`);
     assert.strictEqual(r.message, `volatility ${+expected.toFixed(4)}% from GC=F`, 'four decimals of it');
-    assert.match(state.sources.vol.text, new RegExp('^' + estimator + ' realised vol, ' + window + 'd window'));
+    assert.match(state.sources.vol.text, new RegExp('^' + estimator + ' realized vol, ' + window + 'd window'));
   }
 });
 

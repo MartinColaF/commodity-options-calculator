@@ -58,7 +58,7 @@ test('the legs table shows each premium to within half a tick, in the review\'s 
     const premium = app.legGreeks(leg).price;
     const mult = app.dollarMultiplier(app.currentCommodity());
     const html = app.legRowHtml(leg, mult);
-    assert.ok(html.includes('<td class="num" data-label="Theo.">' + shown + '</td>'), `${key}: ${shown}`);
+    assert.ok(html.includes('<td class="num" data-label="Theo. value">' + shown + '</td>'), `${key}: ${shown}`);
     assert.ok(html.includes('data-f="entry" value="" placeholder="' + shown + '"'), `${key}: the default entry`);
     const tick = COMMODITIES[key].tick;
     assert.ok(Math.abs(Number(shown) - premium) * mult <= tick * mult / 2,

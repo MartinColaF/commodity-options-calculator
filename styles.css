@@ -332,6 +332,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* Headings and the two buttons on one line each: squeezed, "Cost $" broke in two
  * and IV sat on top of remove. */
 #legs th, #legs td:last-child { white-space: nowrap; }
+/* A heading of two words takes two lines rather than widen its column: spelt
+ * out, "Und. price" and "Theo. value" pushed the table past the column. */
+#legs th.two-line { white-space: normal; }
+/* A pixel less either side of each cell keeps the table whole at 1280 in Spanish
+ * too, whose "Costo $" is wider than "Cost $". */
+#legs th, #legs td { padding-left: 5px; padding-right: 5px; }
 #legs tr.off { opacity: .45; }
 
 .greeks td:first-child { font-weight: 600; }

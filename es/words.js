@@ -126,9 +126,9 @@ const SPANISH = {
   'premium financed at the risk-free rate': 'prima financiada a la tasa libre de riesgo',
   '{size} {unit}, quoted in cents': '{size} {unit}, en centavos',
   '{size} {unit}': '{size} {unit}',
-  'Realised-volatility window and estimator, skew on, the carry check and the Alpha Vantage fallback':
+  'Realized-volatility window and estimator, skew on, the carry check and the Alpha Vantage fallback':
     'Ventana y estimador de la volatilidad realizada, skew activado, control del carry, respaldo de Alpha Vantage',
-  'Realised-volatility window and estimator, skew off, the carry check and the Alpha Vantage fallback':
+  'Realized-volatility window and estimator, skew off, the carry check and the Alpha Vantage fallback':
     'Ventana y estimador de la volatilidad realizada, skew desactivado, control del carry, respaldo de Alpha Vantage',
   'futures {price}': 'futuro {price}',
   'spot {price}': 'spot {price}',
@@ -160,7 +160,7 @@ const SPANISH = {
   '{what}, leg {n}': '{what}, pata {n}',
   'Include': 'Incluir',
   'Include in the strategy': 'Incluir en la estrategia',
-  'Side': 'Operación',
+  'Side': 'Sentido',
   'Long': 'Compra',
   'Short': 'Venta',
   'Type': 'Tipo',
@@ -174,12 +174,12 @@ const SPANISH = {
   'Days to expiry': 'Días al vencimiento',
   'Vol %': 'Vol %',
   'Volatility %': 'Volatilidad %',
-  'Under': 'Subyac.',
+  'Und. price': 'Precio subyac.',
   'This leg\'s own contract price today. Blank uses the contract in the left panel.':
     'Precio de hoy del contrato propio de esta pata. Vacío, usa el contrato del panel izquierdo.',
   'Entry': 'Entrada',
   'Entry price': 'Precio de entrada',
-  'Theo.': 'Teór.',
+  'Theo. value': 'Valor teór.',
   'Delta': 'Delta',
   'Cost $': 'Costo $',
   'Solve implied volatility from the entry price': 'Calcular la volatilidad implícita desde el precio de entrada',
@@ -300,12 +300,12 @@ const SPANISH = {
   '{name} at {price}': '{name} a {price}',
   'not enough history': 'historial insuficiente',
   'estimator unavailable for this series': 'estimador no disponible para esta serie',
-  '{estimator} realised vol, {days}d window on {symbol} (front-month futures; roll gaps can inflate it slightly), last close {last}. close-to-close {close}% / EWMA {ewma}%':
+  '{estimator} realized vol, {days}d window on {symbol} (front-month futures; roll gaps can inflate it slightly), last close {last}. close-to-close {close}% / EWMA {ewma}%':
     'vol realizada {estimator}, ventana de {days}d sobre {symbol} (futuros del primer vencimiento; los saltos del roll pueden inflarla un poco), último cierre {last}. close-to-close {close}% / EWMA {ewma}%',
   'volatility {vol}% from {symbol}': 'volatilidad {vol}% de {symbol}',
   'no ticker to read prices from': 'no hay un ticker del cual leer precios',
   'symbol entered by you': 'símbolo ingresado a mano',
-  '{estimator} realised vol, {days}d window on {symbol} ({proxy}), last close {last}. close-to-close {close}% / EWMA {ewma}%':
+  '{estimator} realized vol, {days}d window on {symbol} ({proxy}), last close {last}. close-to-close {close}% / EWMA {ewma}%':
     'vol realizada {estimator}, ventana de {days}d sobre {symbol} ({proxy}), último cierre {last}. close-to-close {close}% / EWMA {ewma}%',
   'volatility {vol}% from {symbol} (ETF proxy)': 'volatilidad {vol}% de {symbol} (ETF como proxy)',
   'the two contracts did not give a usable spread': 'los dos contratos no dieron un spread utilizable',
@@ -347,7 +347,7 @@ const SPANISH = {
   '{label}: could not reach {service}.': '{label}: no se pudo consultar {service}.',
   '{label}: {reason}.': '{label}: {reason}.',
   'Nothing was changed.': 'No se cambió nada.',
-  'the US Treasury curve': 'la curva del Tesoro de EE. UU.',
+  'the US Treasury curve': 'la curva del Tesoro estadounidense',
   'Alpha Vantage': 'Alpha Vantage',
   'the futures data service': 'el servicio de datos de futuros',
   '{list} and {last}': '{list} y {last}',

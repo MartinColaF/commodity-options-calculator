@@ -53,7 +53,7 @@ test('the Spanish page has the English page\'s elements, attributes and order', 
 /* Text that reads the same in both: names, units, symbols and market terms. */
 const SAME = new Set(['', '?', '×', 'IV', 'USD', 'Payoff', 'Skew', 'Strike', 'Vol', 'Vol %', 'Delta', 'Black-76 (option on futures)',
   'Black-Scholes-Merton (spot + carry)', 'EWMA (0.94)', 'Parkinson', 'Close-to-close', '20d', '30d', '60d', '90d',
-  'F = S·e', '(r−y)T', 'Theo.', 'Alpha Vantage', 'JSON']);
+  'F = S·e', '(r−y)T', 'Alpha Vantage', 'JSON']);
 
 test('every word of the Spanish page is in Spanish, apart from names and market terms', () => {
   const a = shape(en), b = shape(es);
