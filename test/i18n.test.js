@@ -69,7 +69,7 @@ test("every word t() is asked for is written out in app.js, or comes from the ma
     assert.ok(helper.length > 5, fn);
     for (const c of helper) assert.strictEqual(c.expression, undefined, `app.js:${c.line} ${fn}(${c.expression})`);
   }
-  assert.ok(all.some(c => c.key === 'Position column = per-unit greek x quantity x ${mult} multiplier.'),
+  assert.ok(all.some(c => c.key === 'Position column = per-unit greek × quantity × ${mult} multiplier.'),
     'a key made of a literal is read whole');
   assert.ok(all.some(c => c.key && c.key.startsWith('Theta is the options\' own decay. The P&amp;L also carries the ' +
     "premium's interest: {amount} a day at {rate}%.")), 'and one made of literals joined with +');

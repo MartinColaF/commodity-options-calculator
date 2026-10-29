@@ -43,7 +43,7 @@ test('each scenario table can be reached with the keyboard, and says which one i
     assert.match(attrs, /role="region"/);
   }
   const names = regions.map(attrs => attrs.match(/aria-label="([^"]+)"/)[1]);
-  assert.deepStrictEqual(names, ['Scenario grid, Volatility -5 points', 'Scenario grid, Volatility unchanged',
+  assert.deepStrictEqual(names, ['Scenario grid, Volatility −5 points', 'Scenario grid, Volatility unchanged',
     'Scenario grid, Volatility +5 points']);
 });
 

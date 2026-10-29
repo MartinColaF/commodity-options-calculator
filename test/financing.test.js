@@ -178,7 +178,7 @@ test('the page says what the premium carries, and at what rate', () => {
   assert.strictEqual(s.financing.rate, -0.25, 'like any rate it may be negative');
   draw();
   assert.strictEqual(el('financingRate').disabled, false);
-  assert.match(el('summary').innerHTML, /<small>to the horizon, at -0\.25%, your rate<\/small>/);
+  assert.match(el('summary').innerHTML, /<small>to the horizon, at −0\.25%, your rate<\/small>/);
   assert.match(el('financingNote').textContent, /at your own rate, continuously compounded/);
 
   el('financing').value = 'none';

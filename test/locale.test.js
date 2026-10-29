@@ -32,7 +32,7 @@ test('a Spanish browser gets the same numbers as an English one', t => {
     return;
   }
   const shown = inSpanish("[app.fmt(4211.3, 2), app.money(-1129.6), app.fmtPrice(4000, true), app.fmt(0.1325, 4)]");
-  assert.deepStrictEqual(shown, ['4,211.30', '-$1,129.60', '4,000', '0.1325']);
+  assert.deepStrictEqual(shown, ['4,211.30', '−$1,129.60', '4,000', '0.1325']);
 });
 
 test("the chart's ticks are written the same way", () => {

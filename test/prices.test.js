@@ -125,5 +125,5 @@ test('every quote, source line and month label carries the market\'s decimals', 
 
   quote.price = -0.0125;
   net.storage.clear();   // the cached quote
-  await assert.rejects(net.applyFuturesPrice(), /Copper Dec 26 last -0\.0125, below zero/);
+  await assert.rejects(net.applyFuturesPrice(), /Copper Dec 26 last −0\.0125, below zero/);
 });

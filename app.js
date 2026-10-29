@@ -1483,15 +1483,21 @@ function currentCommodity() {
  * page, if there is one, decides its own. */
 const NUMBER_LOCALE = 'en-US';
 
+/* A number below zero is written with the minus sign, U+2212, not the hyphen:
+ * in a column of figures the hyphen is shorter and lighter, and a loss of
+ * -$1,129.60 read as less than it was. Only what the page shows: a field and
+ * an export keep the hyphen a number is typed and parsed with. */
+const MINUS = '\u2212';
+
 function fmt(x, dp) {
-  if (!isFinite(x)) return x > 0 ? '∞' : '-∞';
-  return x.toLocaleString(NUMBER_LOCALE, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+  if (!isFinite(x)) return x > 0 ? '∞' : MINUS + '∞';
+  return x.toLocaleString(NUMBER_LOCALE, { minimumFractionDigits: dp, maximumFractionDigits: dp }).replace('-', MINUS);
 }
 
 function money(x) {
   if (x === Infinity) return t('Unlimited');
   if (x === -Infinity) return t('Unlimited');
-  const sign = x < 0 ? '-' : '';
+  const sign = x < 0 ? MINUS : '';
   return sign + '$' + fmt(Math.abs(x), 2);
 }
 
@@ -1527,7 +1533,7 @@ function decimalsOf(x) {
 function fmtPrice(x, trim) {
   const dp = priceDp();
   if (!trim || !isFinite(x)) return fmt(x, dp);
-  return x.toLocaleString(NUMBER_LOCALE, { maximumFractionDigits: dp });
+  return x.toLocaleString(NUMBER_LOCALE, { maximumFractionDigits: dp }).replace('-', MINUS);
 }
 
 /* A volatility as its input field shows it: rounded to `dp` decimals, without
@@ -1752,7 +1758,7 @@ function legRowHtml(leg, mult, n) {
       <td data-label="${w('Vol %')}"><input type="number" data-f="vol" value="${a(volField(leg.vol, 2))}" placeholder="${a(fmt(legVolPct(leg), 1))}" ${isU ? 'disabled' : ''} step="any" ${name('Volatility %')}></td>
       <td data-label="${w('Under')}"><input type="number" data-f="under" value="${a(leg.under)}" placeholder="${a(fmtPrice(state.S))}" step="any" title="${w('This leg\'s own contract price today. Blank uses the contract in the left panel.')}" ${name('Underlying price')}></td>
       <td data-label="${w('Entry')}"><input type="number" data-f="entry" value="${a(leg.entry)}" placeholder="${a(fmtPrice(isU ? state.S : g.price))}" step="any" ${name('Entry price')}></td>
-      <td class="num" data-label="${w('Theo.')}">${isU ? '-' : a(fmtPrice(g.price))}</td>
+      <td class="num" data-label="${w('Theo.')}">${isU ? '—' : a(fmtPrice(g.price))}</td>
       <td class="num" data-label="${w('Delta')}">${a(fmt(g.delta * leg.side * leg.qty, 3))}</td>
       <td class="num" data-label="${w('Cost $')}">${a(fmt(leg.side * leg.qty * mult * (isU ? 0 : entry), 0))}</td>
       <td><button class="icon" data-f="iv" title="${w('Solve implied volatility from the entry price')}" ${isU ? 'disabled' : ''} ${name('Implied volatility from the entry price')}>IV</button>
@@ -1814,7 +1820,7 @@ function renderResults() {
   // two significant figures rather than read $0.00.
   const perPoint = Math.abs(a.upSlope) >= 0.005
     ? money(a.upSlope)
-    : (a.upSlope < 0 ? '-$' : '$') + Math.abs(a.upSlope).toPrecision(2);
+    : (a.upSlope < 0 ? MINUS + '$' : '$') + Math.abs(a.upSlope).toPrecision(2);
   const rising = `<small>${t('{amount} per point as the price rises', { amount: perPoint })}</small>`;
 
   // Nothing to measure. Zeros in green and red, and a 0.0% chance of profit,
@@ -1829,7 +1835,7 @@ function renderResults() {
       <div class="kpi"><span>${cost >= 0 ? t('Net debit (paid)') : t('Net credit (received)')}</span><strong>${money(Math.abs(cost))}</strong></div>
       <div class="kpi"><span>${t('Max profit')}</span><strong class="pos">${money(a.maxProfit)}</strong>${a.maxProfit === Infinity ? rising : ''}</div>
       <div class="kpi"><span>${t('Max loss')}</span><strong class="neg">${money(a.maxLoss)}</strong>${a.maxLoss === -Infinity ? rising : ''}</div>
-      <div class="kpi"><span>${a.breakevens.length === 1 ? t('Breakeven') : t('Breakevens')}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmtPrice(b)).join(' / ') : '-'}</strong></div>
+      <div class="kpi"><span>${a.breakevens.length === 1 ? t('Breakeven') : t('Breakevens')}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmtPrice(b)).join(' / ') : t('None')}</strong></div>
       <div class="kpi"><span>${t('Prob. of profit')}</span><strong>${(a.pop * 100).toFixed(1)}%</strong><small>${t('risk-neutral, at {vol}% vol', { vol: escapeHtml(fmt(a.popVol * 100, 1)) })}</small></div>
       <div class="kpi"><span>${t('Horizon')}</span><strong>${a.t === 1 ? t('{n} day', { n: escapeHtml(a.t) }) : t('{n} days', { n: escapeHtml(a.t) })}</strong></div>
       <div class="kpi"><span>${t('Premium interest')}</span>${interest}</div>`;
@@ -1850,7 +1856,7 @@ function renderResults() {
         <tr><td>Theta</td><td class="num">${fmt(g.unit.theta, 4)}</td><td class="num">${money(g.money.theta)}</td><td class="muted">${t('$ per calendar day')}</td></tr>
         <tr><td>Rho</td><td class="num">${fmt(g.unit.rho, 4)}</td><td class="num">${money(g.money.rho)}</td><td class="muted">${t('$ per +1 rate point')}</td></tr>
       </table>
-      <p class="muted small">${t('Position column = per-unit greek x quantity x ${mult} multiplier.', { mult: fmt(mult, 2) })}${ownMonth
+      <p class="muted small">${t('Position column = per-unit greek × quantity × ${mult} multiplier.', { mult: fmt(mult, 2) })}${ownMonth
         ? ' ' + t('Delta and gamma are per point of the contract in the left panel, with each leg\'s own month ' +
           'moving in proportion, as on the chart; the Delta column in the legs table is against each ' +
           'leg\'s own month.')
@@ -2085,9 +2091,8 @@ function positionRange(datasets) {
 /* 150,000 as 150k and 2,500,000 as 2.5M, for the narrow chart's P&L axis. */
 function compactNumber(v) {
   const a = Math.abs(v);
-  if (a >= 1e6) return +(v / 1e6).toFixed(1) + 'M';
-  if (a >= 1e3) return +(v / 1e3).toFixed(1) + 'k';
-  return String(+v.toFixed(2));
+  const s = a >= 1e6 ? +(v / 1e6).toFixed(1) + 'M' : a >= 1e3 ? +(v / 1e3).toFixed(1) + 'k' : String(+v.toFixed(2));
+  return s.replace('-', MINUS);
 }
 
 /* A phone-width window, where the chart's legend and ticks are made smaller. */
@@ -2147,7 +2152,7 @@ function renderScenarios() {
 
     const title = panel.volShift === 0
       ? t('Volatility unchanged')
-      : t('Volatility {shift} points', { shift: (panel.volShift > 0 ? '+' : '') + panel.volShift });
+      : t('Volatility {shift} points', { shift: (panel.volShift > 0 ? '+' : '') + fmt(panel.volShift, 0) });
     // Each table scrolls sideways on a phone, so the keyboard has to reach it to
     // scroll it, and a screen reader needs to know which one it is in.
     return '<div class="scenario-panel"><h3>' + title + '</h3>' +
@@ -2913,7 +2918,7 @@ function resetProxyFields() {
 function runAction(label, step, where) {
   return async e => {
     const release = holdButton(e && (e.currentTarget || e.target));
-    setStatus(label + '...', 'busy', where);
+    setStatus(label + '…', 'busy', where);
     try {
       const r = await step();
       showResult(r);
@@ -2930,7 +2935,7 @@ function runAction(label, step, where) {
 /* One button that fills everything it can, reporting each field separately. */
 async function actionAutoFill(e) {
   const release = holdButton(e && (e.currentTarget || e.target));
-  setStatus(t('Fetching market data...'), 'busy');
+  setStatus(t('Fetching market data…'), 'busy');
   try {
     const r = await autoFill(volInputs());
     r.results.forEach(showResult);
@@ -3140,7 +3145,7 @@ function bindInputs() {
   });
   $('range').addEventListener('input', e => {
     state.chart.range = +e.target.value;
-    $('rangeLabel').textContent = '+/-' + state.chart.range + '%';
+    $('rangeLabel').textContent = '±' + state.chart.range + '%';
     scheduleRender();
   });
   $('tDays').addEventListener('input', e => {
@@ -3315,7 +3320,7 @@ function init() {
   resetProxyFields();
   $('avKey').value = localStorage.getItem(KEY_STORE) || '';
   $('range').value = state.chart.range;
-  $('rangeLabel').textContent = '+/-' + state.chart.range + '%';
+  $('rangeLabel').textContent = '±' + state.chart.range + '%';
   $('chartMode').value = state.chart.mode;
   $('showLegs').checked = state.chart.showLegs;
 

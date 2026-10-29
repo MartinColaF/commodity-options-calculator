@@ -27,7 +27,7 @@ test('a market button says it is fetching, stays held until done, and reports be
   assert.strictEqual(el('fetchRate').disabled, true, 'held while it waits');
   assert.strictEqual(el('fetchRate').textContent, 'Fetching…');
   assert.strictEqual(el('fetchRate').getAttribute('aria-busy'), 'true');
-  assert.strictEqual(el('dataStatus').textContent, 'Risk-free rate...');
+  assert.strictEqual(el('dataStatus').textContent, 'Risk-free rate…');
   assert.strictEqual(el('dataStatus').className, 'status busy');
 
   fail(new Error('offline'));

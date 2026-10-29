@@ -199,6 +199,13 @@ Spanish browser showed "4.211,30" and "0,1325" beside "11.2%", which goes throug
 keeps it too, by decision: a decimal point, as its fields take. `test/locale.test.js`
 runs the formatting in a child process started in Spanish.
 
+**A number below zero shows a minus sign, U+2212, not a hyphen.** `fmt()`, `money()` and
+`compactNumber()` write `MINUS`, so a loss reads "−$1,129.60"; in a column of figures the
+hyphen was shorter and lighter, and a loss read as less than it was. Only what the page
+shows: a field, a snapshot and an export keep the hyphen a number is typed and parsed
+with. The chart's desktop ticks are Chart.js's own. `test/typography.test.js` checks both
+sides, and the "±", "×" and "…" the page writes.
+
 **Every word a reader sees goes through `t()`, keyed by its English text.** `i18n.js`
 holds a table per language and `PAGE_LANG`, read from `<html lang>`. The English page has
 no table, so `t('Max profit')` is `'Max profit'` and the code still reads in English. A key

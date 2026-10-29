@@ -262,7 +262,7 @@ test('the summary gives that rate under an unlimited maximum, and nothing under 
   const { app: page, el } = wired();
   const summary = () => { page.renderResults(); return el('summary').innerHTML; };
   page.applyStrategy('calendar');
-  assert.match(summary(), /Max loss<\/span><strong class="neg">Unlimited<\/strong><small>-\$0\.33 per point as the price rises<\/small>/);
+  assert.match(summary(), /Max loss<\/span><strong class="neg">Unlimited<\/strong><small>−\$0\.33 per point as the price rises<\/small>/);
   assert.match(summary(), /Max profit<\/span><strong class="pos">[^<]+<\/strong><\/div>/, 'a bounded maximum has no rate');
   page.state.style = 'american';
   assert.doesNotMatch(summary(), /as the price rises/, 'nor an American calendar');
@@ -272,7 +272,7 @@ test('the summary gives that rate under an unlimited maximum, and nothing under 
   // A rate too small for cents keeps two significant figures.
   Object.assign(page.state, { style: 'european', rate: 0.01 });
   page.applyStrategy('calendar');
-  assert.match(summary(), /Unlimited<\/strong><small>-\$0\.00082 per point as the price rises<\/small>/);
+  assert.match(summary(), /Unlimited<\/strong><small>−\$0\.00082 per point as the price rises<\/small>/);
 });
 
 test('a calendar spread keeps time value in the far leg at the near expiry', () => {
