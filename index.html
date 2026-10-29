@@ -11,7 +11,7 @@
        inert on https.
        script-src names the one Chart.js file, not the CDN: jsDelivr serves any
        package on npm, so allowing the whole host would allow anyone's script. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js; style-src 'self' file: 'unsafe-inline'; connect-src 'self' https://home.treasury.gov https://www.alphavantage.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js; style-src 'self' file:; connect-src 'self' https://home.treasury.gov https://www.alphavantage.co; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="description" content="Free commodity options calculator: Black-76 and Black-Scholes pricing, greeks, multi-leg strategy payoff charts and daily US Treasury rates.">
   <title>Commodity Options Calculator</title>
   <!-- What LinkedIn, X and messaging apps show for a shared link. Their crawlers
@@ -231,11 +231,11 @@
             <div><label for="carryF">Far</label><input type="number" id="carryF" step="any" placeholder="F2"></div>
             <div><label for="carryDays">Days</label><input type="number" id="carryDays" step="1" placeholder="90"></div>
           </div>
-          <button id="implyYield" class="ghost" style="margin-top:8px">Imply convenience yield from these</button>
+          <button id="implyYield" class="ghost mt-8">Imply convenience yield from these</button>
           <div class="status" id="carryStatus" role="status"></div>
           <p class="note help" id="carryHelp" hidden>Inverts F = S&middot;e<sup>(r&minus;y)T</sup>, net of storage costs. The Yield button above fills these boxes with the two contracts it used, so you can check its work or override it.</p>
 
-          <details style="margin-top:14px">
+          <details class="mt-14">
             <summary class="muted small">Fallback: Alpha Vantage (for custom tickers, or if the futures proxy is down)</summary>
             <label for="avKey">API key <span class="muted">(free, stored only in this browser; empty the field to delete it)</span></label>
             <input type="password" id="avKey" placeholder="paste your key" autocomplete="off">
@@ -245,7 +245,7 @@
           </details>
         </details>
 
-        <button id="usePreset" class="ghost" style="margin-top:12px">Reset to commodity presets</button>
+        <button id="usePreset" class="btn-text mt-12">Reset to commodity presets</button>
 
         <div id="sources"></div>
       </section>
@@ -265,11 +265,11 @@
         <label for="strategy" class="sr-only">Strategy template</label>
         <div class="row strategy-row">
           <select id="strategy"></select>
-          <button id="addLeg" class="ghost">+ Add leg</button>
+          <button id="addLeg">+ Add leg</button>
           <button id="clearLegs" class="text-danger">Remove all legs</button>
         </div>
 
-        <div class="table-scroll" style="margin-top:12px">
+        <div class="table-scroll mt-12">
           <table>
             <thead>
               <tr>
@@ -286,7 +286,7 @@
         <button id="undoRemove" class="ghost undo" hidden>Undo: put the legs back</button>
         <div class="row tight with-help">
           <button id="fillLegPrices" class="ghost">Fill leg prices from the futures curve</button>
-          <button id="clearLegPrices" class="ghost">Clear leg prices</button>
+          <button id="clearLegPrices" class="btn-text">Clear leg prices</button>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="legPricesHelp" aria-label="About leg prices from the curve">?</button>
         </div>
         <p class="note help" id="legPricesHelp" hidden>In a real commodity calendar each month trades at its own price. This reads the listed curve, measures its slope, and prices every leg at its own expiry. The payoff chart then moves all months together, in proportion. <strong>Clear leg prices</strong> puts every leg back on the contract in the left panel, which is what you want when you are pricing options on one specific delivery month.</p>
@@ -295,7 +295,7 @@
       <section class="card" id="cardResults" aria-labelledby="hResults">
         <h2 id="hResults">Results</h2>
         <div id="summary"></div>
-        <div id="greeks" style="margin-top:14px"></div>
+        <div id="greeks" class="mt-14"></div>
       </section>
 
       <section class="card" id="cardPayoff" aria-labelledby="hPayoff">

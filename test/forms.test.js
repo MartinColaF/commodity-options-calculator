@@ -119,3 +119,15 @@ test('a reason or a warning inside folded settings opens them', () => {
   assert.notStrictEqual(el('skewWarning').textContent, '');
   assert.strictEqual(market.open, true);
 });
+
+test('a button looks like what it does: add or fetch, a second step, overwrite, or throw away', () => {
+  // Thirteen of fourteen buttons had the same outline, whether they added a
+  // leg, fetched a price or replaced every leg's price.
+  const tag = id => html.match(new RegExp(`<button id="${id}"[^>]*>`))[0];
+  for (const id of ['autoFill', 'addLeg']) assert.doesNotMatch(tag(id), /class=/, `#${id} is a primary button`);
+  for (const id of ['fetchPrice', 'fetchRate', 'fetchVol', 'fetchCurve', 'loadMonths', 'fillLegPrices', 'implyYield']) {
+    assert.match(tag(id), /class="ghost/, `#${id} is secondary`);
+  }
+  for (const id of ['usePreset', 'clearLegPrices']) assert.match(tag(id), /class="btn-text/, `#${id} overwrites, quietly`);
+  assert.match(tag('clearLegs'), /class="text-danger"/, 'and the one that throws work away is red');
+});

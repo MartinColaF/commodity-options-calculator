@@ -454,9 +454,17 @@ from 1280 px screens up; below that it scrolls, with a shade at the edge that ha
 **`index.html` carries a Content-Security-Policy.** No inline script runs, so an
 `onerror=` that slipped past escaping is refused. **Update it whenever an external script
 or `fetch` origin is added** — the AdSense script the privacy policy mentions, say —
-or the browser blocks it silently and the feature just doesn't work. `style-src` allows
-`'unsafe-inline'` because the markup and the scenario shading use `style=` attributes.
+or the browser blocks it silently and the feature just doesn't work. `style-src` allows no
+inline style either: spacing is a class (`.mt-8`, `.mt-12`, `.mt-14`) and the scenario
+grid's shading one of ten steps the stylesheet sets (`gain-0`…`loss-9`). Never write a
+`style=` attribute into the markup or an `innerHTML`; `test/page.test.js` fails on one.
+Setting `element.style` from script is not blocked, and Chart.js does only that.
 `file:` keeps the page working when opened from disk, and is inert on https.
+
+**A button looks like what it does.** Filled for what adds or fetches first (Auto-fill,
+"+ Add leg"), `.ghost` for a second step, `.btn-text` for what overwrites values that can
+be fetched or typed again (presets, the curve's leg prices) and `.text-danger` for what
+throws work away. `test/forms.test.js` checks each.
 
 **The API function takes a commodity key, never a raw symbol.** Symbols are built from
 each market's `futures` entry in `commodities.js`. Keep it that way or the endpoint

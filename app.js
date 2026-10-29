@@ -2131,12 +2131,13 @@ function renderScenarios() {
   // Gains and losses are each shaded against their own largest, from a floor
   // that still shows: against one scale for both, a long call's losses, $1,130
   // at most beside gains of $58,874, got an opacity of 0.0096 and read as
-  // nothing. A cell that rounds to $0.00 is left plain.
+  // nothing. A cell that rounds to $0.00 is left plain. The shade is one of ten
+  // steps the stylesheet sets, gain-0 to gain-9 and loss-0 to loss-9: a style
+  // attribute here was what kept 'unsafe-inline' in the page's policy.
   const shade = v => {
     if (!isFinite(v) || Math.abs(v) < 0.005) return '';
     const ref = v > 0 ? s.best : s.worstLoss;
-    const a = (0.12 + 0.38 * Math.sqrt(Math.min(Math.abs(v) / ref, 1))).toFixed(3);
-    return ' style="background:rgba(' + (v > 0 ? '32,140,96' : '190,60,48') + ',' + a + ')"';
+    return ' ' + (v > 0 ? 'gain-' : 'loss-') + Math.round(9 * Math.sqrt(Math.min(Math.abs(v) / ref, 1)));
   };
 
   const panels = s.panels.map(panel => {
@@ -2146,7 +2147,7 @@ function renderScenarios() {
       const label = fmtPrice(r.price) +
         ' <span class="muted">(' + (r.pct >= 0 ? '+' : '') + fmt(r.pct * 100, 0) + '%)</span>';
       const cells = r.cells.map(c =>
-        '<td class="num"' + shade(c) + '>' + money(c) + '</td>').join('');
+        '<td class="num' + shade(c) + '">' + money(c) + '</td>').join('');
       return '<tr><th class="rowhead">' + label + '</th>' + cells + '</tr>';
     }).join('');
 
