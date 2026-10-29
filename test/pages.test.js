@@ -151,7 +151,7 @@ test('the Spanish page writes its results, chart and messages in Spanish, with t
   assert.strictEqual(cfg.options.scales.y.title.text, 'Ganancia / pérdida ($)');
   assert.strictEqual(cfg.data.datasets[0].label, 'Al horizonte (30d)');
   fire('spot', 'change', { value: '-5' });
-  assert.match(el('spotProblem').textContent, /^El precio debe ser mayor que cero: .* Se sigue usando 4000\.$/);
+  assert.match(el('spotProblem').textContent, /^Se necesita un precio mayor que cero\. .* Se sigue usando 4,000\.00\.$/);
   fire('clearLegs', 'click');
   assert.strictEqual(el('legStatus').textContent, 'Se quitaron las 2 patas.');
 });

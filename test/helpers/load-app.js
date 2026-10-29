@@ -132,6 +132,7 @@ function wired(opts) {
     value: '', checked: false, disabled: false, textContent: '', innerHTML: '', dataset: {}, attributes: {},
     addEventListener: listen(id),
     closest: () => null,
+    querySelector: () => null,
     setAttribute(k, v) { this.attributes[k] = String(v); },
     removeAttribute(k) { delete this.attributes[k]; },
     getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attributes, k) ? this.attributes[k] : null; }

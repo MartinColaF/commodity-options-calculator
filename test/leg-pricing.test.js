@@ -272,11 +272,14 @@ test('a volatility field shows its number rounded and leaves the number alone', 
   assert.strictEqual(page.state.vol, 15.125);
   assert.strictEqual(el('vol').value, '15.125');
 
-  // Refused, the field goes back to the number in use, shown the same way.
+  // Refused, the field keeps what was typed until the next thing done, and the
+  // drawing that follows shows the number in use, the same way.
   page.state.vol = 18.47213595499958;
   el('vol').value = '-5';
   fire('vol', 'change');
-  assert.strictEqual(el('volProblem').textContent, 'Volatility cannot be negative. Still using 18.4721%.');
+  assert.strictEqual(el('volProblem').textContent, 'Enter a volatility of zero or more. Still using 18.4721%.');
+  assert.strictEqual(el('vol').value, '-5');
+  page.renderInputs();
   assert.strictEqual(el('vol').value, '18.4721');
 
   // The legs table's Vol column holds two; a blank one still shows the

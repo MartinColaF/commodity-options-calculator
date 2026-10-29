@@ -18,13 +18,13 @@ const { state } = app;
 test('a price, strike or size must be above zero, and a volatility not below it', () => {
   for (const key of ['S', 'under', 'strike', 'size']) {
     assert.strictEqual(app.inputProblem(key, 0.01), '', key + ' above zero');
-    assert.match(app.inputProblem(key, 0), /must be above zero/, key + ' at zero');
-    assert.match(app.inputProblem(key, -37.63), /must be above zero/, key + ' below zero');
+    assert.match(app.inputProblem(key, 0), /^Enter .* above zero\./, key + ' at zero');
+    assert.match(app.inputProblem(key, -37.63), /^Enter .* above zero\./, key + ' below zero');
   }
-  assert.match(app.inputProblem('S', -1), /lognormal and cannot price a contract at or below zero/,
+  assert.match(app.inputProblem('S', -1), /These lognormal models cannot price a contract at or below zero/,
     'a price says why: the models cannot take one');
   assert.strictEqual(app.inputProblem('vol', 0), '', 'no volatility prices the intrinsic value');
-  assert.match(app.inputProblem('vol', -0.5), /Volatility cannot be negative/);
+  assert.match(app.inputProblem('vol', -0.5), /^Enter a volatility of zero or more\.$/);
   assert.strictEqual(app.inputProblem('rate', -2), '', 'a negative rate is a rate');
   assert.strictEqual(app.inputProblem('yield', -2), '', 'and a negative yield a yield');
   for (const v of [NaN, Infinity, '4000', null, undefined]) {
@@ -84,24 +84,28 @@ test('the panel refuses a price, volatility or size the pricer cannot take, and 
   assert.strictEqual(el('spotProblem').textContent, '', 'and nothing is said before it is committed');
   fire('spot', 'change');
   assert.match(el('spotProblem').textContent,
-    /^A price must be above zero: these models are lognormal .* Still using 4000\.$/);
-  assert.strictEqual(String(el('spot').value), '4000', 'the field goes back to the price in use');
+    /^Enter a price above zero\. These lognormal models .* Still using 4,000\.00\.$/);
+  assert.strictEqual(String(el('spot').value), '-100', 'what was typed stays, to be put right');
+  assert.strictEqual(el('spot').getAttribute('aria-invalid'), 'true', 'marked');
+  assert.strictEqual(el('spot').getAttribute('aria-describedby'), 'spotProblem', 'and tied to its reason');
   assert.strictEqual(el('dataStatus').textContent, '', 'beside the field, not on the status line a card away');
 
   type('spot', '3');
   assert.strictEqual(el('spotProblem').textContent, '', 'typing again clears the reason');
+  assert.strictEqual(el('spot').getAttribute('aria-invalid'), null, 'and the mark');
+  assert.strictEqual(el('spot').getAttribute('aria-describedby'), null);
   assert.strictEqual(s.S, 3, 'and a good number goes through');
 
   commit('vol', '-5');
   assert.strictEqual(s.vol, 15);
-  assert.strictEqual(el('volProblem').textContent, 'Volatility cannot be negative. Still using 15%.');
+  assert.strictEqual(el('volProblem').textContent, 'Enter a volatility of zero or more. Still using 15%.');
   commit('vol', '0');
   assert.strictEqual(s.vol, 0, 'no volatility is a volatility');
   assert.strictEqual(el('volProblem').textContent, '');
 
   commit('size', '0');
   assert.strictEqual(s.size, 100);
-  assert.strictEqual(el('sizeProblem').textContent, 'Units per contract must be above zero. Still using 100.');
+  assert.strictEqual(el('sizeProblem').textContent, 'Enter units per contract above zero. Still using 100.');
   commit('size', '-100');
   assert.strictEqual(s.size, 100, 'a negative size would swap profit and loss');
 
@@ -150,16 +154,16 @@ test('the legs table refuses a strike, volatility or price the pricer cannot tak
 
   edit('strike', '-50');
   assert.strictEqual(leg.strike, 3900);
-  assert.strictEqual(el('legProblem').textContent, 'A strike must be above zero. The leg keeps its previous value.');
+  assert.strictEqual(el('legProblem').textContent, 'Enter a strike above zero. The leg keeps its previous value.');
   assert.match(el('legsBody').innerHTML, /data-f="strike" value="3900"/, 'the table, drawn again, shows the strike in use');
 
   edit('vol', '-10');
   assert.strictEqual(leg.vol, null);
-  assert.match(el('legProblem').textContent, /^Volatility cannot be negative\./);
+  assert.match(el('legProblem').textContent, /^Enter a volatility of zero or more\./);
 
   edit('under', '0');
   assert.strictEqual(leg.under, null);
-  assert.match(el('legProblem').textContent, /^A price must be above zero/);
+  assert.match(el('legProblem').textContent, /^Enter a price above zero/);
 
   edit('strike', '4100');
   assert.strictEqual(leg.strike, 4100);
@@ -179,4 +183,24 @@ test('the legs table refuses a strike, volatility or price the pricer cannot tak
   el('strategy').value = 'long-call';
   fire('strategy', 'change');
   assert.strictEqual(el('legProblem').textContent, '', 'a new set of legs is not the leg it was about');
+});
+
+test('a refused leg field is marked in the redrawn table, with what was typed, until the next thing done', () => {
+  const { app: page, el, fire } = wired();
+  page.state.legs = [page.newLeg({ kind: 'put', strike: 3900, days: 30 })];
+  const leg = page.state.legs[0];
+  // The table is drawn again on a refusal; this stands in for its strike field.
+  const field = { value: '3900', attributes: {} };
+  field.setAttribute = (k, v) => { field.attributes[k] = v; };
+  field.removeAttribute = k => { delete field.attributes[k]; };
+  let asked;
+  el('legsBody').querySelector = sel => { asked = sel; return field; };
+  fire('legsBody', 'change', { dataset: { f: 'strike' }, value: '-50', closest: () => ({ dataset: { id: String(leg.id) } }) });
+  assert.strictEqual(asked, `tr[data-id="${leg.id}"] [data-f="strike"]`);
+  assert.strictEqual(field.value, '-50', 'what was typed, back in the redrawn field');
+  assert.deepStrictEqual(field.attributes, { 'aria-invalid': 'true', 'aria-describedby': 'legProblem' });
+  assert.strictEqual(leg.strike, 3900, 'and the leg keeps its strike');
+  fire('spot', 'input', { value: '4000' });
+  assert.deepStrictEqual(field.attributes, {}, 'the next edit anywhere takes the marks away');
+  assert.strictEqual(el('legProblem').textContent, '');
 });

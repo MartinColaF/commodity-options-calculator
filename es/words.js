@@ -279,11 +279,11 @@ const SPANISH = {
 
   /* ---- refused numbers ---- */
   'Enter a number.': 'Se necesita un número.',
-  'A price must be above zero: these models are lognormal and cannot price a contract at or below zero.':
-    'El precio debe ser mayor que cero: estos modelos son lognormales y no pueden valuar un contrato en cero o por debajo.',
-  'A strike must be above zero.': 'El strike debe ser mayor que cero.',
-  'Units per contract must be above zero.': 'Las unidades por contrato deben ser mayores que cero.',
-  'Volatility cannot be negative.': 'La volatilidad no puede ser negativa.',
+  'Enter a price above zero. These lognormal models cannot price a contract at or below zero.':
+    'Se necesita un precio mayor que cero. Estos modelos lognormales no pueden valuar un contrato en cero o por debajo.',
+  'Enter a strike above zero.': 'Se necesita un strike mayor que cero.',
+  'Enter units per contract above zero.': 'Se necesitan unidades por contrato mayores que cero.',
+  'Enter a volatility of zero or more.': 'Se necesita una volatilidad de cero o más.',
   'Still using {value}.': 'Se sigue usando {value}.',
   'The leg keeps its previous value.': 'La pata conserva su valor anterior.',
 
