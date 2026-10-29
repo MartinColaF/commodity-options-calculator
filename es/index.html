@@ -244,7 +244,7 @@
           <h2 id="hLegs">Estrategia</h2>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="legsHelp" aria-label="Cómo funciona la tabla de patas">?</button>
         </div>
-        <p class="note help" id="legsHelp" hidden>Con <strong>Vol</strong> vacía se usa la volatilidad general; con un valor por pata se modela un skew. <strong>Días</strong> puede variar por pata, para los calendar spreads. <strong>Subyac.</strong> es el precio del mes de entrega propio de esa pata: vacío usa el contrato de la izquierda, y el botón <strong>Precios de las patas desde la curva</strong> de abajo lo toma de la curva real. <strong>Entrada</strong> reemplaza la prima teórica por el precio efectivamente pagado; <strong>IV</strong> calcula su volatilidad implícita.</p>
+        <p class="note help" id="legsHelp" hidden>Con <strong>Vol</strong> vacía se usa la volatilidad general; con un valor por pata se modela un skew. <strong>Días</strong> puede variar por pata, para los calendar spreads. <strong>Precio subyac.</strong> es el precio del mes de entrega propio de esa pata: vacío usa el contrato de la izquierda, y el botón <strong>Precios de las patas desde la curva</strong> de abajo lo toma de la curva real. <strong>Valor teór.</strong> es el precio que da el modelo para una unidad de la pata. <strong>Entrada</strong> lo reemplaza por el precio efectivamente pagado; <strong>IV</strong> calcula su volatilidad implícita.</p>
         <p class="note context"><span id="legsContext"></span> <a href="#cardContract">Editar el contrato</a></p>
         <label for="strategy" class="sr-only">Modelo de estrategia</label>
         <div class="row strategy-row">
@@ -257,9 +257,9 @@
           <table>
             <thead>
               <tr>
-                <th><span class="sr-only">Incluir</span></th><th>Operación</th><th>Tipo</th><th>Cant.</th><th>Strike</th>
-                <th>Días</th><th>Vol %</th><th>Subyac.</th><th>Entrada</th>
-                <th class="num">Teór.</th><th class="num">Delta</th><th class="num">Costo $</th><th><span class="sr-only">Acciones</span></th>
+                <th><span class="sr-only">Incluir</span></th><th>Sentido</th><th>Tipo</th><th>Cant.</th><th>Strike</th>
+                <th>Días</th><th>Vol %</th><th class="two-line">Precio subyac.</th><th>Entrada</th>
+                <th class="num two-line">Valor teór.</th><th class="num">Delta</th><th class="num">Costo $</th><th><span class="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody id="legsBody"></tbody>

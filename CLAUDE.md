@@ -451,7 +451,10 @@ reader said "edit text". Each cell's `data-label` heads it on a phone, where eac
 card of three columns: the table needed 808 px and showed 324. A new column needs both,
 and its `data-label` must match its header: `test/names.test.js` compares them, and checks
 that every field on the page has a label. On desktop the right column fits the whole table
-from 1280 px screens up; below that it scrolls, with a shade at the edge that has more.
+from 1280 px screens up, in both languages; below that it scrolls, with a shade at the edge
+that has more. Its headings say what a column holds ("Und. price", "Theo. value"), and a
+two-word one takes two lines (`th.two-line`) rather than widen its column: measure at
+1280 in both languages after renaming one.
 
 **`index.html` carries a Content-Security-Policy.** No inline script runs, so an
 `onerror=` that slipped past escaping is refused. **Update it whenever an external script
@@ -740,6 +743,10 @@ AdSense script appears without the policy changing. Switching ads on takes all o
    effective date. The policy once promised a cookie banner the site never had.
 
 ## Tone of the UI
+
+The English a reader sees is American English, as CME, ICE US and NYMEX write it:
+"annualized", "realized". `test/typography.test.js` checks the pages and every word
+`app.js` writes; these notes and the code's comments are not held to it.
 
 Every market-data value shows its source and as-of date, and preset values are
 labelled "not market data". Keep that honesty when adding inputs: this is a public

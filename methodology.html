@@ -31,7 +31,7 @@
   <ul>
     <li><strong>Black-76</strong>, the market standard for options on futures, is the default. The futures price already carries the cost of storage and financing, so no convenience yield enters.</li>
     <li><strong>Black-Scholes-Merton</strong> prices an option on the physical spot price, with a cost of carry equal to the risk-free rate minus a net convenience yield.</li>
-    <li>Both are one formula, generalised Black-Scholes-Merton, with the cost of carry set to zero for Black-76.</li>
+    <li>Both are one formula, generalized Black-Scholes-Merton, with the cost of carry set to zero for Black-76.</li>
     <li><strong>American exercise</strong>, which most listed commodity futures options allow, uses the Barone-Adesi-Whaley approximation. Against a 3,000-step binomial tree over 300 contracts (one month to two years, volatility 15% to 60%, rates 2% to 8%), it is a median 0.008% of the underlying away, and 0.58% at its worst, on two-year 60%-volatility contracts. Pricing those contracts as European instead is off by up to 2.6%.</li>
     <li>With no volatility or no time left, an option is a single cash flow, and is priced as one.</li>
   </ul>
@@ -63,11 +63,11 @@
   <ul>
     <li><strong>Futures prices and history:</strong> Yahoo Finance, read by this site's own server function, for the front-month contract and the listed delivery months.</li>
     <li><strong>Risk-free rate:</strong> the US Treasury daily par yield curve, interpolated to the expiry and converted from its semi-annual bond-equivalent basis to a continuous rate, <em>r</em> = 2&nbsp;ln(1 + <em>y</em>/2).</li>
-    <li><strong>Volatility:</strong> realised (historical) volatility of the front-month futures, close-to-close, EWMA (&lambda; = 0.94) or Parkinson, over a window of 20 to 90 days. <strong>It is not implied volatility</strong>, which the calculator has no source for, and the roll from one contract to the next can inflate it slightly.</li>
+    <li><strong>Volatility:</strong> realized (historical) volatility of the front-month futures, close-to-close, EWMA (&lambda; = 0.94) or Parkinson, over a window of 20 to 90 days. <strong>It is not implied volatility</strong>, which the calculator has no source for, and the roll from one contract to the next can inflate it slightly.</li>
     <li><strong>Convenience yield:</strong> implied by two listed contracts on the real curve.</li>
     <li><strong>Leg prices:</strong> each leg's own delivery month, interpolated on a log scale between the listed contracts, or along the slope between the two nearest when the list is not loaded. Past the last listed month it is an extrapolation, and the page says so.</li>
     <li><strong>Fallback:</strong> Alpha Vantage, with your own free key, measures volatility on an ETF that tracks the market. Only its returns are used, never its price.</li>
-    <li>Every value shows its source and its date. A preset is labelled "not market data". None of these is a live quote.</li>
+    <li>Every value shows its source and its date. A preset is labeled "not market data". None of these is a live quote.</li>
   </ul>
 
   <h2>6. What it does not model</h2>

@@ -77,7 +77,7 @@
         <label for="days">Days to expiration (default for new legs)</label>
         <input type="number" id="days" min="0" step="1" value="30">
 
-        <label for="vol">Volatility (% annualised)</label>
+        <label for="vol">Volatility (% annualized)</label>
         <input type="number" id="vol" step="any" value="15">
         <p class="problem" id="volProblem" role="alert"></p>
 
@@ -166,7 +166,7 @@
         </div>
         <div class="help" id="marketHelp" hidden>
           <p class="note">Fills the futures price, risk-free rate, volatility and convenience yield for the selected commodity in one go. Each field reports its own source below, and anything that fails is left untouched.</p>
-          <p class="note">Futures prices come from the front-month contract; the convenience yield is implied by two listed contracts on the real curve. The rate is the US Treasury daily par yield curve, interpolated to your expiry. When the two contracts sit close together, a small price gap annualises into a large yield &mdash; the two prices used are shown below so you can judge it.</p>
+          <p class="note">Futures prices come from the front-month contract; the convenience yield is implied by two listed contracts on the real curve. The rate is the US Treasury daily par yield curve, interpolated to your expiry. When the two contracts sit close together, a small price gap annualizes into a large yield &mdash; the two prices used are shown below so you can judge it.</p>
         </div>
 
         <button id="autoFill">Auto-fill from market data</button>
@@ -202,7 +202,7 @@
               </select>
             </div>
           </div>
-          <p class="note">Historical (realised) volatility, not implied. Measured on the front-month futures itself, so roll gaps can inflate it slightly.</p>
+          <p class="note">Historical (realized) volatility, not implied. Measured on the front-month futures itself, so roll gaps can inflate it slightly.</p>
 
           <div class="title-row">
             <h3>Skew</h3>
@@ -260,7 +260,7 @@
           <h2 id="hLegs">Strategy</h2>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="legsHelp" aria-label="How the legs table works">?</button>
         </div>
-        <p class="note help" id="legsHelp" hidden>Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Under</strong> is that leg's own delivery month price &mdash; blank uses the contract on the left, and the <strong>Fill leg prices</strong> button below fills it from the real curve. <strong>Entry</strong> overrides the theoretical premium with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
+        <p class="note help" id="legsHelp" hidden>Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Und. price</strong> is that leg's own delivery month price &mdash; blank uses the contract on the left, and the <strong>Fill leg prices</strong> button below fills it from the real curve. <strong>Theo. value</strong> is what the model prices one unit of the leg at. <strong>Entry</strong> overrides it with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
         <p class="note context"><span id="legsContext"></span> <a href="#cardContract">Edit contract</a></p>
         <label for="strategy" class="sr-only">Strategy template</label>
         <div class="row strategy-row">
@@ -274,8 +274,8 @@
             <thead>
               <tr>
                 <th><span class="sr-only">Include</span></th><th>Side</th><th>Type</th><th>Qty</th><th>Strike</th>
-                <th>Days</th><th>Vol %</th><th>Under</th><th>Entry</th>
-                <th class="num">Theo.</th><th class="num">Delta</th><th class="num">Cost $</th><th><span class="sr-only">Actions</span></th>
+                <th>Days</th><th>Vol %</th><th class="two-line">Und. price</th><th>Entry</th>
+                <th class="num two-line">Theo. value</th><th class="num">Delta</th><th class="num">Cost $</th><th><span class="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody id="legsBody"></tbody>

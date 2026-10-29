@@ -65,6 +65,6 @@ test('the Spanish says what the English says about where a number came from', ()
   for (const [en, es] of Object.entries(SPANISH)) {
     if (/not market data/.test(en)) assert.match(es, /no es dato de mercado/, en);
     if (/\$\{mult\}/.test(en)) assert.match(es, /\$\{mult\}/, en);
-    if (/realised/i.test(en)) assert.match(es, /realizada/, en);
+    if (/reali[sz]ed/i.test(en)) assert.match(es, /realizada/, en);
   }
 });

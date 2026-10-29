@@ -1659,8 +1659,8 @@ function renderInputs() {
     c.quote === 'cents' ? t('{size} {unit}, quoted in cents', sized) : t('{size} {unit}', sized)
   ].join(' · ');
   $('marketSummary').textContent = state.skew.on
-    ? t('Realised-volatility window and estimator, skew on, the carry check and the Alpha Vantage fallback')
-    : t('Realised-volatility window and estimator, skew off, the carry check and the Alpha Vantage fallback');
+    ? t('Realized-volatility window and estimator, skew on, the carry check and the Alpha Vantage fallback')
+    : t('Realized-volatility window and estimator, skew off, the carry check and the Alpha Vantage fallback');
 
   // On a phone the Strategy card comes first, above the contract it prices, so
   // it says which contract that is.
@@ -1771,9 +1771,9 @@ function legRowHtml(leg, mult, n) {
       <td data-label="${w('Strike')}"><input type="number" data-f="strike" value="${isU ? '' : a(leg.strike)}" ${isU ? 'disabled' : ''} step="any" ${name('Strike')}></td>
       <td data-label="${w('Days')}"><input type="number" data-f="days" value="${isU ? '' : a(leg.days)}" ${isU ? 'disabled' : ''} min="0" step="1" ${name('Days to expiry')}></td>
       <td data-label="${w('Vol %')}"><input type="number" data-f="vol" value="${a(volField(leg.vol, 2))}" placeholder="${a(fmt(legVolPct(leg), 1))}" ${isU ? 'disabled' : ''} step="any" ${name('Volatility %')}></td>
-      <td data-label="${w('Under')}"><input type="number" data-f="under" value="${a(leg.under)}" placeholder="${a(fmtPrice(state.S))}" step="any" title="${w('This leg\'s own contract price today. Blank uses the contract in the left panel.')}" ${name('Underlying price')}></td>
+      <td data-label="${w('Und. price')}"><input type="number" data-f="under" value="${a(leg.under)}" placeholder="${a(fmtPrice(state.S))}" step="any" title="${w('This leg\'s own contract price today. Blank uses the contract in the left panel.')}" ${name('Underlying price')}></td>
       <td data-label="${w('Entry')}"><input type="number" data-f="entry" value="${a(leg.entry)}" placeholder="${a(fmtPrice(isU ? state.S : g.price))}" step="any" ${name('Entry price')}></td>
-      <td class="num" data-label="${w('Theo.')}">${isU ? '—' : a(fmtPrice(g.price))}</td>
+      <td class="num" data-label="${w('Theo. value')}">${isU ? '—' : a(fmtPrice(g.price))}</td>
       <td class="num" data-label="${w('Delta')}">${a(fmt(g.delta * leg.side * leg.qty, 3))}</td>
       <td class="num" data-label="${w('Cost $')}">${a(fmt(leg.side * leg.qty * mult * (isU ? 0 : entry), 0))}</td>
       <td><button class="icon" data-f="iv" title="${w('Solve implied volatility from the entry price')}" ${isU ? 'disabled' : ''} ${name('Implied volatility from the entry price')}>IV</button>
@@ -2545,7 +2545,7 @@ async function applyVol(opts) {
     state.vol = chosen;
     state.sources.vol = {
       live: true,
-      text: t('{estimator} realised vol, {days}d window on {symbol} ' +
+      text: t('{estimator} realized vol, {days}d window on {symbol} ' +
         '(front-month futures; roll gaps can inflate it slightly), last close {last}. ' +
         'close-to-close {close}% / EWMA {ewma}%',
       { estimator: est, days: rv.days, symbol: h.symbol, last: rv.last, close: rv.close.toFixed(1), ewma: rv.ewma.toFixed(1) }) +
@@ -2579,7 +2579,7 @@ async function applyVolFromAlphaVantage(opts) {
   state.vol = chosen;
   state.sources.vol = {
     live: true,
-    text: t('{estimator} realised vol, {days}d window on {symbol} ({proxy}), ' +
+    text: t('{estimator} realized vol, {days}d window on {symbol} ({proxy}), ' +
       'last close {last}. close-to-close {close}% / EWMA {ewma}%',
     { estimator: est, days: rv.days, symbol, proxy: proxyText, last: rv.last, close: rv.close.toFixed(1), ewma: rv.ewma.toFixed(1) }) +
       (rv.parkinson ? ` / Parkinson ${rv.parkinson.toFixed(1)}%` : '')
