@@ -347,7 +347,7 @@ const SPANISH = {
   '{label}: could not reach {service}.': '{label}: no se pudo consultar {service}.',
   '{label}: {reason}.': '{label}: {reason}.',
   'Nothing was changed.': 'No se cambió nada.',
-  'the US Treasury curve': 'la curva del Tesoro de EE. UU.',
+  'the US Treasury curve': 'la curva del Tesoro estadounidense',
   'Alpha Vantage': 'Alpha Vantage',
   'the futures data service': 'el servicio de datos de futuros',
   '{list} and {last}': '{list} y {last}',
