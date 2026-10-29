@@ -209,6 +209,7 @@ const SPANISH = {
   'Max loss': 'Pérdida máxima',
   'Breakeven': 'Punto de equilibrio',
   'Breakevens': 'Puntos de equilibrio',
+  'None': 'Ninguno',
   'Prob. of profit': 'Prob. de ganancia',
   'risk-neutral, at {vol}% vol': 'neutral al riesgo, con vol de {vol}%',
   'Horizon': 'Horizonte',
@@ -224,8 +225,8 @@ const SPANISH = {
   '$ per +1 vol point': '$ por +1 punto de vol',
   '$ per calendar day': '$ por día calendario',
   '$ per +1 rate point': '$ por +1 punto de tasa',
-  'Position column = per-unit greek x quantity x ${mult} multiplier.':
-    'Columna Posición = griega por unidad x cantidad x multiplicador de ${mult}.',
+  'Position column = per-unit greek × quantity × ${mult} multiplier.':
+    'Columna Posición = griega por unidad × cantidad × multiplicador de ${mult}.',
   'Delta and gamma are per point of the contract in the left panel, with each leg\'s own month moving in proportion, as on the chart; the Delta column in the legs table is against each leg\'s own month.':
     'Delta y gamma son por punto del contrato del panel izquierdo, con el mes de cada pata moviéndose en proporción, como en el gráfico; la columna Delta de la tabla de patas es respecto del mes de cada pata.',
   'Theta is the options\' own decay. The P&amp;L also carries the premium\'s interest: {amount} a day at {rate}%.':
@@ -345,7 +346,7 @@ const SPANISH = {
   'Updated {what}.': 'Actualizado: {what}.',
   '{label} failed: {error}. The current value is unchanged.':
     '{label}: no se pudo actualizar ({error}). El valor actual no cambió.',
-  'Fetching market data...': 'Consultando datos de mercado...',
+  'Fetching market data…': 'Consultando datos de mercado…',
   'Left unchanged: {what}.': 'Sin cambios: {what}.',
   'Contract months': 'Meses del contrato',
   'The leg was removed.': 'Se quitó la pata.',

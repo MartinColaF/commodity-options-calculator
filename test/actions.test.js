@@ -178,8 +178,8 @@ test('a quote below zero is refused with the reason, not taken as a missing pric
   // WTI's May 2020 contract settled at -37.63 on 20 April 2020, and no model
   // here prices a contract below zero.
   const cases = [
-    [{ symbol: 'CL=F', name: 'Crude Oil May 20', price: -37.63 }, /Crude Oil May 20 last -37\.63, below zero/],
-    [{ price: -5 }, /the contract last -5\.00, below zero, which these lognormal models cannot price/]
+    [{ symbol: 'CL=F', name: 'Crude Oil May 20', price: -37.63 }, /Crude Oil May 20 last −37\.63, below zero/],
+    [{ price: -5 }, /the contract last −5\.00, below zero, which these lognormal models cannot price/]
   ];
   for (const [body, why] of cases) {
     fresh({ commodity: 'wti', S: 60 });

@@ -191,7 +191,7 @@ test('on a phone the legend goes under the chart without the legs, and the axis 
 
 test('compact numbers for the P&L axis', () => {
   assert.deepStrictEqual([150000, -24000, 2500000, 1250, 700, 0, -0.5].map(app.compactNumber),
-    ['150k', '-24k', '2.5M', '1.3k', '700', '0', '-0.5']);
+    ['150k', '−24k', '2.5M', '1.3k', '700', '0', '−0.5']);
 });
 
 test("the position's solid lines take Chart.js's ordinary path, which does not draw them as stairs", () => {

@@ -26,7 +26,7 @@ test('losses show beside much larger gains, each scaled to its own largest', () 
   app.renderScenarios();
   const { gain, loss } = shades(el('scenarios').innerHTML);
   assert.ok(loss.length > 0 && gain.length > 0);
-  assert.ok(loss.every(c => c.alpha >= 0.12 && /^-\$/.test(c.text)), 'every loss is visibly red');
+  assert.ok(loss.every(c => c.alpha >= 0.12 && /^−\$/.test(c.text)), 'every loss is visibly red');
   assert.ok(gain.every(c => c.alpha >= 0.12 && !/^-/.test(c.text)), 'every gain is visibly green');
   assert.strictEqual(Math.max.apply(null, loss.map(c => c.alpha)), 0.5, 'the largest loss is as strong as the largest gain');
   assert.strictEqual(Math.max.apply(null, gain.map(c => c.alpha)), 0.5);
