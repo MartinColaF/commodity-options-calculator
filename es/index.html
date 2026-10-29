@@ -8,7 +8,7 @@
        same ids, scripts and policy. test/pages.test.js holds the two together,
        so a change to one is made to both. app.js writes its own words through
        t(), from words.js. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js; style-src 'self' file: 'unsafe-inline'; connect-src 'self' https://home.treasury.gov https://www.alphavantage.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js; style-src 'self' file:; connect-src 'self' https://home.treasury.gov https://www.alphavantage.co; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="description" content="Calculadora gratuita de opciones sobre commodities: valuación Black-76 y Black-Scholes, griegas, gráficos de payoff de estrategias de varias patas y tasas diarias del Tesoro de EE. UU.">
   <title>Calculadora de opciones sobre commodities</title>
   <link rel="canonical" href="https://commodity-options-calculator.vercel.app/es/">
@@ -215,11 +215,11 @@
             <div><label for="carryF">Lejano</label><input type="number" id="carryF" step="any" placeholder="F2"></div>
             <div><label for="carryDays">Días</label><input type="number" id="carryDays" step="1" placeholder="90"></div>
           </div>
-          <button id="implyYield" class="ghost" style="margin-top:8px">Calcular el rendimiento de conveniencia implícito</button>
+          <button id="implyYield" class="ghost mt-8">Calcular el rendimiento de conveniencia implícito</button>
           <div class="status" id="carryStatus" role="status"></div>
           <p class="note help" id="carryHelp" hidden>Invierte F = S&middot;e<sup>(r&minus;y)T</sup>, neto de costos de almacenamiento. El botón Rendimiento de arriba completa estas casillas con los dos contratos que usó, para poder revisar su cálculo o reemplazarlo.</p>
 
-          <details style="margin-top:14px">
+          <details class="mt-14">
             <summary class="muted small">Respaldo: Alpha Vantage (para tickers propios, o si el proxy de futuros no responde)</summary>
             <label for="avKey">Clave de API <span class="muted">(gratuita, se guarda solo en este navegador; vaciar el campo la borra)</span></label>
             <input type="password" id="avKey" placeholder="pegar la clave" autocomplete="off">
@@ -229,7 +229,7 @@
           </details>
         </details>
 
-        <button id="usePreset" class="ghost" style="margin-top:12px">Volver a los valores predeterminados del mercado</button>
+        <button id="usePreset" class="btn-text mt-12">Volver a los valores predeterminados del mercado</button>
 
         <div id="sources"></div>
       </section>
@@ -249,11 +249,11 @@
         <label for="strategy" class="sr-only">Modelo de estrategia</label>
         <div class="row strategy-row">
           <select id="strategy"></select>
-          <button id="addLeg" class="ghost">+ Agregar pata</button>
+          <button id="addLeg">+ Agregar pata</button>
           <button id="clearLegs" class="text-danger">Quitar todas las patas</button>
         </div>
 
-        <div class="table-scroll" style="margin-top:12px">
+        <div class="table-scroll mt-12">
           <table>
             <thead>
               <tr>
@@ -270,7 +270,7 @@
         <button id="undoRemove" class="ghost undo" hidden>Deshacer: volver a poner las patas</button>
         <div class="row tight with-help">
           <button id="fillLegPrices" class="ghost">Precios de las patas desde la curva</button>
-          <button id="clearLegPrices" class="ghost">Borrar precios de las patas</button>
+          <button id="clearLegPrices" class="btn-text">Borrar precios de las patas</button>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="legPricesHelp" aria-label="Sobre los precios de las patas desde la curva">?</button>
         </div>
         <p class="note help" id="legPricesHelp" hidden>En un calendar real de commodities cada mes cotiza a su propio precio. Esto lee la curva listada, mide su pendiente y valúa cada pata en su propio vencimiento. El gráfico de payoff después mueve todos los meses juntos, en proporción. <strong>Borrar precios de las patas</strong> vuelve a poner todas las patas sobre el contrato del panel izquierdo, que es lo que corresponde al valuar opciones sobre un mes de entrega específico.</p>
@@ -279,7 +279,7 @@
       <section class="card" id="cardResults" aria-labelledby="hResults">
         <h2 id="hResults">Resultados</h2>
         <div id="summary"></div>
-        <div id="greeks" style="margin-top:14px"></div>
+        <div id="greeks" class="mt-14"></div>
       </section>
 
       <section class="card" id="cardPayoff" aria-labelledby="hPayoff">

@@ -182,6 +182,11 @@ button.text-danger { background: transparent; color: var(--neg); border: 1px sol
 /* Where there is a pointer to hover with: on a touch screen the hover sticks after the tap. */
 @media (hover: hover) { button.text-danger:hover { border-color: var(--neg); filter: none; } }
 button.undo { width: auto; margin-top: 8px; }
+/* An action that overwrites what is there - presets, the curve's leg prices - but
+ * loses nothing that cannot be fetched or typed again: plain accent text, below a
+ * button that adds or fetches. Red is kept for the one that throws work away. */
+button.btn-text { background: transparent; color: var(--accent); border: 1px solid transparent; }
+@media (hover: hover) { button.btn-text:hover { border-color: var(--field-border); filter: none; } }
 
 /* A title or a label with a "?" beside it, which opens the explanation under it. */
 .title-row, .label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -411,6 +416,35 @@ footer p { margin: 6px 0; }
 .doc ul { padding-left: 20px; }
 .doc li { margin: 4px 0; }
 .doc button { width: auto; }
+
+/* The scenario grid's shading, in ten steps from a floor that still shows to
+ * half strength, gains green and losses red; renderScenarios() picks the step.
+ * Classes, not a style attribute, so the page's policy allows no inline style. */
+.scenario td.gain-0 { background: rgba(32,140,96,0.120); }
+.scenario td.loss-0 { background: rgba(190,60,48,0.120); }
+.scenario td.gain-1 { background: rgba(32,140,96,0.162); }
+.scenario td.loss-1 { background: rgba(190,60,48,0.162); }
+.scenario td.gain-2 { background: rgba(32,140,96,0.204); }
+.scenario td.loss-2 { background: rgba(190,60,48,0.204); }
+.scenario td.gain-3 { background: rgba(32,140,96,0.247); }
+.scenario td.loss-3 { background: rgba(190,60,48,0.247); }
+.scenario td.gain-4 { background: rgba(32,140,96,0.289); }
+.scenario td.loss-4 { background: rgba(190,60,48,0.289); }
+.scenario td.gain-5 { background: rgba(32,140,96,0.331); }
+.scenario td.loss-5 { background: rgba(190,60,48,0.331); }
+.scenario td.gain-6 { background: rgba(32,140,96,0.373); }
+.scenario td.loss-6 { background: rgba(190,60,48,0.373); }
+.scenario td.gain-7 { background: rgba(32,140,96,0.416); }
+.scenario td.loss-7 { background: rgba(190,60,48,0.416); }
+.scenario td.gain-8 { background: rgba(32,140,96,0.458); }
+.scenario td.loss-8 { background: rgba(190,60,48,0.458); }
+.scenario td.gain-9 { background: rgba(32,140,96,0.500); }
+.scenario td.loss-9 { background: rgba(190,60,48,0.500); }
+
+/* Spacing the markup used to set in style attributes. */
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-14 { margin-top: 14px; }
 
 /* Phones and touch screens. Last in the file, so these sizes win over the ones above. */
 

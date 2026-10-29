@@ -7,13 +7,19 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
 const { wired } = require('./helpers/load-app');
 
+/* Each cell's shade: its step, gain-0 to gain-9 or loss-0 to loss-9, read as the
+ * opacity the stylesheet gives it. */
+const STYLES = fs.readFileSync(path.resolve(__dirname, '..', 'styles.css'), 'utf8');
 function shades(html) {
   const out = { gain: [], loss: [], plain: 0 };
-  for (const m of html.matchAll(/<td class="num"( style="background:rgba\((\d+),(\d+),(\d+),([\d.]+)\)")?>([^<]*)<\/td>/g)) {
+  for (const m of html.matchAll(/<td class="num(?: (gain|loss)-(\d))?">([^<]*)<\/td>/g)) {
     if (!m[1]) { out.plain++; continue; }
-    (m[2] === '32' ? out.gain : out.loss).push({ alpha: +m[5], text: m[6] });
+    const rule = STYLES.match(new RegExp(`\\.scenario td\\.${m[1]}-${m[2]} \\{ background: rgba\\((\\d+),(\\d+),(\\d+),([\\d.]+)\\); \\}`));
+    (m[1] === 'gain' ? out.gain : out.loss).push({ alpha: +rule[4], rgb: rule.slice(1, 4).join(','), text: m[3] });
   }
   return out;
 }
@@ -26,8 +32,8 @@ test('losses show beside much larger gains, each scaled to its own largest', () 
   app.renderScenarios();
   const { gain, loss } = shades(el('scenarios').innerHTML);
   assert.ok(loss.length > 0 && gain.length > 0);
-  assert.ok(loss.every(c => c.alpha >= 0.12 && /^−\$/.test(c.text)), 'every loss is visibly red');
-  assert.ok(gain.every(c => c.alpha >= 0.12 && !/^-/.test(c.text)), 'every gain is visibly green');
+  assert.ok(loss.every(c => c.alpha >= 0.12 && c.rgb === '190,60,48' && /^−\$/.test(c.text)), 'every loss is visibly red');
+  assert.ok(gain.every(c => c.alpha >= 0.12 && c.rgb === '32,140,96' && !/^−/.test(c.text)), 'every gain is visibly green');
   assert.strictEqual(Math.max.apply(null, loss.map(c => c.alpha)), 0.5, 'the largest loss is as strong as the largest gain');
   assert.strictEqual(Math.max.apply(null, gain.map(c => c.alpha)), 0.5);
 });

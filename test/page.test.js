@@ -79,3 +79,18 @@ test('script-src allows exactly the scripts the page loads, nothing broader', ()
     assert.ok(sources.includes(a.src), `${a.src} is allowed by script-src`);
   }
 });
+
+test('no inline style is allowed, and none is used', () => {
+  // style-src allowed 'unsafe-inline' for five spacing attributes in the markup
+  // and the scenario grid's shading; both are classes now, so an injected style
+  // is refused like an injected script.
+  for (const file of ['index.html', 'es/index.html']) {
+    const page = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+    const policy = page.match(/http-equiv="Content-Security-Policy"\s+content="([^"]*)"/)[1];
+    const styleSrc = policy.split(';').map(d => d.trim()).find(d => d.startsWith('style-src'));
+    assert.ok(styleSrc && !styleSrc.includes("'unsafe-inline'"), `${file}: ${styleSrc}`);
+    assert.doesNotMatch(page.replace(/<!--[\s\S]*?-->/g, ''), /\sstyle="/, `${file} has no style attribute`);
+  }
+  const code = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+  assert.doesNotMatch(code, /style=["']|setAttribute\(\s*'style'/, 'app.js writes no style attribute');
+});
