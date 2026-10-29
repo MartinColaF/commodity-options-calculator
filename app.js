@@ -2148,8 +2148,11 @@ function renderScenarios() {
     const title = panel.volShift === 0
       ? t('Volatility unchanged')
       : t('Volatility {shift} points', { shift: (panel.volShift > 0 ? '+' : '') + panel.volShift });
+    // Each table scrolls sideways on a phone, so the keyboard has to reach it to
+    // scroll it, and a screen reader needs to know which one it is in.
     return '<div class="scenario-panel"><h3>' + title + '</h3>' +
-      '<div class="table-scroll"><table class="scenario"><thead><tr>' +
+      '<div class="table-scroll" tabindex="0" role="region" aria-label="' +
+      escapeHtml(t('Scenario grid, {title}', { title })) + '"><table class="scenario"><thead><tr>' +
       '<th>' + t('Underlying') + '</th>' + head + '</tr></thead><tbody>' + rows +
       '</tbody></table></div></div>';
   }).join('');
@@ -2173,10 +2176,32 @@ function renderScenarios() {
  * order and are worth more than the picture. */
 let chartBroken = false;
 
+/* What the chart shows, in words, for a screen reader: the canvas is the page's
+ * main result, and it was a picture with no name. */
+function chartSummary(a) {
+  if (!activeLegs().length) return t('Payoff chart: no legs yet.');
+  const range = { lo: fmtPrice(a.xs[0], true), hi: fmtPrice(a.xs[a.xs.length - 1], true) };
+  const mode = state.chart.mode;
+  if (mode !== 'payoff') {
+    return t('{greek} profile of the position, for an underlying price from {lo} to {hi}.',
+      Object.assign({ greek: mode.charAt(0).toUpperCase() + mode.slice(1) }, range));
+  }
+  const be = a.breakevens.map(b => fmtPrice(b));
+  const breakevens = !be.length ? t('no breakeven')
+    : be.length === 1 ? t('breakeven at {price}', { price: be[0] })
+      : t('breakevens at {prices}', { prices: be.join(', ') });
+  return t('Payoff chart: profit and loss at the {n}-day horizon, for an underlying price from {lo} to {hi}: ' +
+    'maximum profit {max}, maximum loss {min}, {breakevens}.',
+  Object.assign({ n: a.t, max: money(a.maxProfit), min: money(a.maxLoss), breakevens }, range)) +
+    ' ' + t('The scenario grid below gives the profit and loss as a table.');
+}
+
 function renderChartSafely(a) {
   // With nothing to chart, the box says so in its place.
   const empty = $('chartEmpty');
   if (empty) empty.hidden = activeLegs().length > 0;
+  const canvas = $('payoffChart');
+  if (canvas) canvas.setAttribute('aria-label', chartSummary(a));
   if (chartBroken) return;
   try {
     renderChart(a);

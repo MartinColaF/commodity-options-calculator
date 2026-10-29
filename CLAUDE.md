@@ -485,6 +485,15 @@ American · front month · rate 4.00% · …". A reason or a warning that appear
 settings opens them (`openFolded()`); never leave one where nobody can see it. On a phone
 the Contract card went from 1,442 px to 494.
 
+**A screen reader can find its way.** The cards are `<section>`s inside one `<main>`, each
+named by its own `h2` (`aria-labelledby`), so a reader can jump to Results or Payoff; a new
+card needs both. Each scenario table scrolls sideways on a phone, so it is a focusable
+`role="region"` named for its volatility shift. The chart's canvas is `role="img"`, and
+`chartSummary()` writes what it draws into its `aria-label` on every render: the horizon,
+the range, the maxima and the breakevens, or the greek it profiles. axe-core found no
+`<main>`, 72 nodes outside any region, three tables no key could reach and a chart with no
+name; it now finds nothing. `test/landmarks.test.js` checks all of it, in both languages.
+
 **Explanations open from a "?"; what a number is stays in view.** A `button.help-btn`
 with `aria-controls` and `aria-expanded` opens the paragraph it names, which sits under it
 with `hidden`; the wiring toggles it and changes only the page. Before, 18 notes and 596

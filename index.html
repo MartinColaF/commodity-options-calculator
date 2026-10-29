@@ -57,13 +57,14 @@
     <p>Black-76 / Black-Scholes pricing, greeks and multi-leg payoff analysis for commodity futures options.</p>
   </header>
 
+  <main>
   <div class="grid">
 
     <!-- ============ left column: inputs ============ -->
     <div>
 
-      <div class="card" id="cardContract">
-        <h2>Contract</h2>
+      <section class="card" id="cardContract" aria-labelledby="hContract">
+        <h2 id="hContract">Contract</h2>
 
         <label for="commodity">Commodity</label>
         <select id="commodity"></select>
@@ -156,11 +157,11 @@
           </div>
           <p class="note" id="multInfo"></p>
         </details>
-      </div>
+      </section>
 
-      <div class="card" id="cardMarket">
+      <section class="card" id="cardMarket" aria-labelledby="hMarket">
         <div class="title-row">
-          <h2>Market data</h2>
+          <h2 id="hMarket">Market data</h2>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="marketHelp" aria-label="How the market data works">?</button>
         </div>
         <div class="help" id="marketHelp" hidden>
@@ -247,16 +248,16 @@
         <button id="usePreset" class="ghost" style="margin-top:12px">Reset to commodity presets</button>
 
         <div id="sources"></div>
-      </div>
+      </section>
 
     </div>
 
     <!-- ============ right column: strategy, results, chart ============ -->
     <div>
 
-      <div class="card" id="legs">
+      <section class="card" id="legs" aria-labelledby="hLegs">
         <div class="title-row">
-          <h2>Strategy</h2>
+          <h2 id="hLegs">Strategy</h2>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="legsHelp" aria-label="How the legs table works">?</button>
         </div>
         <p class="note help" id="legsHelp" hidden>Leave <strong>Vol</strong> blank to use the global volatility, or set it per leg to model a skew. <strong>Days</strong> can differ per leg for calendar spreads. <strong>Under</strong> is that leg's own delivery month price &mdash; blank uses the contract on the left, and the <strong>Fill leg prices</strong> button below fills it from the real curve. <strong>Entry</strong> overrides the theoretical premium with the price you actually paid; press <strong>IV</strong> to back out its implied volatility.</p>
@@ -289,17 +290,17 @@
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="legPricesHelp" aria-label="About leg prices from the curve">?</button>
         </div>
         <p class="note help" id="legPricesHelp" hidden>In a real commodity calendar each month trades at its own price. This reads the listed curve, measures its slope, and prices every leg at its own expiry. The payoff chart then moves all months together, in proportion. <strong>Clear leg prices</strong> puts every leg back on the contract in the left panel, which is what you want when you are pricing options on one specific delivery month.</p>
-      </div>
+      </section>
 
-      <div class="card" id="cardResults">
-        <h2>Results</h2>
+      <section class="card" id="cardResults" aria-labelledby="hResults">
+        <h2 id="hResults">Results</h2>
         <div id="summary"></div>
         <div id="greeks" style="margin-top:14px"></div>
-      </div>
+      </section>
 
-      <div class="card" id="cardPayoff">
+      <section class="card" id="cardPayoff" aria-labelledby="hPayoff">
         <div class="title-row">
-          <h2>Payoff</h2>
+          <h2 id="hPayoff">Payoff</h2>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="payoffHelp" aria-label="How to read this chart">?</button>
         </div>
         <p class="note help" id="payoffHelp" hidden>The solid line is the P&amp;L at the nearest expiry among your legs; the dashed line is the mark-to-market value at the evaluation date you pick. Both carry the premium's interest up to their date, unless <em>Premium financing</em> in the Contract panel is set to None. Vertical marks show the strikes and the current price.</p>
@@ -331,13 +332,13 @@
         </div>
         <div class="chart-box">
           <p class="chart-empty" id="chartEmpty" hidden>No legs to chart yet. Choose a strategy or add a leg.</p>
-          <canvas id="payoffChart"></canvas>
+          <canvas id="payoffChart" role="img" aria-label="Payoff chart"></canvas>
         </div>
-      </div>
+      </section>
 
-      <div class="card" id="cardScenarios">
+      <section class="card" id="cardScenarios" aria-labelledby="hScenarios">
         <div class="title-row">
-          <h2>Scenario grid</h2>
+          <h2 id="hScenarios">Scenario grid</h2>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="scenarioHelp" aria-label="How the scenario grid works">?</button>
         </div>
         <p class="note help" id="scenarioHelp" hidden>P&amp;L at each date assumes the volatility shift happens immediately and holds.</p>
@@ -352,10 +353,10 @@
           </div>
         </div>
         <div id="scenarios"></div>
-      </div>
+      </section>
 
-      <div class="card" id="cardSave">
-        <h2>Save &amp; share</h2>
+      <section class="card" id="cardSave" aria-labelledby="hSave">
+        <h2 id="hSave">Save &amp; share</h2>
         <div class="row">
           <button id="share" class="ghost">Copy shareable link</button>
           <button id="exportJson" class="ghost">Export JSON</button>
@@ -366,7 +367,7 @@
         </div>
         <p class="note" id="saveStatus" role="status"></p>
         <p class="note">Your inputs are also saved automatically in this browser.</p>
-      </div>
+      </section>
 
       <div class="disclaimer">
         <strong>Not investment advice.</strong> Prices come from a theoretical model, and the market-data helpers give
@@ -377,6 +378,7 @@
 
     </div>
   </div>
+  </main>
 
   <!-- How it works, where its code is and when it last changed: what a reader
        deciding whether to trust a number looks for. Keep the date in step with
