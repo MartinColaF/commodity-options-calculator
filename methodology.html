@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Methodology - Commodity Options Calculator</title>
+  <meta name="description" content="How the Commodity Options Calculator prices options on commodity futures: the models, the greeks, the strategy statistics, where its market data comes from and what it does not model.">
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/methodology.html">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/methodology.html">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/methodology.html">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!-- How the calculator works, for its readers. es/methodology.html translates it
+     section for section; test/methodology.test.js holds the two together and to
+     the date in the calculator's footer. -->
+<div class="wrap doc">
+  <nav class="doc-nav">
+    <a href="/">&larr; Back to the calculator</a>
+    <a href="/es/methodology.html" hreflang="es" lang="es">Español</a>
+  </nav>
+  <main class="card">
+  <h1>Methodology</h1>
+  <p>How the calculator prices an option, what each number on the page means, where its market data comes from and what it does not model. Every price is theoretical: it is what a model gives for the inputs on the page, not a quote. Nothing here is investment advice.</p>
+
+  <h2>1. Pricing models</h2>
+  <ul>
+    <li><strong>Black-76</strong>, the market standard for options on futures, is the default. The futures price already carries the cost of storage and financing, so no convenience yield enters.</li>
+    <li><strong>Black-Scholes-Merton</strong> prices an option on the physical spot price, with a cost of carry equal to the risk-free rate minus a net convenience yield.</li>
+    <li>Both are one formula, generalised Black-Scholes-Merton, with the cost of carry set to zero for Black-76.</li>
+    <li><strong>American exercise</strong>, which most listed commodity futures options allow, uses the Barone-Adesi-Whaley approximation. Against a 3,000-step binomial tree over 300 contracts (one month to two years, volatility 15% to 60%, rates 2% to 8%), it is a median 0.008% of the underlying away, and 0.58% at its worst, on two-year 60%-volatility contracts. Pricing those contracts as European instead is off by up to 2.6%.</li>
+    <li>With no volatility or no time left, an option is a single cash flow, and is priced as one.</li>
+  </ul>
+
+  <h2>2. Greeks</h2>
+  <ul>
+    <li><strong>Delta</strong> and <strong>gamma</strong> per point of the underlying; <strong>vega</strong> per volatility point; <strong>theta</strong> per calendar day; <strong>rho</strong> per point of the rate.</li>
+    <li>The position's greeks are each leg's, times its quantity and the contract's dollar multiplier: the contract size, divided by 100 for markets quoted in cents.</li>
+    <li>A leg priced off its own delivery month moves with the contract in the left panel in proportion, and its delta and gamma are scaled to that contract, as on the chart.</li>
+  </ul>
+
+  <h2>3. Strategy results</h2>
+  <ul>
+    <li><strong>The horizon</strong> is the nearest expiry among the legs. A calendar's far leg still holds time value there.</li>
+    <li><strong>Maximum profit and loss</strong> are searched from a price near zero to well past the highest strike, since a commodity cannot trade below zero. A maximum is unlimited only if the position keeps gaining or losing as the price rises without bound, and the page says how fast.</li>
+    <li><strong>Breakevens</strong> are where the P&amp;L at the horizon crosses zero.</li>
+    <li><strong>The probability of profit</strong> is risk-neutral: the chance, under a lognormal price at the position's own volatility, that the P&amp;L at the horizon is above zero. It is not a forecast.</li>
+    <li><strong>The premium's interest.</strong> A premium is paid or received today, so a P&amp;L read at a later date includes the interest it carried since: at the risk-free rate by default, at a rate of your choosing, or none.</li>
+  </ul>
+
+  <h2>4. Volatility</h2>
+  <ul>
+    <li>Each leg takes the volatility typed into it, or else the volatility in the left panel.</li>
+    <li>With the skew on, a leg with no volatility of its own reads it from a curve set by three numbers: the at-the-money level, the 25-delta risk reversal and the 25-delta butterfly (Malz's quadratic in delta). The curve is read at today's price and held as the scenario moves (sticky strike).</li>
+    <li><strong>IV</strong> solves the volatility that prices a leg at its entry premium. A premium with no time value implies no volatility, and the page says so.</li>
+  </ul>
+
+  <h2>5. Market data</h2>
+  <ul>
+    <li><strong>Futures prices and history:</strong> Yahoo Finance, read by this site's own server function, for the front-month contract and the listed delivery months.</li>
+    <li><strong>Risk-free rate:</strong> the US Treasury daily par yield curve, interpolated to the expiry and converted from its semi-annual bond-equivalent basis to a continuous rate, <em>r</em> = 2&nbsp;ln(1 + <em>y</em>/2).</li>
+    <li><strong>Volatility:</strong> realised (historical) volatility of the front-month futures, close-to-close, EWMA (&lambda; = 0.94) or Parkinson, over a window of 20 to 90 days. <strong>It is not implied volatility</strong>, which the calculator has no source for, and the roll from one contract to the next can inflate it slightly.</li>
+    <li><strong>Convenience yield:</strong> implied by two listed contracts on the real curve.</li>
+    <li><strong>Leg prices:</strong> each leg's own delivery month, interpolated on a log scale between the listed contracts, or along the slope between the two nearest when the list is not loaded. Past the last listed month it is an extrapolation, and the page says so.</li>
+    <li><strong>Fallback:</strong> Alpha Vantage, with your own free key, measures volatility on an ETF that tracks the market. Only its returns are used, never its price.</li>
+    <li>Every value shows its source and its date. A preset is labelled "not market data". None of these is a live quote.</li>
+  </ul>
+
+  <h2>6. What it does not model</h2>
+  <ul>
+    <li>Barone-Adesi-Whaley is an approximation, not an exact lattice; its error is above.</li>
+    <li>The curve moves in parallel: on the chart every delivery month moves in proportion to the contract in the left panel. Real curves also change shape.</li>
+    <li>The skew does not move with the price, and real volatility surfaces do.</li>
+    <li>Contract expiries are approximated to the middle of their month.</li>
+    <li>Maximum profit and loss are read off a grid of 1,200 points; on a curved position the true extreme can sit between two of them, by $12.84 at most on a $24,768 loss across 1,000 random American diagonals and ratio calendars.</li>
+    <li>The premium's interest runs from today, since there is no trade date.</li>
+    <li>Every model here is lognormal, so a price must be above zero. WTI futures settled at −37.63 in April 2020, which would need a normal (Bachelier) model.</li>
+  </ul>
+
+  <h2>7. How it is checked</h2>
+  <p>An automated test suite runs on every change: the prices against closed forms and the binomial tree, the greeks against the derivatives of the chart's own P&amp;L, the probability of profit against exact integrals, and the market-data steps against recorded responses. The <a href="https://github.com/MartinColaF/commodity-options-calculator" target="_blank" rel="noopener">source code</a> is public, and an <a href="https://github.com/MartinColaF/commodity-options-calculator/issues" target="_blank" rel="noopener">issue</a> is the way to report a number that looks wrong.</p>
+  <p class="muted">Methodology last reviewed October 2026.</p>
+  </main>
+  <footer><p><a href="/">Commodity Options Calculator</a></p></footer>
+</div>
+</body>
+</html>

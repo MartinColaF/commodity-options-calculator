@@ -20,7 +20,7 @@ const ignored = file => patterns.some(p => {
 });
 
 const SITE = 'https://commodity-options-calculator.vercel.app/';
-const PAGES = ['index.html', 'privacy.html', 'es/index.html', 'es/privacy.html'];
+const PAGES = ['index.html', 'privacy.html', 'methodology.html', 'es/index.html', 'es/privacy.html', 'es/methodology.html'];
 
 /* Every local file the pages load or link, plus what the function needs. A
  * path is read the way the browser reads it: from the site's root when it

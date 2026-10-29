@@ -217,6 +217,14 @@ them differently; a translation keeps the same names, in its own order.
 - **What is not translated.** Market terms (call, put, the greeks, Black-76) are not
   translated. Numbers stay in `NUMBER_LOCALE`.
 
+**The footer says how the page works, where its code is and when it changed.** It links
+`methodology.html` (and `es/methodology.html`), the source code, the issues and the
+policy, and reads "Updated October 2026". That date is the one the methodology says it was
+last reviewed, in both languages, and `test/methodology.test.js` compares them: review
+the methodology when a change touches what it describes, then move both dates. The
+methodology quotes measured figures (the BAW error, the grid's worst miss); the test
+fails if they stop matching the README's. No author is named yet, by the owner's choice.
+
 **The Spanish page is `es/index.html`, a translation of `index.html`.** The two pages have
 the same elements, ids, classes and attributes, in the same order. They also have the
 same Content-Security-Policy and scripts, with `es/words.js` before `../app.js`.
@@ -232,7 +240,7 @@ usted), with market terms left in English.
 - **The privacy policy.** `es/privacy.html` translates it section for section, and says
   the English one prevails. `test/privacy.test.js` holds the two together: when the
   English policy changes, effective date included, the translation changes with it. Both
-  wear `styles.css` (`.policy`), so they follow the dark scheme, and lead back to their
+  wear `styles.css` (`.doc`), so they follow the dark scheme, and lead back to their
   own calculator; they had a light-only style of their own and no way back.
 
 **Strategy statistics use an economic price grid, not the chart window.** `analyse()`
