@@ -1259,6 +1259,17 @@ const TENORS = [
   ['BC_5YEAR', 5], ['BC_7YEAR', 7], ['BC_10YEAR', 10], ['BC_20YEAR', 20], ['BC_30YEAR', 30]
 ];
 
+/* An error from a service that did not answer, as against one about what it
+ * sent. `service` is 'futures', 'treasury' or 'alphavantage'. The status line
+ * says the first as "could not reach", once for every input that waited on the
+ * same service, and the second as the reason it is: a reader cannot do much
+ * with "Upstream quote unavailable" three times over. */
+function serviceError(service, message) {
+  const e = new Error(message);
+  e.service = service;
+  return e;
+}
+
 async function fetchYieldCurve() {
   const cached = cacheGet('treasury', 6 * 3600e3);
   if (cached) return cached;
@@ -1280,7 +1291,7 @@ async function fetchYieldCurve() {
     cacheSet('treasury', curve);
     return curve;
   }
-  throw new Error(t('Treasury yield curve unavailable'));
+  throw serviceError('treasury', t('Treasury yield curve unavailable'));
 }
 
 /* The last day in one month of the Treasury's yield curve feed, or null when
@@ -1340,8 +1351,9 @@ async function fetchDailySeries(symbol, key) {
 
   const url = AV_URL + '?function=TIME_SERIES_DAILY&symbol=' + encodeURIComponent(symbol) +
     '&outputsize=compact&apikey=' + encodeURIComponent(key);
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(t('Alpha Vantage HTTP {status}', { status: res.status }));
+  let res;
+  try { res = await fetch(url); } catch (e) { throw serviceError('alphavantage', e.message); }
+  if (!res.ok) throw serviceError('alphavantage', t('Alpha Vantage HTTP {status}', { status: res.status }));
   const json = await res.json();
 
   if (json['Note'] || json['Information']) {
@@ -1409,15 +1421,18 @@ async function proxyGet(fn, commodity, ttlMs) {
   const cached = cacheGet(ck, ttlMs);
   if (cached) return cached;
 
-  const res = await fetch(PROXY + '?fn=' + fn + '&commodity=' + encodeURIComponent(commodity));
+  let res;
+  try {
+    res = await fetch(PROXY + '?fn=' + fn + '&commodity=' + encodeURIComponent(commodity));
+  } catch (e) { throw serviceError('futures', e.message); }
   let json = null;
   try { json = await res.json(); } catch (e) { /* an HTML error page, not JSON */ }
+  // No function here at all, as under `npm run dev`, is said as it is.
+  if (res.status === 404) throw new Error(t('the futures proxy is not deployed here'));
   if (!res.ok) {
     // The function's own messages are English; t() gives the ones it knows in
     // the page's language.
-    throw new Error(res.status === 404
-      ? t('the futures proxy is not deployed here')
-      : (json && json.error && t(json.error)) || t('proxy returned HTTP {status}', { status: res.status }));
+    throw serviceError('futures', (json && json.error && t(json.error)) || t('proxy returned HTTP {status}', { status: res.status }));
   }
   cacheSet(ck, json);
   return json;
@@ -2781,7 +2796,8 @@ async function applyLegPrices() {
 
 /* Every input it can fill, each on its own: one that fails never stops the
  * rest. `vol` is what applyVol() takes. Resolves to every step's result and
- * two lists for the status line, what was updated and what was left as it was. */
+ * two lists for the status line: the messages of what was updated, and each
+ * input left as it was with the error that stopped it. */
 async function autoFill(vol) {
   const steps = [
     [t('risk-free rate'), () => applyRate()],
@@ -2795,7 +2811,7 @@ async function autoFill(vol) {
       const r = await step();
       results.push(r);
       done.push(r.message);
-    } catch (e) { failed.push(`${name} (${e.message})`); }
+    } catch (e) { failed.push({ name: name, error: e }); }
   }
   return { results: results, done: done, failed: failed };
 }
@@ -2914,9 +2930,43 @@ function resetProxyFields() {
   $('proxyNote').textContent = meta.proxy ? t(meta.proxy) : '';
 }
 
+/* The service a failure was about, as the status line names it. */
+function serviceName(service) {
+  return service === 'treasury' ? t('the US Treasury curve')
+    : service === 'alphavantage' ? t('Alpha Vantage') : t('the futures data service');
+}
+
+/* Items in a sentence: "futures price, volatility and convenience yield". */
+function listOf(items) {
+  return items.length < 2 ? items.join('')
+    : t('{list} and {last}', { list: items.slice(0, -1).join(', '), last: items[items.length - 1] });
+}
+
+/* An error's own words, without a full stop of its own: Alpha Vantage's notes
+ * end with one, and the sentence around them adds another. */
+function reasonOf(err) {
+  return String(err.message).replace(/\.\s*$/, '');
+}
+
+/* What Auto-fill left as it was, said once per cause: each service that did
+ * not answer, with every input that waited on it, then the reason for anything
+ * else. "Left unchanged: risk-free rate (Treasury yield curve unavailable);
+ * futures price (Upstream quote unavailable); volatility (Upstream quote
+ * unavailable); ..." was one sentence of server words, three of them alike. */
+function failureLines(failed) {
+  const byService = {}, other = [];
+  for (const f of failed) {
+    if (f.error.service) (byService[f.error.service] = byService[f.error.service] || []).push(f.name);
+    else other.push(t('The {field} is unchanged: {reason}.', { field: f.name, reason: reasonOf(f.error) }));
+  }
+  return Object.keys(byService).map(s => t('Could not reach {service}, so these are unchanged: {fields}.',
+    { service: serviceName(s), fields: listOf(byService[s]) })).concat(other);
+}
+
 /* Thin wrapper so every single-field button behaves the same way. `where` is
- * the status line under it, the market data's unless given. */
-function runAction(label, step, where) {
+ * the status line under it, the market data's unless given; `kept` says what
+ * is still in use when the fetch fails. */
+function runAction(label, step, where, kept) {
   return async e => {
     const release = holdButton(e && (e.currentTarget || e.target));
     setStatus(label + '…', 'busy', where);
@@ -2926,7 +2976,10 @@ function runAction(label, step, where) {
       renderAll();
       setStatus(t('Updated {what}.', { what: r.message }), 'ok', where);
     } catch (err) {
-      setStatus(t('{label} failed: {error}. The current value is unchanged.', { label, error: err.message }), 'err', where);
+      const why = err.service
+        ? t('{label}: could not reach {service}.', { label, service: serviceName(err.service) })
+        : t('{label}: {reason}.', { label, reason: reasonOf(err) });
+      setStatus(why + ' ' + (kept ? kept() : t('Nothing was changed.')), 'err', where);
     } finally {
       release();
     }
@@ -2944,7 +2997,7 @@ async function actionAutoFill(e) {
 
     const parts = [];
     if (r.done.length) parts.push(t('Updated {what}.', { what: r.done.join('; ') }));
-    if (r.failed.length) parts.push(t('Left unchanged: {what}.', { what: r.failed.join('; ') }));
+    if (r.failed.length) parts.push.apply(parts, failureLines(r.failed).concat(t('You can type any of them in.')));
     setStatus(parts.join(' '), r.failed.length ? (r.done.length ? '' : 'err') : 'ok');
   } finally {
     release();
@@ -2987,7 +3040,7 @@ function bindInputs() {
     const r = await loadContractMonths();
     renderMonths();
     return r;
-  }, 'monthStatus'));
+  }, 'monthStatus', () => t('The list of months is unchanged.')));
   $('contractMonth').addEventListener('change', e => {
     useContractMonth(e.target.value);
     renderAll();
@@ -3155,15 +3208,22 @@ function bindInputs() {
   });
 
   $('autoFill').addEventListener('click', actionAutoFill);
-  $('fetchPrice').addEventListener('click', runAction(t('Futures price'), applyFuturesPrice));
-  $('fetchRate').addEventListener('click', runAction(t('Risk-free rate'), applyRate));
-  $('fetchVol').addEventListener('click', runAction(t('Volatility'), () => applyVol(volInputs())));
+  // A fetch that fails says what is still in use, as a refused number does.
+  const still = value => t('Still using {value}.', { value });
+  $('fetchPrice').addEventListener('click', runAction(t('Futures price'), applyFuturesPrice, null,
+    () => still(fmtPrice(state.S))));
+  $('fetchRate').addEventListener('click', runAction(t('Risk-free rate'), applyRate, null,
+    () => still(fmt(state.rate, 2) + '%')));
+  $('fetchVol').addEventListener('click', runAction(t('Volatility'), () => applyVol(volInputs()), null,
+    () => still(volField(state.vol, 4) + '%')));
   // Emptying the key field forgets the key; a new one is kept once it is used.
   $('avKey').addEventListener('input', e => {
     if (!e.target.value.trim()) storeAvKey('');
   });
-  $('fetchCurve').addEventListener('click', runAction(t('Convenience yield'), applyCurveYield));
-  $('fillLegPrices').addEventListener('click', runAction(t('Leg prices'), applyLegPrices, 'legStatus'));
+  $('fetchCurve').addEventListener('click', runAction(t('Convenience yield'), applyCurveYield, null,
+    () => still(fmt(state.yield, 2) + '%')));
+  $('fillLegPrices').addEventListener('click', runAction(t('Leg prices'), applyLegPrices, 'legStatus',
+    () => t('The legs keep their prices.')));
   $('clearLegPrices').addEventListener('click', () => {
     clearLegPrices();
     setStatus(t('Every leg is back on the contract in the left panel.'), 'ok', 'legStatus');
