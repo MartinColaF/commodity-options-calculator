@@ -1566,7 +1566,11 @@ function volField(v, dp) {
  * values like "4000." and moves the caret. */
 function setField(id, value) {
   const el = $(id);
-  if (el !== document.activeElement) el.value = value;
+  // A refused field keeps what was typed until the next thing done clears its
+  // mark (clearRefusals()). Left within the frame of its last keystroke, the
+  // drawing that keystroke asked for came after the refusal and wrote the
+  // number in use over it.
+  if (el !== document.activeElement && el.getAttribute('aria-invalid') !== 'true') el.value = value;
 }
 
 /* Opens the folded settings an element sits in: a reason or a warning inside

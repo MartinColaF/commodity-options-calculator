@@ -75,6 +75,24 @@ test('a window losing the focus does not end the typing', () => {
   assert.strictEqual(frames.length, 0);
 });
 
+test('a refused price keeps what was typed through the drawing its typing asked for', () => {
+  // Typed and left within one frame: the drawing scheduled by the last
+  // keystroke comes after the refusal, with the field no longer focused.
+  const frames = [];
+  const { el, fire } = wired({ globals: { requestAnimationFrame: fn => frames.push(fn) } });
+  el('spot').value = '-100';
+  fire('spot', 'input');
+  fire('spot', 'change');
+  assert.strictEqual(el('spot').getAttribute('aria-invalid'), 'true');
+  frames.splice(0).forEach(fn => fn());
+  assert.strictEqual(String(el('spot').value), '-100', 'not the price in use written over it');
+  // The next thing done clears the mark, and its drawing shows the price in use.
+  el('days').value = '45';
+  fire('days', 'input');
+  frames.splice(0).forEach(fn => fn());
+  assert.strictEqual(String(el('spot').value), '4000');
+});
+
 test('a field only focused, not typed in, is drawn as before', () => {
   const { app, el, doc, leg } = typingIn();
   const focused = { value: '30', dataset: { f: 'days' }, closest: () => ({ dataset: { id: String(leg.id) } }) };
