@@ -38,6 +38,10 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
 - **Printed report** — Print or save as PDF gives the position, results, chart and
   scenarios with the assumptions, sources and disclaimer, light on paper whatever the
   screen's scheme, dated and linking back to the scenario.
+- **Chart image** — a 1200×627 picture of the position for a post: the chart in the
+  light palette beside the numbers the results card gives, each with what it rests on
+  (the probability's volatility, an unlimited maximum's rate), and the site and date.
+  On a phone it goes to the share sheet; elsewhere it is saved as a PNG.
 - **Analytics** — net debit or credit, max profit, max loss, all breakevens, and the
   risk-neutral probability of profit, at the volatility the position is priced at (the
   summary says which). An unlimited maximum says how fast it grows, in dollars per
@@ -191,6 +195,10 @@ some browsers restrict cross-origin requests from `file://`.
   volatility, curve interpolation and the carry inversion.
 - `test/print.test.js` — the printed report: no controls, the light palette in step
   with the screen's, and the date and the scenario's link at the top.
+- `test/share-image.test.js` — the chart image: the numbers the results card shows,
+  laid out clear of the chart at its own proportions, the chart drawn in the light
+  palette at once even while an animation runs, and the share sheet, the download and
+  the reasons there is no picture.
 - `test/hedging.test.js` — the hedging presets: listed first under their heading,
   the physical held by a seller and to be bought by a buyer, and a floor or a cap
   bounding what each can lose.

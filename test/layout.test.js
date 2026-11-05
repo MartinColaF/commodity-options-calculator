@@ -53,6 +53,11 @@ test('the reordered cards keep to the screen width', () => {
   assert.match(phone, /\.grid \.card[^{]*\{\s*min-width:\s*0;/);
 });
 
+test('a row of buttons wraps rather than widen the page', () => {
+  // Five Save & share buttons needed 436px of a phone's 324.
+  assert.match(css, /#cardSave > \.row \{ flex-wrap: wrap; \}/);
+});
+
 test('phone sizes come after the rules they override', () => {
   const sixteen = media('(max-width: 900px), (pointer: coarse)');
   assert.match(sixteen.body, /input, select, textarea, #legs input, #legs select\s*\{\s*font-size:\s*16px;/);

@@ -246,6 +246,13 @@ const SPANISH = {
     'Delta en contratos de futuro: {n}. Comprar {k} la deja en {rest}.',
   'Printed {date} from {site}.': 'Impreso el {date} desde {site}.',
   'Open this scenario': 'Abrir este escenario',
+  '{n}-day horizon': 'horizonte de {n} días',
+  '{site} · Not investment advice · {date}': '{site} · No es asesoramiento de inversión · {date}',
+  'There is nothing to draw yet: choose a strategy or add a leg.':
+    'Todavía no hay nada que dibujar: elegir una estrategia o agregar una pata.',
+  'The chart library could not be loaded, so there is no picture to make.':
+    'No se pudo cargar la biblioteca de gráficos, así que no hay imagen para armar.',
+  'Picture saved as {name}.': 'Imagen guardada como {name}.',
   'Position column = per-unit greek × quantity × ${mult} multiplier.':
     'Columna Posición = griega por unidad × cantidad × multiplicador de ${mult}.',
   'Delta and gamma are per point of the contract in the left panel, with each leg\'s own month moving in proportion, as on the chart; the Delta column in the legs table is against each leg\'s own month.':
