@@ -13,7 +13,7 @@ const assert = require('node:assert');
 const { loadApp, resetState } = require('./helpers/load-app.js');
 
 const elements = {
-  summary: { innerHTML: '' }, greeks: { innerHTML: '' },
+  summary: { innerHTML: '' }, greeks: { innerHTML: '' }, reportsInfo: { textContent: '', hidden: true },
   tDays: { max: 0, value: 0 }, tDaysLabel: { textContent: '' }
 };
 const app = loadApp({ elements });

@@ -439,6 +439,25 @@ function commodityMeta(key) {
     ? COMMODITIES[key] : COMMODITIES.custom;
 }
 
+/* The scheduled reports a market follows (its `reports`, from events.js): for
+ * each, the releases after `nowMs` and up to `endMs`, the next one after
+ * `nowMs`, and the last the calendar lists, as instants. Pure: the caller says
+ * what time it is, so nothing here depends on the day it runs. */
+function reportsBetween(key, nowMs, endMs) {
+  return (commodityMeta(key).reports || [])
+    .filter(r => Object.prototype.hasOwnProperty.call(REPORTS, r))
+    .map(r => {
+      const times = REPORTS[r].releases.map(Date.parse);
+      const ahead = times.filter(x => x > nowMs);
+      return {
+        name: REPORTS[r].name, publisher: REPORTS[r].publisher,
+        within: ahead.filter(x => x <= endMs),
+        next: ahead.length ? ahead[0] : null,
+        last: times[times.length - 1]
+      };
+    });
+}
+
 /* ============================================================
  * 3. State
  * ========================================================== */
@@ -1875,6 +1894,45 @@ function futuresDelta(d) {
     : t('Delta in futures contracts: {n}. Buying {k} leaves {rest}.', { n: signed(d), k, rest: signed(rest) }));
 }
 
+/* A day as Washington has it, where the reports come out, in the page's
+ * language: "Nov 10", "10 nov", with the year when it is not this one. */
+function reportDate(ms, nowMs) {
+  const year = x => new Intl.DateTimeFormat('en-US', { year: 'numeric', timeZone: 'America/New_York' }).format(x);
+  const opts = { month: 'short', day: 'numeric', timeZone: 'America/New_York' };
+  if (year(ms) !== year(nowMs)) opts.year = 'numeric';
+  return new Intl.DateTimeFormat(PAGE_LANG === 'es' ? 'es' : 'en-US', opts).format(ms);
+}
+
+/* What the market's scheduled reports hold for the position: how many come out
+ * by the horizon and when, or when the next one does. A calendar runs out, and
+ * past its last date the line says so rather than count none. '' for a market
+ * that follows no report. */
+function reportsLine(a, nowMs) {
+  const end = nowMs + a.t * 86400000;
+  const horizon = reportDate(end, nowMs);
+  return reportsBetween(state.commodity, nowMs, end).map(r => {
+    const known = { publisher: r.publisher, report: r.name, horizon, last: reportDate(r.last, nowMs) };
+    const n = r.within.length;
+    if (!n && r.next === null) {
+      return t('{publisher} has dated {report} reports only to {last}, so those before the horizon, {horizon}, are not known here.', known);
+    }
+    if (!n) {
+      return t('No {report} report comes out by the horizon, {horizon}; the next is on {next}.',
+        Object.assign(known, { next: reportDate(r.next, nowMs) }));
+    }
+    // A date in another year has a comma of its own, so the list takes
+    // semicolons; a long-dated option crosses a dozen reports, given as a span.
+    const dates = r.within.map(x => reportDate(x, nowMs)).join('; ');
+    const s = n === 1
+      ? t('By the horizon, {horizon}, {publisher} publishes 1 {report} report: {dates}.', Object.assign(known, { dates }))
+      : n <= 4
+        ? t('By the horizon, {horizon}, {publisher} publishes {n} {report} reports: {dates}.', Object.assign(known, { n, dates }))
+        : t('By the horizon, {horizon}, {publisher} publishes {n} {report} reports, from {first} to {final}.',
+          Object.assign(known, { n, first: reportDate(r.within[0], nowMs), final: reportDate(r.within[n - 1], nowMs) }));
+    return end > r.last ? s + ' ' + t('{publisher} has dated them only to {last}, so there may be more.', known) : s;
+  }).join(' ');
+}
+
 /* An unlimited maximum says how fast it grows: that is what tells a naked call
  * from a calendar bleeding cents a point. A rate that rounds to no cents keeps
  * two significant figures rather than read $0.00. */
@@ -1943,6 +2001,11 @@ function renderResults() {
           '{amount} a day at {rate}%.', { amount: money(-perDay), rate: ratePct })
         : ''}</p>`;
   }
+
+  // A grain option priced across a WASDE holds that report's risk.
+  const reports = activeLegs().length ? reportsLine(a, Date.now()) : '';
+  $('reportsInfo').textContent = reports;
+  $('reportsInfo').hidden = !reports;
 
   $('tDays').max = Math.max(a.t, 1);
   $('tDays').value = state.chart.tDays;

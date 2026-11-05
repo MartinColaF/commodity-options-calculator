@@ -33,7 +33,7 @@ test("each calculator's footer links its methodology, the code, the issues and i
 test('the date in the footer is the one the methodology was last reviewed', () => {
   // A date on its own goes stale unnoticed; tied to the methodology's, it moves
   // when the method is reviewed. The two languages say the same month.
-  const months = { October: 'octubre' };
+  const months = { October: 'octubre', November: 'noviembre' };
   const en = PAGES[0], es = PAGES[1];
   const updated = read(en.page).match(en.updated)[1];
   assert.strictEqual(read(en.doc).match(en.reviewed)[1], updated);

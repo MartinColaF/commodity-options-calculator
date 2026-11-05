@@ -11,6 +11,7 @@ for users; this file covers what is easy to get wrong when changing it.
 | `index.html` | markup only; every input has a stable `id` that `app.js` binds by hand |
 | `styles.css` | light/dark theming via CSS variables, the chart's colours included |
 | `commodities.js` | the one table of markets, read by the page and by the function |
+| `events.js` | the calendar of scheduled reports (USDA's WASDE), loaded after the table |
 | `i18n.js` | `t()`, and the table each language's words go into |
 | `analytics.js` | visit counting (Vercel Web Analytics), loaded last by every page |
 | `es/` | the Spanish page: `index.html`, its words (`words.js`), `privacy.html`, `og.png` |
@@ -227,7 +228,7 @@ them differently; a translation keeps the same names, in its own order.
 
 **The footer says how the page works, where its code is and when it changed.** It links
 `methodology.html` (and `es/methodology.html`), the source code, the issues and the
-policy, and reads "Updated October 2026". That date is the one the methodology says it was
+policy, and reads "Updated November 2026". That date is the one the methodology says it was
 last reviewed, in both languages, and `test/methodology.test.js` compares them: review
 the methodology when a change touches what it describes, then move both dates. The
 methodology quotes measured figures (the BAW error, the grid's worst miss); the test
@@ -730,6 +731,16 @@ something is missing from the repo.
   inflate it. Check whether a surprising number is a roll artefact or a real move
   before "fixing" it — dropping the single largest move and seeing how far the
   estimate falls distinguishes the two.
+- **Scheduled reports** (`events.js`): USDA's WASDE release dates, each an instant with its
+  own offset from UTC, so noon in Washington reads right across daylight saving. A market
+  follows them through `reports` in `commodities.js`: corn, wheat, soybeans and cotton.
+  `reportsBetween()` counts the releases after now and up to the horizon, and
+  `reportsLine()` says them under the results, in the page's language (`Intl`, Washington's
+  calendar day: the one place a date is written with month names). **The calendar runs
+  out**: USDA publishes the next year's dates in the autumn, and past the last one the line
+  says so instead of counting none. Add them to `events.js` with the date checked, and to
+  the list `test/reports.test.js` compares it to. Both functions take the time as an
+  argument, so no test depends on the day it runs. Nothing is priced from a report.
 - **The listed strip** (`fn=months`) is the whole set of contracts that quote,
   nearest first. It lives in `state.session.strip`, is **not persisted** — `snapshot()`
   leaves `state.session` out and `restore()` never reads it, since a stale strip in a

@@ -297,6 +297,7 @@
       <section class="card" id="cardResults" aria-labelledby="hResults">
         <h2 id="hResults">Results</h2>
         <div id="summary"></div>
+        <p class="note mt-12" id="reportsInfo" hidden></p>
         <div id="greeks" class="mt-14"></div>
       </section>
 
@@ -394,12 +395,13 @@
       <a href="https://github.com/MartinColaF/commodity-options-calculator/issues" target="_blank" rel="noopener">Report an issue</a>
       <a href="/privacy.html">Privacy Policy</a>
     </p>
-    <p>Updated October 2026</p>
+    <p>Updated November 2026</p>
   </footer>
 </div>
 
 <!-- commodities.js first: app.js reads its table as soon as it loads. -->
 <script src="commodities.js"></script>
+<script src="events.js"></script>
 <script src="i18n.js"></script>
 <script src="app.js"></script>
 <!-- Visit counting, as the privacy policy describes it: see analytics.js. -->

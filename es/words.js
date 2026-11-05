@@ -253,6 +253,18 @@ const SPANISH = {
   'The chart library could not be loaded, so there is no picture to make.':
     'No se pudo cargar la biblioteca de gráficos, así que no hay imagen para armar.',
   'Picture saved as {name}.': 'Imagen guardada como {name}.',
+  'By the horizon, {horizon}, {publisher} publishes 1 {report} report: {dates}.':
+    'Hasta el horizonte, el {horizon}, {publisher} publica 1 informe {report}: {dates}.',
+  'By the horizon, {horizon}, {publisher} publishes {n} {report} reports: {dates}.':
+    'Hasta el horizonte, el {horizon}, {publisher} publica {n} informes {report}: {dates}.',
+  'By the horizon, {horizon}, {publisher} publishes {n} {report} reports, from {first} to {final}.':
+    'Hasta el horizonte, el {horizon}, {publisher} publica {n} informes {report}, del {first} al {final}.',
+  '{publisher} has dated them only to {last}, so there may be more.':
+    '{publisher} los fechó solo hasta el {last}, así que puede haber más.',
+  'No {report} report comes out by the horizon, {horizon}; the next is on {next}.':
+    'No sale ningún informe {report} hasta el horizonte, el {horizon}; el próximo es el {next}.',
+  '{publisher} has dated {report} reports only to {last}, so those before the horizon, {horizon}, are not known here.':
+    '{publisher} fechó los informes {report} solo hasta el {last}, así que no se conocen los que salen antes del horizonte, el {horizon}.',
   'Position column = per-unit greek × quantity × ${mult} multiplier.':
     'Columna Posición = griega por unidad × cantidad × multiplicador de ${mult}.',
   'Delta and gamma are per point of the contract in the left panel, with each leg\'s own month moving in proportion, as on the chart; the Delta column in the legs table is against each leg\'s own month.':

@@ -81,6 +81,10 @@ own source and anything that fails is left untouched.
 | Convenience yield | Implied by the real curve from two listed contracts: `y = r − ln(F2/F1)/(T2−T1)` | no |
 | *Fallback* | Alpha Vantage ETF proxies, for custom tickers or if the function is down | free key |
 
+For corn, wheat, soybeans and cotton the results also say how many WASDE reports USDA
+publishes by the horizon, and when, from the calendar in `events.js`. Past the last date
+USDA has published, the line says the calendar ends there rather than count none.
+
 ### The `/api/market` function
 
 Yahoo Finance sends no CORS headers, so the browser cannot read it directly. The
@@ -157,6 +161,8 @@ Notes and limitations, stated plainly in the UI as well:
 - `commodities.js` — the table of markets: contract specs and ticks, presets and
   futures symbols. The page and the function both read it, so adding a market is one
   entry.
+- `events.js` — the calendar of scheduled reports, USDA's WASDE dates for 2026 and
+  2027. USDA publishes each next year's in the autumn; add them when it does.
 - `app.js` — pricing engine, strategy analytics, data providers, rendering
 - `api/market.js` — serverless futures data proxy (Vercel)
 - `privacy.html` — privacy policy
@@ -195,6 +201,9 @@ some browsers restrict cross-origin requests from `file://`.
   volatility, curve interpolation and the carry inversion.
 - `test/print.test.js` — the printed report: no controls, the light palette in step
   with the screen's, and the date and the scenario's link at the top.
+- `test/reports.test.js` — the WASDE line: USDA's dates at 12:00 in Washington, which
+  markets follow them, a report counted until the minute it comes out, and the line
+  past the end of the calendar, all at a date the test sets.
 - `test/share-image.test.js` — the chart image: the numbers the results card shows,
   laid out clear of the chart at its own proportions, the chart drawn in the light
   palette at once even while an animation runs, and the share sheet, the download and

@@ -66,6 +66,7 @@
     <li><strong>Volatility:</strong> realized (historical) volatility of the front-month futures, close-to-close, EWMA (&lambda; = 0.94) or Parkinson, over a window of 20 to 90 days. <strong>It is not implied volatility</strong>, which the calculator has no source for, and the roll from one contract to the next can inflate it slightly.</li>
     <li><strong>Convenience yield:</strong> implied by two listed contracts on the real curve.</li>
     <li><strong>Leg prices:</strong> each leg's own delivery month, interpolated on a log scale between the listed contracts, or along the slope between the two nearest when the list is not loaded. Past the last listed month it is an extrapolation, and the page says so.</li>
+    <li><strong>Report calendar:</strong> USDA's published WASDE release dates, at 12:00 ET, for corn, wheat, soybeans and cotton. The results say how many come out by the horizon; nothing is priced from them. Past the last date USDA has published, the page says the calendar ends there.</li>
     <li><strong>Fallback:</strong> Alpha Vantage, with your own free key, measures volatility on an ETF that tracks the market. Only its returns are used, never its price.</li>
     <li>Every value shows its source and its date. A preset is labeled "not market data". None of these is a live quote.</li>
   </ul>
@@ -83,7 +84,7 @@
 
   <h2>7. How it is checked</h2>
   <p>An automated test suite runs on every change: the prices against closed forms and the binomial tree, the greeks against the derivatives of the chart's own P&amp;L, the probability of profit against exact integrals, and the market-data steps against recorded responses. The <a href="https://github.com/MartinColaF/commodity-options-calculator" target="_blank" rel="noopener">source code</a> is public, and an <a href="https://github.com/MartinColaF/commodity-options-calculator/issues" target="_blank" rel="noopener">issue</a> is the way to report a number that looks wrong.</p>
-  <p class="muted">Methodology last reviewed October 2026.</p>
+  <p class="muted">Methodology last reviewed November 2026.</p>
   </main>
   <footer><p><a href="/">Commodity Options Calculator</a></p></footer>
 </div>
