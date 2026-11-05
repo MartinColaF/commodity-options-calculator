@@ -53,7 +53,11 @@ test('the reordered cards keep to the screen width', () => {
   assert.match(phone, /\.grid \.card[^{]*\{\s*min-width:\s*0;/);
 });
 
-test('a row of buttons wraps rather than widen the page', () => {
+test('nothing a table scrolls escapes it, and a row of buttons wraps', () => {
+  // The legs table's hidden headings are absolute. Placed against the page,
+  // not the scroller, they widened every window from 900px to 1280px to 1156.
+  assert.ok(html.includes('<th><span class="sr-only">'), 'the legs table has hidden headings');
+  assert.match(css, /\.table-scroll \{\s*position: relative;\s*overflow-x: auto;/);
   // Five Save & share buttons needed 436px of a phone's 324.
   assert.match(css, /#cardSave > \.row \{ flex-wrap: wrap; \}/);
 });

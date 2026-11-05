@@ -486,7 +486,9 @@ card of three columns: the table needed 808 px and showed 324. A new column need
 and its `data-label` must match its header: `test/names.test.js` compares them, and checks
 that every field on the page has a label. On desktop the right column fits the whole table
 from 1280 px screens up, in both languages; below that it scrolls, with a shade at the edge
-that has more. Its headings say what a column holds ("Und. price", "Theo. value"), and a
+that has more. `.table-scroll` is `position: relative` so the hidden headings (`.sr-only`,
+absolute) scroll with it: placed against the page they widened every window from 900 px
+to 1280 px to 1,156. The table's headings say what a column holds ("Und. price", "Theo. value"), and a
 two-word one takes two lines (`th.two-line`) rather than widen its column: measure at
 1280 in both languages after renaming one.
 
