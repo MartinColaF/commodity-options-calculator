@@ -75,7 +75,7 @@ function loadApp(opts) {
       return { getPropertyValue: k => (Object.prototype.hasOwnProperty.call(vars, k) ? vars[k] : '') };
     },
     window: {},
-    location: { protocol: o.protocol || 'https:', hash: '', origin: 'https://example.test', pathname: '/' },
+    location: { protocol: o.protocol || 'https:', hash: '', origin: 'https://example.test', host: 'example.test', pathname: '/' },
     localStorage: {
       getItem: k => (store.has(k) ? store.get(k) : null),
       setItem: (k, v) => store.set(k, String(v)),
@@ -121,7 +121,9 @@ function loadApp(opts) {
  * the wiring wrote into it. A redraw is real when the wiring asks for one with
  * renderAll(); one scheduled for the next frame never comes, since there are
  * no frames, unless `opts.globals` gives a requestAnimationFrame. `doc` is the
- * document, whose `activeElement` a test sets to give a stand-in the focus. */
+ * document, whose `activeElement` a test sets to give a stand-in the focus, and
+ * `win` the window, whose `printed` counts the calls to print(); `fire('window',
+ * type)` dispatches at it. */
 function wired(opts) {
   const listeners = {};
   const listen = on => (type, fn, capture) => {
@@ -139,14 +141,27 @@ function wired(opts) {
     getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attributes, k) ? this.attributes[k] : null; }
   });
   const el = id => made[id] || (made[id] = element(id));
+  const classes = new Set();
   const doc = {
     addEventListener: listen('document'), getElementById: el, activeElement: null,
-    documentElement: { lang: (opts && opts.lang) || 'en' }
+    documentElement: {
+      lang: (opts && opts.lang) || 'en',
+      classList: {
+        contains: c => classes.has(c),
+        toggle: (c, on) => { if (on) classes.add(c); else classes.delete(c); }
+      }
+    }
+  };
+  const win = {
+    matchMedia: () => ({ addEventListener() { } }),
+    addEventListener: listen('window'),
+    printed: 0,
+    print() { this.printed++; }
   };
   const app = loadApp(Object.assign({}, opts, {
     globals: Object.assign({
       document: doc,
-      window: { matchMedia: () => ({ addEventListener() { } }) },
+      window: win,
       requestAnimationFrame: () => { }
     }, opts && opts.globals)
   }));
@@ -158,7 +173,7 @@ function wired(opts) {
       (listeners[key] || []).forEach(fn => fn(e));
     }
   };
-  return { app, el, fire, doc };
+  return { app, el, fire, doc, win };
 }
 
 /* Reset the shared state object to a known contract before each test. */

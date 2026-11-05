@@ -35,6 +35,9 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
   a ton, coffee in USD a 60-kg bag and cattle in USD a kilo of live weight, with the
   contract in the same unit: 5,000 bushels of soybeans are 136.08 tons. The greeks say
   the position's delta in futures contracts, and how many offset it.
+- **Printed report** — Print or save as PDF gives the position, results, chart and
+  scenarios with the assumptions, sources and disclaimer, light on paper whatever the
+  screen's scheme, dated and linking back to the scenario.
 - **Analytics** — net debit or credit, max profit, max loss, all breakevens, and the
   risk-neutral probability of profit, at the volatility the position is priced at (the
   summary says which). An unlimited maximum says how fast it grows, in dollars per
@@ -186,6 +189,8 @@ some browsers restrict cross-origin requests from `file://`.
   equal to their limits just above it, implied-volatility round trips and none from a
   premium with no time value, the volatility estimators against a series of known
   volatility, curve interpolation and the carry inversion.
+- `test/print.test.js` — the printed report: no controls, the light palette in step
+  with the screen's, and the date and the scenario's link at the top.
 - `test/hedging.test.js` — the hedging presets: listed first under their heading,
   the physical held by a seller and to be bought by a buyer, and a floor or a cap
   bounding what each can lose.
