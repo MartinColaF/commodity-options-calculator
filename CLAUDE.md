@@ -12,6 +12,7 @@ for users; this file covers what is easy to get wrong when changing it.
 | `styles.css` | light/dark theming via CSS variables, the chart's colours included |
 | `commodities.js` | the one table of markets, read by the page and by the function |
 | `i18n.js` | `t()`, and the table each language's words go into |
+| `analytics.js` | visit counting (Vercel Web Analytics), loaded last by every page |
 | `es/` | the Spanish page: `index.html`, its words (`words.js`), `privacy.html`, `og.png` |
 | `app.js` | pricing engine, strategy analytics, data providers, rendering |
 | `api/market.js` | serverless futures-data proxy (Vercel) |
@@ -613,6 +614,24 @@ the fill is on the legs, so `clearLegPrices()` has nothing to restore. When one 
 served both, undoing a fill restored whatever the price line said before it, even after
 the price had changed. A leg price typed over a fill marks that line "edited by hand
 since" (`typeLegPrice()`). Any new market input needs the same treatment.
+
+**Visits are counted by Vercel Web Analytics, as `privacy.html` says, and nothing else.**
+Every page loads `analytics.js`, which loads Vercel's own script from
+`/_vercel/insights/script.js`, the way Vercel's package does: no page names a path
+that only exists on Vercel, so `test/deploy.test.js` and `test/pages.test.js` need no
+exception, and the CSP's `'self'` already covers the script and what it sends. It loads
+only over https, since a file or the dev server has no Vercel to answer, and Vercel's
+script itself counts nothing in an automated browser (`navigator.webdriver`). It counts
+page views only: no custom events, which need the Pro plan, and never a number from a
+position. **The scenario after `#` must never be sent.** Vercel's script reads
+`location.href`, which keeps it, and a shared link carries a whole position there;
+the `beforeSend` rule `analytics.js` queues in `window.vaq` drops it. Without the rule,
+Chromium sent `#s=eyJjb21tb2RpdHki…` to Vercel. The share button adds `?ref=share`,
+which the server and the count do see, so a visit from a shared link can be told from
+a direct one. Web Analytics is switched on in Vercel's dashboard (Analytics, Enable);
+until it is, the script is a 404 and nothing else changes. Anything new that the
+counting sends needs a line in the policy first, in both languages:
+`test/privacy.test.js` ties the policy's words to `analytics.js`.
 
 **localStorage holds three things: the saved scenario, the Alpha Vantage key and the
 response cache (`coc.cache.*`).** The cache must not crowd out the scenario: an entry read

@@ -33,6 +33,11 @@ export default [
     }
   },
   {
+    // Visit counting, loaded by every page: a plain browser script.
+    files: ['analytics.js'],
+    languageOptions: { ecmaVersion: PAGE_ES, sourceType: 'script', globals: globals.browser }
+  },
+  {
     // A page's words in its language, filling the table i18n.js declares.
     files: ['es/words.js'],
     languageOptions: {

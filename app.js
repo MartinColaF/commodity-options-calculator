@@ -2444,7 +2444,9 @@ function shareLink() {
   const json = JSON.stringify(snapshot());
   const b64 = btoa(unescape(encodeURIComponent(json)))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  return location.origin + location.pathname + '#s=' + b64;
+  // ref=share tells a visit from a shared link apart from a direct one: the
+  // scenario after "#" never reaches the server, nor the visit count.
+  return location.origin + location.pathname + '?ref=share#s=' + b64;
 }
 
 function readHash() {
