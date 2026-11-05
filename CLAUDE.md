@@ -312,7 +312,9 @@ which scales delta by the ratio and gamma by its square. `legGreeks()` stays on 
 own month: that is the legs table's Delta column, and what a desk hedges that leg with.
 Added unscaled, a call calendar with its months 2.5% apart showed $0.49 of delta beside a
 chart sloping $1.78 per $1. `test/leg-pricing.test.js` pins every net greek and every
-profile to the matching derivative of the chart's P&L.
+profile to the matching derivative of the chart's P&L. The net per-unit delta is a sum of
+contracts, so `futuresDelta()` says it as futures of the panel's contract under the
+greeks table, with how many offset it: what a risk desk trades.
 
 **Hoist per-leg work out of grid sweeps.** `legEntry()` prices an option, and under
 American exercise that is eleven valuations. Calling it inside a 1200-point sweep once
@@ -489,6 +491,11 @@ way, not ESM. `index.html` must load it **before** `app.js`, which reads it at l
 time, and `i18n.js` between them; the test loader does the same. Vercel's file tracer bundles it with the
 function because of the `require`, so do not read it with `fs`, which the tracer may
 miss. `test/commodities.test.js` pins the page and the function to the table.
+A market whose physical trade prices in another unit carries `physical`: quote units in
+one of it (bushels in a metric ton, from the bushel's legal weight), its name and its
+price's. The page shows the futures price and the contract in it under the price field,
+"385.81 USD/t, and 1 contract = 136.08 metric tons"; nothing is priced in it.
+`test/physical.test.js` pins each factor.
 
 **A price of zero must not reach `Math.log10`.** `strikeStep()` guards it. A half-typed
 price field used to make every derived strike `NaN` and poison the whole curve.

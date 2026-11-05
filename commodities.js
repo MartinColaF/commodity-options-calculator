@@ -16,6 +16,12 @@
  * NOT live market data and the UI labels them as such.
  * priceSymbol is a liquid ETF used to estimate realised volatility. Its price
  * level is unrelated to the futures price, only its returns are used.
+ * physical is the unit the physical trade prices in, where it is not the
+ * quote's: per = quote units in one of it - bushels in a metric ton for the
+ * grains, pounds in a ton, a 60-kg bag or a kilo - from the bushel's legal
+ * weight (60 lb for soybeans and wheat, 56 for corn) and the pound's,
+ * 0.45359237 kg. unit names it and price names its price. The page shows the
+ * futures price and the contract in it; nothing is priced in it.
  * futures is how Yahoo names the contracts, and null for a market with none:
  *   root   = continuous front-month symbol prefix (root + "=F")
  *   suffix = exchange code used by month contracts
@@ -38,6 +44,7 @@ const COMMODITIES = {
   copper: {
     label: 'Copper (COMEX HG)', size: 25000, unit: 'lb', quote: 'USD', tick: 0.0005, vol: 25, yield: 1.5,
     priceSymbol: 'CPER', proxy: 'US Copper Index Fund',
+    physical: { per: 1000 / 0.45359237, unit: 'metric tons', price: 'USD/t' },
     futures: { root: 'HG', suffix: 'CMX', months: 'HKNUZ' }
   },
   wti: {
@@ -58,26 +65,31 @@ const COMMODITIES = {
   corn: {
     label: 'Corn (CBOT ZC)', size: 5000, unit: 'bushels', quote: 'cents', tick: 0.125, vol: 28, yield: 2.5,
     priceSymbol: 'CORN', proxy: 'Teucrium Corn Fund',
+    physical: { per: 1000 / (56 * 0.45359237), unit: 'metric tons', price: 'USD/t' },
     futures: { root: 'ZC', suffix: 'CBT', months: 'HKNUZ' }
   },
   wheat: {
     label: 'Wheat (CBOT ZW)', size: 5000, unit: 'bushels', quote: 'cents', tick: 0.125, vol: 30, yield: 3,
     priceSymbol: 'WEAT', proxy: 'Teucrium Wheat Fund',
+    physical: { per: 1000 / (60 * 0.45359237), unit: 'metric tons', price: 'USD/t' },
     futures: { root: 'ZW', suffix: 'CBT', months: 'HKNUZ' }
   },
   soybean: {
     label: 'Soybeans (CBOT ZS)', size: 5000, unit: 'bushels', quote: 'cents', tick: 0.125, vol: 25, yield: 2.5,
     priceSymbol: 'SOYB', proxy: 'Teucrium Soybean Fund',
+    physical: { per: 1000 / (60 * 0.45359237), unit: 'metric tons', price: 'USD/t' },
     futures: { root: 'ZS', suffix: 'CBT', months: 'FHKNQUX' }
   },
   sugar: {
     label: 'Sugar #11 (ICE SB)', size: 112000, unit: 'lb', quote: 'cents', tick: 0.01, vol: 40, yield: 2,
     priceSymbol: 'CANE', proxy: 'Teucrium Sugar Fund',
+    physical: { per: 1000 / 0.45359237, unit: 'metric tons', price: 'USD/t' },
     futures: { root: 'SB', suffix: 'NYB', months: 'HKNV' }
   },
   coffee: {
     label: 'Coffee C (ICE KC)', size: 37500, unit: 'lb', quote: 'cents', tick: 0.01, vol: 45, yield: 1.5,
     priceSymbol: 'JO', proxy: 'iPath Coffee ETN - thin, treat vol with care',
+    physical: { per: 60 / 0.45359237, unit: '60-kg bags', price: 'USD per 60-kg bag' },
     futures: { root: 'KC', suffix: 'NYB', months: 'HKNUZ' }
   },
   cocoa: {
@@ -88,11 +100,13 @@ const COMMODITIES = {
   cotton: {
     label: 'Cotton #2 (ICE CT)', size: 50000, unit: 'lb', quote: 'cents', tick: 0.01, vol: 25, yield: 1.5,
     priceSymbol: 'BAL', proxy: 'iPath Cotton ETN - thin',
+    physical: { per: 1000 / 0.45359237, unit: 'metric tons', price: 'USD/t' },
     futures: { root: 'CT', suffix: 'NYB', months: 'HKNVZ' }
   },
   cattle: {
     label: 'Live Cattle (CME LE)', size: 40000, unit: 'lb', quote: 'cents', tick: 0.025, vol: 15, yield: 1,
     priceSymbol: '', proxy: 'No ETF proxy - use the futures buttons above',
+    physical: { per: 1 / 0.45359237, unit: 'kg', price: 'USD/kg live weight' },
     futures: { root: 'LE', suffix: 'CME', months: 'GJMQVZ' }
   },
   custom: {

@@ -50,6 +50,7 @@ test("a table's lookups cannot reach the object's own properties", () => {
 const FROM_DATA = [
   'json.error',                // the market function's own message
   'c.unit', 'c.label',         // a market in commodities.js
+  'phys.price', 'phys.unit',   // its physical unit, where it has one
   'COMMODITIES[k].label',
   'meta.proxy',                // the market's ETF proxy, described
   'STRATEGIES[k].label',

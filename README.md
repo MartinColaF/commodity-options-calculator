@@ -29,6 +29,10 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
 - **Payoff chart** — P&L at the nearest expiry plus a mark-to-market curve for any
   date in between, individual leg overlays, strike and spot markers. The same chart
   also plots delta / gamma / vega / theta profiles across underlying prices.
+- **In physical terms** — under the price, grains, sugar, cotton and copper read in USD
+  a ton, coffee in USD a 60-kg bag and cattle in USD a kilo of live weight, with the
+  contract in the same unit: 5,000 bushels of soybeans are 136.08 tons. The greeks say
+  the position's delta in futures contracts, and how many offset it.
 - **Analytics** — net debit or credit, max profit, max loss, all breakevens, and the
   risk-neutral probability of profit, at the volatility the position is priced at (the
   summary says which). An unlimited maximum says how fast it grows, in dollars per
@@ -264,6 +268,8 @@ some browsers restrict cross-origin requests from `file://`.
   no cookie banner it lacks, no "no cookies" while code sets one, ads described as
   inactive for as long as none load, every third party the page may contact
   named, and visit counting described as every page does it.
+- `test/physical.test.js` — the physical units: each factor from the legal weights,
+  the line under the price in both languages, and the delta in futures contracts.
 - `test/analytics.test.js` — visit counting: the address sent without what follows
   `#`, Vercel's own script loaded from the site, and nothing loaded from a file or
   the dev server.
