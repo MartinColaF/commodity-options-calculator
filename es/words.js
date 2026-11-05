@@ -78,12 +78,19 @@ const SPANISH = {
   'Set the contract size and symbol yourself': 'El tamaño del contrato y el símbolo se completan a mano',
 
   /* ---- strategies ---- */
+  'Hedging a physical position': 'Cobertura de una posición física',
+  'Trading': 'Trading',
+  'Seller: price floor (hold + buy put)': 'Vendedor: precio piso (físico + compra de put)',
+  'Seller: collar (hold + buy put + sell call)': 'Vendedor: collar (físico + compra de put + venta de call)',
+  'Seller: fence (hold + buy put + sell lower put + sell call)':
+    'Vendedor: fence (físico + compra de put + venta de put más bajo + venta de call)',
+  'Buyer: price cap (buy later + buy call)': 'Comprador: precio techo (compra a futuro + compra de call)',
+  'Buyer: collar (buy later + buy call + sell put)': 'Comprador: collar (compra a futuro + compra de call + venta de put)',
   'Long call': 'Compra de call',
   'Long put': 'Compra de put',
   'Short call (naked)': 'Venta de call (descubierta)',
   'Short put (naked)': 'Venta de put (descubierta)',
   'Covered call': 'Covered call (call cubierto)',
-  'Protective put': 'Protective put (put protector)',
   'Bull call spread': 'Bull call spread (alcista)',
   'Bear put spread': 'Bear put spread (bajista)',
   'Long straddle': 'Compra de straddle',
@@ -91,7 +98,6 @@ const SPANISH = {
   'Short strangle': 'Venta de strangle',
   'Call butterfly': 'Butterfly con calls',
   'Iron condor': 'Iron condor',
-  'Collar': 'Collar',
   'Call calendar spread': 'Calendar spread con calls',
   'Call ratio 1x2': 'Ratio 1x2 con calls',
   'Choose a strategy…': 'Elegir una estrategia…',

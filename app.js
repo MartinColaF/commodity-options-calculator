@@ -500,14 +500,40 @@ function newLeg(over) {
  * 4. Strategy presets
  * ========================================================== */
 
-/* k = at-the-money reference, w = strike step */
+/* k = at-the-money reference, w = strike step. The hedges come first, under
+ * their own heading, named for who holds the physical position: a seller (a
+ * producer, an exporter) holds it, the underlying leg long; a buyer (an
+ * industry, an importer) will buy, the underlying leg short. The rest are
+ * trading strategies. */
 const STRATEGIES = {
+  'protective-put': {
+    label: 'Seller: price floor (hold + buy put)', hedge: true,
+    legs: (k, w) => [{ side: 1, kind: 'underlying', strike: 0 }, { side: 1, kind: 'put', strike: k - w }]
+  },
+  'collar': {
+    label: 'Seller: collar (hold + buy put + sell call)', hedge: true, legs: (k, w) => [
+      { side: 1, kind: 'underlying', strike: 0 },
+      { side: 1, kind: 'put', strike: k - w }, { side: -1, kind: 'call', strike: k + w }]
+  },
+  'fence': {
+    label: 'Seller: fence (hold + buy put + sell lower put + sell call)', hedge: true, legs: (k, w) => [
+      { side: 1, kind: 'underlying', strike: 0 }, { side: 1, kind: 'put', strike: k - w },
+      { side: -1, kind: 'put', strike: k - 2 * w }, { side: -1, kind: 'call', strike: k + w }]
+  },
+  'cap': {
+    label: 'Buyer: price cap (buy later + buy call)', hedge: true,
+    legs: (k, w) => [{ side: -1, kind: 'underlying', strike: 0 }, { side: 1, kind: 'call', strike: k + w }]
+  },
+  'buyer-collar': {
+    label: 'Buyer: collar (buy later + buy call + sell put)', hedge: true, legs: (k, w) => [
+      { side: -1, kind: 'underlying', strike: 0 },
+      { side: 1, kind: 'call', strike: k + w }, { side: -1, kind: 'put', strike: k - w }]
+  },
   'long-call': { label: 'Long call', legs: k => [{ side: 1, kind: 'call', strike: k }] },
   'long-put': { label: 'Long put', legs: k => [{ side: 1, kind: 'put', strike: k }] },
   'short-call': { label: 'Short call (naked)', legs: (k, w) => [{ side: -1, kind: 'call', strike: k + w }] },
   'short-put': { label: 'Short put (naked)', legs: (k, w) => [{ side: -1, kind: 'put', strike: k - w }] },
   'covered-call': { label: 'Covered call', legs: (k, w) => [{ side: 1, kind: 'underlying', strike: 0 }, { side: -1, kind: 'call', strike: k + w }] },
-  'protective-put': { label: 'Protective put', legs: (k, w) => [{ side: 1, kind: 'underlying', strike: 0 }, { side: 1, kind: 'put', strike: k - w }] },
   'bull-call': { label: 'Bull call spread', legs: (k, w) => [{ side: 1, kind: 'call', strike: k }, { side: -1, kind: 'call', strike: k + 2 * w }] },
   'bear-put': { label: 'Bear put spread', legs: (k, w) => [{ side: 1, kind: 'put', strike: k }, { side: -1, kind: 'put', strike: k - 2 * w }] },
   'straddle': { label: 'Long straddle', legs: k => [{ side: 1, kind: 'call', strike: k }, { side: 1, kind: 'put', strike: k }] },
@@ -518,11 +544,6 @@ const STRATEGIES = {
     label: 'Iron condor', legs: (k, w) => [
       { side: 1, kind: 'put', strike: k - 2 * w }, { side: -1, kind: 'put', strike: k - w },
       { side: -1, kind: 'call', strike: k + w }, { side: 1, kind: 'call', strike: k + 2 * w }]
-  },
-  'collar': {
-    label: 'Collar', legs: (k, w) => [
-      { side: 1, kind: 'underlying', strike: 0 },
-      { side: 1, kind: 'put', strike: k - w }, { side: -1, kind: 'call', strike: k + w }]
   },
   'calendar': {
     label: 'Call calendar spread', legs: (k, w, d) => [
@@ -3440,14 +3461,24 @@ function onLegEvent(e) {
   renderAll();
 }
 
+/* The strategy dropdown: the hedges first, under their own heading, so whoever
+ * holds a physical position finds theirs before the trading strategies. */
+function strategyOptionsHtml() {
+  const options = keys => keys.map(k => `<option value="${k}">${escapeHtml(t(STRATEGIES[k].label))}</option>`).join('');
+  const keys = Object.keys(STRATEGIES);
+  return '<option value="">' + escapeHtml(t('Choose a strategy…')) + '</option>' +
+    `<optgroup label="${escapeHtml(t('Hedging a physical position'))}">` +
+    options(keys.filter(k => STRATEGIES[k].hedge)) + '</optgroup>' +
+    `<optgroup label="${escapeHtml(t('Trading'))}">` +
+    options(keys.filter(k => !STRATEGIES[k].hedge)) + '</optgroup>';
+}
+
 function init() {
   pruneCache(CACHE_MAX_AGE);
   // Commodity dropdown
   $('commodity').innerHTML = Object.keys(COMMODITIES)
     .map(k => `<option value="${k}">${escapeHtml(t(COMMODITIES[k].label))}</option>`).join('');
-  // Strategy dropdown
-  $('strategy').innerHTML = '<option value="">' + t('Choose a strategy…') + '</option>' +
-    Object.keys(STRATEGIES).map(k => `<option value="${k}">${escapeHtml(t(STRATEGIES[k].label))}</option>`).join('');
+  $('strategy').innerHTML = strategyOptionsHtml();
 
   const saved = readHash() || (() => {
     try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch (e) { return null; }

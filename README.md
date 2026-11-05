@@ -16,8 +16,10 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
 - **Prices to the tick** — every price shows as many decimals as the market's option
   tick: four for copper, three for gas, silver, cattle and the grains (an eighth of a
   cent), two elsewhere. Nothing on screen is rounded past a step the market trades in.
-- **Multi-leg strategies** — any mix of calls, puts and the underlying. 16 presets
-  (spreads, straddles, butterflies, iron condor, collar, calendar, ratio).
+- **Multi-leg strategies** — any mix of calls, puts and the underlying. 19 presets.
+  Five hedge a physical position, listed first and named for who holds it: a seller's
+  price floor, collar and fence, a buyer's price cap and collar. The rest are for
+  trading: spreads, straddles, butterflies, iron condor, calendar, ratio.
   Per-leg volatility (skew), per-leg expiry (calendars) and **per-leg underlying
   price** are supported: in a real commodity calendar each delivery month trades
   at its own price, and one button fills each leg from the listed futures curve.
@@ -184,6 +186,9 @@ some browsers restrict cross-origin requests from `file://`.
   equal to their limits just above it, implied-volatility round trips and none from a
   premium with no time value, the volatility estimators against a series of known
   volatility, curve interpolation and the carry inversion.
+- `test/hedging.test.js` — the hedging presets: listed first under their heading,
+  the physical held by a seller and to be bought by a buyer, and a floor or a cap
+  bounding what each can lose.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
   butterflies, financed and nominal; bounded put payoffs; the rate an unlimited maximum
   grows at, a European calendar's against an American one's and a naked call's; the
