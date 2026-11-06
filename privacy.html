@@ -22,12 +22,13 @@
   </nav>
   <main class="card">
   <h1>Privacy Policy</h1>
-  <p><strong>Effective Date:</strong> October 26, 2026</p>
+  <p><strong>Effective Date:</strong> November 5, 2026</p>
 
   <p>Thank you for visiting <em>Commodity Options Calculator</em>. This website provides an educational tool for simulating options pricing for commodity futures: metals, energy, grains, softs and livestock.</p>
 
   <h2>1. Information We Collect</h2>
   <p>We do <strong>not</strong> collect any personal information from users. The calculator runs in your browser. The one part of this site that runs on a server is the market data function described in section 3. It receives only the name of the commodity you asked about, along with what every web request carries, which section 3 explains.</p>
+  <p>We count visits with Vercel Web Analytics, which sections 2 and 3 describe: it records totals, not people, and sets no cookies.</p>
   <p>This site does not show ads yet. We plan to show them through Google AdSense; section 2 says what that will mean, and this policy will be updated before ads are switched on.</p>
 
   <h2>1b. Data Stored in Your Browser</h2>
@@ -43,7 +44,7 @@
   <p>This site sets <strong>no cookies</strong> today. The calculator keeps what it needs in your browser's local storage instead, as described in section 1b.</p>
   <ul>
     <li><strong>Advertising</strong> (planned, not active yet): once ads are switched on, Google AdSense and its partners may use cookies to serve ads based on your previous visits to this or other websites.</li>
-    <li><strong>Analytics:</strong> we do not use any. If that changes, this policy will be updated first.</li>
+    <li><strong>Analytics:</strong> we count visits with Vercel Web Analytics, which sets no cookies and stores nothing in your browser. For each page view it records the page's address, without the part after "#" where a shared link carries your inputs; the site that linked to it; an approximate location derived from the request (country, region and city); and your browser, operating system and type of device. Visits are told apart by a hash of the request that Vercel discards after 24 hours, so a count is never tied to you. We see only totals.</li>
   </ul>
   <p>Your browser's settings let you block or delete cookies and site data at any time. For Google's advertising, see the links in section 5.</p>
 
@@ -55,6 +56,8 @@
         Learn more: How Google uses information from sites that use our services
       </a>
     </li>
+    <li><strong>Vercel Web Analytics</strong> (our host, Vercel) – counts page views as section 2 describes. The count is sent to this site's own address and handled by Vercel.<br/>
+        <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener">How Vercel Web Analytics handles data</a></li>
     <li><strong>jsDelivr</strong> – content delivery network used to load the charting library. Your IP address is visible to it, as with any web request.</li>
     <li><strong>U.S. Department of the Treasury</strong> (home.treasury.gov) – requested by your browser only when you ask for the risk-free rate, to read the published daily yield curve. No information about you is sent beyond the request itself.</li>
     <li><strong>Our own market data function</strong> (<code>/api/market</code>, hosted on Vercel) – when you ask for a futures price, volatility or convenience yield, your browser calls this site, and this site then reads public futures quotes from Yahoo Finance. Your browser never contacts Yahoo, and we send them nothing about you. The request is logged by our host (Vercel) the same way any page request is, and responses are cached so repeated requests do not leave this site.</li>
@@ -127,5 +130,6 @@
       });
     })();
   </script>
+<script src="analytics.js"></script>
 </body>
 </html>

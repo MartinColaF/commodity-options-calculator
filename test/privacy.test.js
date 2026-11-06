@@ -81,8 +81,8 @@ test('the Spanish policy is a translation of this one, which prevails', () => {
   // Section for section, from the same date.
   const sections = html => Array.from(html.matchAll(/<h2>(\w+)\./g), m => m[1]);
   assert.deepStrictEqual(sections(read('es/privacy.html')), sections(read('privacy.html')));
-  assert.match(policy, /Effective Date: October 26, 2026/);
-  assert.match(traduccion, /Fecha de entrada en vigor: 26 de octubre de 2026/,
+  assert.match(policy, /Effective Date: November 5, 2026/);
+  assert.match(traduccion, /Fecha de entrada en vigor: 5 de noviembre de 2026/,
     'a new effective date in English needs one here too');
   const links = html => Array.from(html.matchAll(/<a href="(https:[^"]+)"/g), m => m[1]);
   assert.deepStrictEqual(links(read('es/privacy.html')), links(read('privacy.html')));
@@ -94,6 +94,26 @@ test('the Spanish policy makes the same promises as the English one', () => {
   assert.strictEqual(/todavía no está activ/i.test(traduccion), !loadsAds, 'ads described as the English policy does');
   assert.match(traduccion, /\/api\/market/);
   for (const name of [/jsDelivr/, /home\.treasury\.gov/, /alphavantage\.co/]) assert.match(traduccion, name);
+});
+
+/* ---- visit counting ---- */
+
+test('visits are counted as both policies say, on every page, without the shared scenario', () => {
+  // The policy said "Analytics: we do not use any" until the pages counted
+  // visits; now it says what is counted, and these are the files that make it
+  // true: every page loads analytics.js, which drops what follows "#".
+  for (const file of ['index.html', 'es/index.html', 'methodology.html', 'es/methodology.html',
+    'privacy.html', 'es/privacy.html']) {
+    assert.match(read(file), /<script src="(\.\.\/)?analytics\.js"><\/script>/, `${file} counts its visits`);
+  }
+  assert.doesNotMatch(policy, /Analytics: we do not use any/);
+  assert.match(policy, /we count visits with Vercel Web Analytics, which sets no cookies/);
+  assert.match(policy, /without the part after "#" where a shared link carries your inputs/);
+  assert.match(traduccion, /contamos las visitas con Vercel Web Analytics, que no establece cookies/);
+  assert.match(traduccion, /sin la parte que sigue a «#», donde un link compartido lleva los datos cargados/);
+  assert.match(read('analytics.js'), /split\('#'\)\[0\]/);
+  assert.doesNotMatch(read('analytics.js'), /document\.cookie|enableCookie|localStorage/,
+    'and it asks the counter for no cookie and stores nothing');
 });
 
 /* ---- how both policies look ---- */

@@ -48,7 +48,10 @@ test('the methodology pages wear the site, lead back, and name each other', () =
     const html = read(p.doc);
     assert.match(html, new RegExp(`<html lang="${p.lang}">`));
     assert.match(html, /<link rel="stylesheet" href="(\.\.\/)?styles\.css">/);
-    assert.doesNotMatch(html, /<script\b|<style\b/, 'no script and no style of its own');
+    // The visit counter is the one script, as on every page (analytics.js).
+    assert.strictEqual((html.match(/<script\b/g) || []).length, 1, 'one script');
+    assert.match(html, /<script src="(\.\.\/)?analytics\.js"><\/script>/, 'the visit counter');
+    assert.doesNotMatch(html, /<style\b/, 'no style of its own');
     assert.match(html, /http-equiv="Content-Security-Policy"/);
     assert.match(html, new RegExp(`<nav class="doc-nav">\\s*<a href="${p.home}">&larr; `));
     assert.match(html, new RegExp(`<link rel="canonical" href="${SITE}${p.doc}">`));

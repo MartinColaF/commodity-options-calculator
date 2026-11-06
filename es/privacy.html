@@ -25,13 +25,14 @@
   </nav>
   <main class="card">
   <h1>Política de privacidad</h1>
-  <p><strong>Fecha de entrada en vigor:</strong> 26 de octubre de 2026</p>
+  <p><strong>Fecha de entrada en vigor:</strong> 5 de noviembre de 2026</p>
   <p><em>Esta es una traducción; ante cualquier diferencia prevalece la <a href="/privacy.html" hreflang="en">versión en inglés</a>.</em></p>
 
   <p>Gracias por visitar la <em>Calculadora de opciones sobre commodities</em>. Este sitio ofrece una herramienta educativa para simular la valuación de opciones sobre futuros de commodities: metales, energía, granos, softs y ganado.</p>
 
   <h2>1. Información que recopilamos</h2>
   <p><strong>No</strong> recopilamos información personal de los usuarios. La calculadora funciona en el navegador. La única parte de este sitio que funciona en un servidor es la función de datos de mercado que describe la sección 3. Recibe solo el nombre del mercado consultado, junto con lo que lleva cualquier solicitud web, que explica la sección 3.</p>
+  <p>Contamos las visitas con Vercel Web Analytics, que describen las secciones 2 y 3: registra totales, no personas, y no establece cookies.</p>
   <p>Este sitio todavía no muestra anuncios. Tenemos previsto mostrarlos mediante Google AdSense; la sección 2 explica qué significará eso, y esta política se actualizará antes de activarlos.</p>
 
   <h2>1b. Datos guardados en el navegador</h2>
@@ -47,7 +48,7 @@
   <p>Hoy este sitio no establece <strong>ninguna cookie</strong>. La calculadora guarda lo que necesita en el almacenamiento local del navegador, como describe la sección 1b.</p>
   <ul>
     <li><strong>Publicidad</strong> (prevista, todavía no está activa): cuando se activen los anuncios, Google AdSense y sus socios podrán usar cookies para mostrar anuncios según las visitas anteriores a este u otros sitios web.</li>
-    <li><strong>Analítica:</strong> no usamos ninguna. Si eso cambia, esta política se actualizará antes.</li>
+    <li><strong>Analítica:</strong> contamos las visitas con Vercel Web Analytics, que no establece cookies ni guarda nada en el navegador. Por cada página vista registra la dirección de la página, sin la parte que sigue a «#», donde un link compartido lleva los datos cargados; el sitio desde el que se llegó; una ubicación aproximada que surge de la solicitud (país, región y ciudad), y el navegador, el sistema operativo y el tipo de dispositivo. Las visitas se distinguen por un hash de la solicitud que Vercel descarta a las 24 horas, así que ningún conteo queda asociado a una persona. Solo vemos totales.</li>
   </ul>
   <p>La configuración del navegador permite bloquear o borrar cookies y datos de sitios en cualquier momento. Para la publicidad de Google, ver los enlaces de la sección 5.</p>
 
@@ -59,6 +60,8 @@
         Más información: cómo usa Google la información de los sitios que usan sus servicios
       </a>
     </li>
+    <li><strong>Vercel Web Analytics</strong> (Vercel, nuestro proveedor de hosting): cuenta las páginas vistas como describe la sección 2. El conteo se envía a la propia dirección de este sitio y lo procesa Vercel.<br/>
+        <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener">Cómo trata los datos Vercel Web Analytics</a></li>
     <li><strong>jsDelivr</strong>: red de distribución de contenidos que se usa para cargar la biblioteca de gráficos. Ve la dirección IP, como en cualquier solicitud web.</li>
     <li><strong>Departamento del Tesoro de EE. UU.</strong> (home.treasury.gov): el navegador lo consulta solo cuando se pide la tasa libre de riesgo, para leer la curva diaria de rendimientos publicada. No se envía ninguna información personal más allá de la propia solicitud.</li>
     <li><strong>Nuestra propia función de datos de mercado</strong> (<code>/api/market</code>, alojada en Vercel): al pedir un precio de futuros, una volatilidad o un rendimiento de conveniencia, el navegador consulta este sitio, y este sitio lee cotizaciones públicas de futuros de Yahoo Finance. El navegador nunca se conecta con Yahoo, y no le enviamos nada sobre quien consulta. Nuestro proveedor de hosting (Vercel) registra la solicitud igual que cualquier solicitud de página, y las respuestas se guardan en caché para que las consultas repetidas no salgan de este sitio.</li>
@@ -131,5 +134,6 @@
       });
     })();
   </script>
+<script src="../analytics.js"></script>
 </body>
 </html>

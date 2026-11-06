@@ -22,7 +22,8 @@ test('where the share sheet exists, the button opens it with the scenario link',
   fire('share', 'click');
   await settled();
   assert.strictEqual(shared.length, 1);
-  assert.match(shared[0].url, /^https:\/\/example\.test\/#s=[A-Za-z0-9_-]+$/);
+  // ref=share marks the visit it brings; the scenario stays after the #.
+  assert.match(shared[0].url, /^https:\/\/example\.test\/\?ref=share#s=[A-Za-z0-9_-]+$/);
   assert.strictEqual(el('saveStatus').textContent, '', 'the sheet was the answer');
 });
 

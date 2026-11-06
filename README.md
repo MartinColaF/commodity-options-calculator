@@ -147,6 +147,8 @@ Notes and limitations, stated plainly in the UI as well:
 - `app.js` — pricing engine, strategy analytics, data providers, rendering
 - `api/market.js` — serverless futures data proxy (Vercel)
 - `privacy.html` — privacy policy
+- `analytics.js` — visit counting with Vercel Web Analytics: page views only, no
+  cookies, and never the scenario a shared link carries after `#`
 - `i18n.js` — `t()`, through which `app.js` writes every word, keyed by its English text
 - `es/` — the Spanish page, its words (`words.js`), the policy in Spanish and its
   preview image
@@ -260,8 +262,11 @@ some browsers restrict cross-origin requests from `file://`.
   site without ever dropping a file the page or the market function needs.
 - `test/privacy.test.js` — the privacy policy promising nothing the site does not do:
   no cookie banner it lacks, no "no cookies" while code sets one, ads described as
-  inactive for as long as none load, and every third party the page may contact
-  named.
+  inactive for as long as none load, every third party the page may contact
+  named, and visit counting described as every page does it.
+- `test/analytics.test.js` — visit counting: the address sent without what follows
+  `#`, Vercel's own script loaded from the site, and nothing loaded from a file or
+  the dev server.
 - `test/api.test.js` — the serverless function with a mocked upstream: rejected
   commodities, method and action validation, series parsing, the two rules of the
   contract probe (skip the delivery month, skip contracts that have not traded
