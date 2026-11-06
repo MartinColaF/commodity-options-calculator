@@ -54,6 +54,13 @@ const SPANISH = {
   'MMBtu': 'MMBtu',
   'bushels': 'bushels',
   'metric tons': 'toneladas métricas',
+  '60-kg bags': 'sacas de 60 kg',
+  'kg': 'kg',
+  'USD/t': 'USD/t',
+  'USD per 60-kg bag': 'USD por saca de 60 kg',
+  'USD/kg live weight': 'USD/kg de peso vivo',
+  'In physical terms: {price} {priceUnit}, and 1 contract = {amount} {unit}.':
+    'En físico: {price} {priceUnit}, y 1 contrato = {amount} {unit}.',
   'units': 'unidades',
   'SPDR Gold Shares - tracks spot gold closely': 'SPDR Gold Shares - sigue de cerca al oro spot',
   'iShares Silver Trust': 'iShares Silver Trust',
@@ -225,6 +232,12 @@ const SPANISH = {
   '$ per +1 vol point': '$ por +1 punto de vol',
   '$ per calendar day': '$ por día calendario',
   '$ per +1 rate point': '$ por +1 punto de tasa',
+  'Delta in futures contracts: {n}, less than one contract to offset.':
+    'Delta en contratos de futuro: {n}, menos de un contrato para compensar.',
+  'Delta in futures contracts: {n}. Selling {k} leaves {rest}.':
+    'Delta en contratos de futuro: {n}. Vender {k} la deja en {rest}.',
+  'Delta in futures contracts: {n}. Buying {k} leaves {rest}.':
+    'Delta en contratos de futuro: {n}. Comprar {k} la deja en {rest}.',
   'Position column = per-unit greek × quantity × ${mult} multiplier.':
     'Columna Posición = griega por unidad × cantidad × multiplicador de ${mult}.',
   'Delta and gamma are per point of the contract in the left panel, with each leg\'s own month moving in proportion, as on the chart; the Delta column in the legs table is against each leg\'s own month.':

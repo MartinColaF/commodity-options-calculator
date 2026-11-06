@@ -28,6 +28,7 @@ function keys() {
     const c = app.COMMODITIES[k];
     out.add(c.label).add(c.unit);
     if (c.proxy) out.add(c.proxy);
+    if (c.physical) out.add(c.physical.unit).add(c.physical.price);
   }
   for (const k of Object.keys(app.STRATEGIES)) out.add(app.STRATEGIES[k].label);
   // The market function's own messages, which the page shows as its errors.

@@ -1648,6 +1648,18 @@ function renderInputs() {
   $('multInfo').textContent = c.quote === 'cents'
     ? t('1 contract = {size} {unit} (quoted in cents) - P&L multiplier ${mult} per point', sized)
     : t('1 contract = {size} {unit} - P&L multiplier ${mult} per point', sized);
+  // The price and the contract in the unit the physical trade uses: an
+  // exporter quotes soybeans in USD a ton, CBOT in cents a bushel.
+  const phys = c.physical;
+  $('physicalInfo').hidden = !phys;
+  $('physicalInfo').textContent = phys
+    ? t('In physical terms: {price} {priceUnit}, and 1 contract = {amount} {unit}.', {
+      price: fmt((c.quote === 'cents' ? state.S / 100 : state.S) * phys.per, 2),
+      priceUnit: t(phys.price),
+      amount: fmt(c.size / phys.per, 2),
+      unit: t(phys.unit)
+    })
+    : '';
   // The folded settings say what they hold, so folding them hides no
   // assumption.
   const picked = state.session.strip.find(m => m.symbol === state.contractMonth);
@@ -1827,6 +1839,21 @@ function renderLegs() {
   }
 }
 
+/* The position's delta in futures contracts of the contract in the left panel,
+ * and how many to trade to offset it: what a risk desk hedges with. It is the
+ * greeks table's per-unit delta, a sum of contracts, so nothing new is priced. */
+function futuresDelta(d) {
+  const signed = x => (Math.abs(x) < 0.005 ? fmt(0, 2) : (x > 0 ? '+' : '') + fmt(x, 2));
+  const k = Math.round(Math.abs(d));
+  if (k === 0) {
+    return escapeHtml(t('Delta in futures contracts: {n}, less than one contract to offset.', { n: signed(d) }));
+  }
+  const rest = d - Math.sign(d) * k;
+  return escapeHtml(d > 0
+    ? t('Delta in futures contracts: {n}. Selling {k} leaves {rest}.', { n: signed(d), k, rest: signed(rest) })
+    : t('Delta in futures contracts: {n}. Buying {k} leaves {rest}.', { n: signed(d), k, rest: signed(rest) }));
+}
+
 function renderResults() {
   const a = analyse();
   const g = netGreeks();
@@ -1881,6 +1908,7 @@ function renderResults() {
         <tr><td>Theta</td><td class="num">${fmt(g.unit.theta, 4)}</td><td class="num">${money(g.money.theta)}</td><td class="muted">${t('$ per calendar day')}</td></tr>
         <tr><td>Rho</td><td class="num">${fmt(g.unit.rho, 4)}</td><td class="num">${money(g.money.rho)}</td><td class="muted">${t('$ per +1 rate point')}</td></tr>
       </table>
+      <p class="small">${futuresDelta(g.unit.delta)}</p>
       <p class="muted small">${t('Position column = per-unit greek × quantity × ${mult} multiplier.', { mult: fmt(mult, 2) })}${ownMonth
         ? ' ' + t('Delta and gamma are per point of the contract in the left panel, with each leg\'s own month ' +
           'moving in proportion, as on the chart; the Delta column in the legs table is against each ' +
