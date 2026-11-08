@@ -30,7 +30,8 @@ function media(query) {
 test('every card has a place in the phone order, results before inputs', () => {
   const cards = Array.from(html.matchAll(/<section class="card" id="(\w+)"/g), m => m[1]);
   assert.strictEqual(cards.length, (html.match(/class="card"/g) || []).length, 'every card has an id');
-  const phone = media('(max-width: 900px)').body;
+  // Paper reads in the same order (the printed report).
+  const phone = media('(max-width: 900px), print').body;
   const order = {};
   for (const id of cards) {
     const m = phone.match(new RegExp(`#${id}\\s*\\{\\s*order:\\s*(\\d+);`));
@@ -46,7 +47,8 @@ test('every card has a place in the phone order, results before inputs', () => {
 test('the reordered cards keep to the screen width', () => {
   // With the column wrappers set to display: contents the cards become the
   // grid's items, and without min-width: 0 the legs table widened the page.
-  const phone = media('(max-width: 900px)').body;
+  // Paper reads in the same order (the printed report).
+  const phone = media('(max-width: 900px), print').body;
   assert.match(phone, /\.grid > div\s*\{\s*display:\s*contents;/);
   assert.match(phone, /\.grid \.card[^{]*\{\s*min-width:\s*0;/);
 });

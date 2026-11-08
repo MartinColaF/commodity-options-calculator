@@ -59,6 +59,36 @@
   }
 }
 
+/* Paper has no dark background: printing takes the light palette whatever the
+ * scheme, while the wiring holds this class on the page (beforeprint to
+ * afterprint), so the chart is redrawn in it too. The same values as :root;
+ * test/print.test.js keeps them in step. */
+:root.printing {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --text: #23272e;
+  --muted: #6b7280;
+  --line: #dfe3e8;
+  --field-border: #868f9c;
+  --accent: #0b6ea8;
+  --accent-ink: #ffffff;
+  --pos: #197b3f;
+  --neg: #b3261e;
+  --warn: #b45309;
+  --field: #ffffff;
+  --chart-grid: rgba(0,0,0,.10);
+  --chart-zero: rgba(0,0,0,.45);
+  --chart-text: #333;
+  --chart-net: #0b6ea8;
+  --chart-now: #d97706;
+  --chart-leg: rgba(0,0,0,.45);
+  --chart-spot: #6b7280;
+  --chart-strike: #9ca3af;
+  --chart-strike-label: #6b7280;
+  --scroll-shadow: rgba(0,0,0,.18);
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -98,13 +128,13 @@ header .lang-switch { text-align: right; margin: 0 0 4px; font-size: .88rem; }
  * the column past the viewport instead of scrolling inside .table-scroll. */
 .grid > * { min-width: 0; }
 
-/* One column on a phone or a narrow window, with what the page works out first:
+/* One column on a phone or a narrow window, and on paper, with what the page works out first:
  * the strategy, its results and its chart, then the contract and the market data.
  * The two column wrappers step aside so the cards can be ordered across them.
  * Visual order only: tabbing and screen readers still follow the markup, in which
  * every card stands on its own. */
 .context { display: none; }
-@media (max-width: 900px) {
+@media (max-width: 900px), print {
   .grid { grid-template-columns: 1fr; gap: 0; }
   .grid > div { display: contents; }
   /* What .grid > * gave the column wrappers, given to the cards that are now the
@@ -461,6 +491,27 @@ footer p { margin: 6px 0; }
 .mt-8 { margin-top: 8px; }
 .mt-12 { margin-top: 12px; }
 .mt-14 { margin-top: 14px; }
+
+/* The printed report (the Print button, or the browser's own): the position, its
+ * results, chart and scenarios, the assumptions and sources, the disclaimer, and
+ * the date and the link to the scenario at the top. No controls: they do nothing
+ * on paper. */
+.print-only { display: none; }
+@media print {
+  body { background: #fff; }
+  .print-only { display: block; }
+  .lang-switch, .footer-links, button, .file-button, #cardSave, #strategy,
+  input[type=range] { display: none !important; }
+  .card { break-inside: avoid; }
+  .chart-box { height: 340px; }
+  /* The legs table's fields read as values on paper: no box, no arrow, and
+     small enough that every column fits the page. */
+  #legs th, #legs td { font-size: .66rem; padding-left: 3px; padding-right: 3px; }
+  #legs input, #legs select {
+    -webkit-appearance: none; appearance: none; border: 0; background: none;
+    padding: 0; min-width: 0; width: auto; field-sizing: content; font-size: .66rem;
+  }
+}
 
 /* Phones and touch screens. Last in the file, so these sizes win over the ones above. */
 

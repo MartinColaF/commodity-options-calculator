@@ -2296,6 +2296,26 @@ function renderChartSafely(a) {
   }
 }
 
+/* The page as a printed report. Paper has no dark background, so the light
+ * palette holds while printing (:root.printing in styles.css) and the chart is
+ * drawn again in it. Paper is also narrower than the window the chart was drawn
+ * for, and Chart.js resizes on its own only once the print is laid out, too
+ * late: it is sized for the page while printing and given back to its box
+ * after. The top of the report says when and where it was printed, and links
+ * to the scenario: the link is a whole position long, so on paper it is
+ * named, not spelled out, and in a PDF it opens. */
+function renderForPrint(printing) {
+  $('printInfo').innerHTML = printing
+    ? escapeHtml(t('Printed {date} from {site}.', { date: new Date().toISOString().slice(0, 10), site: location.host })) +
+      ` <a href="${escapeHtml(shareLink())}">${escapeHtml(t('Open this scenario'))}</a>`
+    : '';
+  document.documentElement.classList.toggle('printing', printing);
+  renderChartSafely(analyse());
+  if (chart && !chartBroken) {
+    if (printing) chart.resize(680, 340); else chart.resize();
+  }
+}
+
 /* Typing and dragging a slider fire an event for every keystroke or pixel. The
  * state changes at once; the drawing waits for the next frame and happens once
  * for however many events arrived in it. */
@@ -3355,6 +3375,11 @@ function bindInputs() {
       setSaveStatus(t('Link is in the address bar - copy it from there.'));
     }
   });
+
+  // The browser's own Print does the same as the button.
+  $('print').addEventListener('click', () => window.print());
+  window.addEventListener('beforeprint', () => renderForPrint(true));
+  window.addEventListener('afterprint', () => renderForPrint(false));
 
   $('exportJson').addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' });

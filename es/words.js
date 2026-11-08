@@ -244,6 +244,8 @@ const SPANISH = {
     'Delta en contratos de futuro: {n}. Vender {k} la deja en {rest}.',
   'Delta in futures contracts: {n}. Buying {k} leaves {rest}.':
     'Delta en contratos de futuro: {n}. Comprar {k} la deja en {rest}.',
+  'Printed {date} from {site}.': 'Impreso el {date} desde {site}.',
+  'Open this scenario': 'Abrir este escenario',
   'Position column = per-unit greek × quantity × ${mult} multiplier.':
     'Columna Posición = griega por unidad × cantidad × multiplicador de ${mult}.',
   'Delta and gamma are per point of the contract in the left panel, with each leg\'s own month moving in proportion, as on the chart; the Delta column in the legs table is against each leg\'s own month.':

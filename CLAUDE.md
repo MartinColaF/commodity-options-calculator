@@ -343,6 +343,17 @@ legs table widened the page to 858 px. The order is visual only; tabbing follows
 markup. `.context` is the line in Strategy that names the contract it prices, shown only
 in that layout.
 
+**The page prints as a report.** The Print button, or the browser's own, gives the
+position, its results, chart and scenarios, the assumptions and sources and the
+disclaimer, in the phone's order (the layout block is `@media (max-width: 900px), print`),
+with no controls, and the legs table's fields read as plain values. `renderForPrint()`
+runs on `beforeprint` and `afterprint`: it holds `:root.printing`, the light palette, so
+the dark scheme does not print light text on white paper, draws the chart again in it,
+sizes it for the page (Chart.js resizes on its own only after the print is laid out),
+and writes the date, the site and a link named "Open this scenario" at the top: the
+link is a whole position long, so it is named, not spelled out, and it opens from a
+PDF. `:root.printing` repeats `:root`'s colours; `test/print.test.js` keeps them in step.
+
 **Phone sizes go last in `styles.css`.** Fields are 16 px wherever the screen is narrow or
 the pointer coarse, because iOS Safari zooms into anything smaller and stays zoomed, and
 controls are 44 px on touch screens. Those blocks sit at the end of the file because the
