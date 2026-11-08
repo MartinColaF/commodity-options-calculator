@@ -22,6 +22,9 @@
  * weight (60 lb for soybeans and wheat, 56 for corn) and the pound's,
  * 0.45359237 kg. unit names it and price names its price. The page shows the
  * futures price and the contract in it; nothing is priced in it.
+ * reports names the scheduled reports in events.js that move the market, by
+ * key; the page says how many come out before the horizon. The WASDE's balance
+ * sheets are the grains', the oilseeds' and cotton's.
  * futures is how Yahoo names the contracts, and null for a market with none:
  *   root   = continuous front-month symbol prefix (root + "=F")
  *   suffix = exchange code used by month contracts
@@ -66,18 +69,21 @@ const COMMODITIES = {
     label: 'Corn (CBOT ZC)', size: 5000, unit: 'bushels', quote: 'cents', tick: 0.125, vol: 28, yield: 2.5,
     priceSymbol: 'CORN', proxy: 'Teucrium Corn Fund',
     physical: { per: 1000 / (56 * 0.45359237), unit: 'metric tons', price: 'USD/t' },
+    reports: ['wasde'],
     futures: { root: 'ZC', suffix: 'CBT', months: 'HKNUZ' }
   },
   wheat: {
     label: 'Wheat (CBOT ZW)', size: 5000, unit: 'bushels', quote: 'cents', tick: 0.125, vol: 30, yield: 3,
     priceSymbol: 'WEAT', proxy: 'Teucrium Wheat Fund',
     physical: { per: 1000 / (60 * 0.45359237), unit: 'metric tons', price: 'USD/t' },
+    reports: ['wasde'],
     futures: { root: 'ZW', suffix: 'CBT', months: 'HKNUZ' }
   },
   soybean: {
     label: 'Soybeans (CBOT ZS)', size: 5000, unit: 'bushels', quote: 'cents', tick: 0.125, vol: 25, yield: 2.5,
     priceSymbol: 'SOYB', proxy: 'Teucrium Soybean Fund',
     physical: { per: 1000 / (60 * 0.45359237), unit: 'metric tons', price: 'USD/t' },
+    reports: ['wasde'],
     futures: { root: 'ZS', suffix: 'CBT', months: 'FHKNQUX' }
   },
   sugar: {
@@ -101,6 +107,7 @@ const COMMODITIES = {
     label: 'Cotton #2 (ICE CT)', size: 50000, unit: 'lb', quote: 'cents', tick: 0.01, vol: 25, yield: 1.5,
     priceSymbol: 'BAL', proxy: 'iPath Cotton ETN - thin',
     physical: { per: 1000 / 0.45359237, unit: 'metric tons', price: 'USD/t' },
+    reports: ['wasde'],
     futures: { root: 'CT', suffix: 'NYB', months: 'HKNVZ' }
   },
   cattle: {

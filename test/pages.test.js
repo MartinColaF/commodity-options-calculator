@@ -86,8 +86,8 @@ test('the same policy, the same Chart.js and the same scripts, one folder down',
   const chartjs = html => html.match(/<script src="https:[^>]*>/)[0];
   assert.strictEqual(chartjs(es), chartjs(en));
   const scripts = html => Array.from(html.matchAll(/<script src="([^h][^"]*)"><\/script>/g), m => m[1]);
-  assert.deepStrictEqual(scripts(en), ['commodities.js', 'i18n.js', 'app.js', 'analytics.js']);
-  assert.deepStrictEqual(scripts(es), ['../commodities.js', '../i18n.js', '../es/words.js', '../app.js', '../analytics.js'],
+  assert.deepStrictEqual(scripts(en), ['commodities.js', 'events.js', 'i18n.js', 'app.js', 'analytics.js']);
+  assert.deepStrictEqual(scripts(es), ['../commodities.js', '../events.js', '../i18n.js', '../es/words.js', '../app.js', '../analytics.js'],
     'its words load after i18n.js and before app.js');
   for (const f of Array.from(es.matchAll(/\b(?:src|href)="([^"#:]+)"/g), m => m[1])) {
     const file = f.startsWith('/') ? path.join(ROOT, f, f.endsWith('/') ? 'index.html' : '') : path.join(ROOT, 'es', f);

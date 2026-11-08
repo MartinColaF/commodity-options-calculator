@@ -64,6 +64,7 @@
     <li><strong>Volatilidad:</strong> volatilidad realizada (histórica) del futuro del primer vencimiento, close-to-close, EWMA (&lambda; = 0.94) o Parkinson, en una ventana de 20 a 90 días. <strong>No es volatilidad implícita</strong>, para la que la calculadora no tiene fuente, y el paso de un contrato al siguiente (el roll) puede inflarla un poco.</li>
     <li><strong>Rendimiento de conveniencia:</strong> implícito en dos contratos listados de la curva real.</li>
     <li><strong>Precios de las patas:</strong> el mes de entrega propio de cada pata, interpolado en escala logarítmica entre los contratos listados, o sobre la pendiente entre los dos más cercanos cuando la lista no está cargada. Más allá del último mes listado es una extrapolación, y la página lo dice.</li>
+    <li><strong>Calendario de informes:</strong> las fechas de publicación del WASDE que da a conocer el USDA, a las 12:00 ET, para maíz, trigo, soja y algodón. Los resultados dicen cuántos salen hasta el horizonte; nada se valúa con ellos. Pasada la última fecha publicada por el USDA, la página dice que el calendario termina ahí.</li>
     <li><strong>Respaldo:</strong> Alpha Vantage, con una clave gratuita propia, mide la volatilidad sobre un ETF que sigue al mercado. Solo se usan sus rendimientos, nunca su precio.</li>
     <li>Cada valor muestra su fuente y su fecha. Un valor predeterminado dice "no es dato de mercado". Ninguno es una cotización en vivo.</li>
   </ul>
@@ -81,7 +82,7 @@
 
   <h2>7. Cómo se controla</h2>
   <p>Un conjunto de tests automáticos corre con cada cambio: los precios contra fórmulas cerradas y contra el árbol binomial, las griegas contra las derivadas del propio P&amp;L del gráfico, la probabilidad de ganancia contra integrales exactas, y los pasos de datos de mercado contra respuestas grabadas. El <a href="https://github.com/MartinColaF/commodity-options-calculator" target="_blank" rel="noopener">código fuente</a> es público, y un <a href="https://github.com/MartinColaF/commodity-options-calculator/issues" target="_blank" rel="noopener">issue</a> es la vía para reportar un número que parezca incorrecto.</p>
-  <p class="muted">Metodología revisada por última vez en octubre de 2026.</p>
+  <p class="muted">Metodología revisada por última vez en noviembre de 2026.</p>
   </main>
   <footer><p><a href="/es/">Calculadora de opciones sobre commodities</a></p></footer>
 </div>

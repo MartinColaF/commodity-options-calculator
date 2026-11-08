@@ -9,6 +9,7 @@ const APP = path.join(ROOT, 'app.js');
 /* Loaded first, as index.html does: app.js reads its table at load time, and
  * writes its words through i18n.js. */
 const TABLE = path.join(ROOT, 'commodities.js');
+const REPORTS = path.join(ROOT, 'events.js');
 const WORDS = path.join(ROOT, 'i18n.js');
 const STYLES = path.join(ROOT, 'styles.css');
 
@@ -91,6 +92,7 @@ function loadApp(opts) {
   // Two scripts in one context share their top-level bindings, as two
   // <script> tags on one page do, so app.js sees the table's const.
   vm.runInContext(fs.readFileSync(TABLE, 'utf8'), sandbox, { filename: 'commodities.js' });
+  vm.runInContext(fs.readFileSync(REPORTS, 'utf8'), sandbox, { filename: 'events.js' });
   vm.runInContext(fs.readFileSync(WORDS, 'utf8'), sandbox, { filename: 'i18n.js' });
   Object.assign(vm.runInContext('TRANSLATIONS', sandbox), o.words || {});
   const t = sandbox.t;
