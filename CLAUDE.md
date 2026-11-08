@@ -354,6 +354,20 @@ and writes the date, the site and a link named "Open this scenario" at the top: 
 link is a whole position long, so it is named, not spelled out, and it opens from a
 PDF. `:root.printing` repeats `:root`'s colours; `test/print.test.js` keeps them in step.
 
+**The chart image is the post's picture.** A shared link previews `og.png` whatever its
+scenario, since the scenario is after `#`, where crawlers do not read, so the "Chart
+image" button makes one: `renderShareImage()` draws the chart again under `:root.printing`,
+copies it into a 1200×627 canvas beside `shareImageText()`'s numbers and gives the chart
+back to the page's palette. The numbers are the results card's, each with what it rests
+on: a probability without its volatility reads as a forecast. `drawShareImage()` is pure
+over a 2D context, and every line of the left column has a `maxWidth` that stops short of
+the chart. **Draw the chart through `redrawChartNow()` before copying or printing it.**
+While any Chart.js animation runs (its entry, a tooltip fading) `update('none')` leaves
+the drawing to the next frame, and a picture taken a moment after a change came out in
+the dark scheme's colours, pale on white; it stops them first. A phone gets the share
+sheet, where `navigator.canShare({ files })` allows it; elsewhere the PNG is downloaded.
+`test/share-image.test.js` covers each path.
+
 **Phone sizes go last in `styles.css`.** Fields are 16 px wherever the screen is narrow or
 the pointer coarse, because iOS Safari zooms into anything smaller and stays zoomed, and
 controls are 44 px on touch screens. Those blocks sit at the end of the file because the
@@ -472,7 +486,9 @@ card of three columns: the table needed 808 px and showed 324. A new column need
 and its `data-label` must match its header: `test/names.test.js` compares them, and checks
 that every field on the page has a label. On desktop the right column fits the whole table
 from 1280 px screens up, in both languages; below that it scrolls, with a shade at the edge
-that has more. Its headings say what a column holds ("Und. price", "Theo. value"), and a
+that has more. `.table-scroll` is `position: relative` so the hidden headings (`.sr-only`,
+absolute) scroll with it: placed against the page they widened every window from 900 px
+to 1280 px to 1,156. The table's headings say what a column holds ("Und. price", "Theo. value"), and a
 two-word one takes two lines (`th.two-line`) rather than widen its column: measure at
 1280 in both languages after renaming one.
 

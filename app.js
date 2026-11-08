@@ -1875,6 +1875,16 @@ function futuresDelta(d) {
     : t('Delta in futures contracts: {n}. Buying {k} leaves {rest}.', { n: signed(d), k, rest: signed(rest) }));
 }
 
+/* An unlimited maximum says how fast it grows: that is what tells a naked call
+ * from a calendar bleeding cents a point. A rate that rounds to no cents keeps
+ * two significant figures rather than read $0.00. */
+function risingRate(a) {
+  const perPoint = Math.abs(a.upSlope) >= 0.005
+    ? money(a.upSlope)
+    : (a.upSlope < 0 ? MINUS + '$' : '$') + Math.abs(a.upSlope).toPrecision(2);
+  return t('{amount} per point as the price rises', { amount: perPoint });
+}
+
 function renderResults() {
   const a = analyse();
   const g = netGreeks();
@@ -1888,13 +1898,7 @@ function renderResults() {
       ? t('to the horizon, at {rate}%, your rate', { rate: ratePct })
       : t('to the horizon, at {rate}%, the risk-free rate', { rate: ratePct })}</small>`
     : `<strong>${t('Not charged')}</strong><small>${escapeHtml(t('nominal P&L'))}</small>`;
-  // An unlimited maximum says how fast it grows: that is what tells a naked call
-  // from a calendar bleeding cents a point. A rate that rounds to no cents keeps
-  // two significant figures rather than read $0.00.
-  const perPoint = Math.abs(a.upSlope) >= 0.005
-    ? money(a.upSlope)
-    : (a.upSlope < 0 ? MINUS + '$' : '$') + Math.abs(a.upSlope).toPrecision(2);
-  const rising = `<small>${t('{amount} per point as the price rises', { amount: perPoint })}</small>`;
+  const rising = `<small>${risingRate(a)}</small>`;
 
   // Nothing to measure. Zeros in green and red, and a 0.0% chance of profit,
   // read as a position that makes and loses nothing.
@@ -2296,6 +2300,16 @@ function renderChartSafely(a) {
   }
 }
 
+/* Draws the chart now, in whichever palette the root holds. While any of
+ * Chart.js's animations runs - the chart's entry, a tooltip fading - it leaves
+ * the drawing to the next frame, and a picture copied or a page printed before
+ * that frame showed the chart in the old palette: pale on white, from the dark
+ * scheme. Stopping them first draws at once. */
+function redrawChartNow(a) {
+  if (chart && !chartBroken) chart.stop();
+  renderChartSafely(a);
+}
+
 /* The page as a printed report. Paper has no dark background, so the light
  * palette holds while printing (:root.printing in styles.css) and the chart is
  * drawn again in it. Paper is also narrower than the window the chart was drawn
@@ -2310,10 +2324,98 @@ function renderForPrint(printing) {
       ` <a href="${escapeHtml(shareLink())}">${escapeHtml(t('Open this scenario'))}</a>`
     : '';
   document.documentElement.classList.toggle('printing', printing);
-  renderChartSafely(analyse());
+  redrawChartNow(analyse());
   if (chart && !chartBroken) {
     if (printing) chart.resize(680, 340); else chart.resize();
   }
+}
+
+/* The picture a post about a position needs. A shared link previews the
+ * generic og.png whatever its scenario, since the scenario sits after "#",
+ * where no crawler reads. So the page makes one: the chart in the light
+ * palette, the numbers beside it, and where it came from, at og.png's 1200x627
+ * (1.91:1, what LinkedIn shows). */
+const SHARE_IMAGE = { width: 1200, height: 627, chart: { x: 440, y: 40, w: 712, h: 500 } };
+
+/* What the picture says, as text: the market, the contract, the position's
+ * numbers as the results card gives them, each with what it says under it,
+ * and the site and the date. A probability passed around without its basis
+ * reads as a forecast. */
+function shareImageText(a) {
+  const c = currentCommodity();
+  const priced = { price: fmtPrice(state.S, true) };
+  const cost = netCost();
+  return {
+    title: t(c.label),
+    subtitle: [
+      state.model === 'b76' ? t('futures {price}', priced) : t('spot {price}', priced),
+      t('vol {vol}%', { vol: volField(state.vol, 4) }),
+      t('{n}-day horizon', { n: a.t })
+    ].join(' · '),
+    kpis: [
+      [cost >= 0 ? t('Net debit (paid)') : t('Net credit (received)'), money(Math.abs(cost)), ''],
+      [t('Max profit'), money(a.maxProfit), 'pos', a.maxProfit === Infinity ? risingRate(a) : ''],
+      [t('Max loss'), money(a.maxLoss), 'neg', a.maxLoss === -Infinity ? risingRate(a) : ''],
+      [a.breakevens.length === 1 ? t('Breakeven') : t('Breakevens'),
+        a.breakevens.length ? a.breakevens.map(b => fmtPrice(b)).join(' / ') : t('None'), ''],
+      [t('Prob. of profit'), (a.pop * 100).toFixed(1) + '%', '',
+        t('risk-neutral, at {vol}% vol', { vol: fmt(a.popVol * 100, 1) })]
+    ],
+    footer: t('{site} · Not investment advice · {date}', { site: location.host, date: new Date().toISOString().slice(0, 10) })
+  };
+}
+
+/* Draws the picture: the numbers down the left, the chart on the right at its
+ * own proportions, the site and the date at the foot. A line too long for the
+ * left column is narrowed to fit (fillText's maxWidth) rather than run into
+ * the chart: "Breakevens" can hold four prices. */
+function drawShareImage(ctx, text, chartCanvas, colors) {
+  const { width: W, height: H, chart: box } = SHARE_IMAGE;
+  const left = 48, column = box.x - left - 24;
+  const font = (weight, px) => `${weight} ${px}px ${colors.font}`;
+  const write = (s, color, weight, px, y, width) => {
+    ctx.fillStyle = color;
+    ctx.font = font(weight, px);
+    ctx.fillText(s, left, y, width || column);
+  };
+  ctx.fillStyle = colors.card;
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = colors.accent;
+  ctx.fillRect(0, 0, W, 8);
+  ctx.textBaseline = 'alphabetic';
+  write(text.title, colors.text, 650, 32, 72);
+  write(text.subtitle, colors.muted, 400, 18, 104);
+  let y = 160;
+  for (const [label, value, tone, note] of text.kpis) {
+    write(label.toUpperCase(), colors.muted, 500, 14, y);
+    write(value, tone === 'pos' ? colors.pos : tone === 'neg' ? colors.neg : colors.text, 650, 26, y + 31);
+    if (note) write(note, colors.muted, 400, 13, y + 51);
+    y += note ? 90 : 76;
+  }
+  const r = Math.min(box.w / chartCanvas.width, box.h / chartCanvas.height);
+  const w = chartCanvas.width * r, h = chartCanvas.height * r;
+  ctx.drawImage(chartCanvas, box.x + (box.w - w) / 2, box.y + (box.h - h) / 2, w, h);
+  write(text.footer, colors.muted, 400, 16, H - 30, W - 2 * left);
+}
+
+/* The picture as a canvas, or null with nothing to draw. The chart is drawn
+ * again in the light palette the printed report uses (:root.printing), copied,
+ * and given back to the page's own. */
+function renderShareImage(a) {
+  if (!chart || chartBroken || !activeLegs().length) return null;
+  const root = document.documentElement;
+  root.classList.toggle('printing', true);
+  redrawChartNow(a);
+  const css = getComputedStyle(root);
+  const colors = { font: getComputedStyle(document.body).fontFamily };
+  for (const k of ['card', 'text', 'muted', 'accent', 'pos', 'neg']) colors[k] = css.getPropertyValue('--' + k).trim();
+  const canvas = document.createElement('canvas');
+  canvas.width = SHARE_IMAGE.width;
+  canvas.height = SHARE_IMAGE.height;
+  drawShareImage(canvas.getContext('2d'), shareImageText(a), chart.canvas, colors);
+  root.classList.toggle('printing', false);
+  redrawChartNow(a);
+  return canvas;
 }
 
 /* Typing and dragging a slider fire an event for every keystroke or pixel. The
@@ -3374,6 +3476,38 @@ function bindInputs() {
     } catch (e) {
       setSaveStatus(t('Link is in the address bar - copy it from there.'));
     }
+  });
+
+  // The picture for a post: into the share sheet where it takes files (phones),
+  // saved as a file elsewhere or when the sheet cannot open.
+  $('shareImage').addEventListener('click', async () => {
+    setSaveStatus('');
+    if (!activeLegs().length) {
+      setSaveStatus(t('There is nothing to draw yet: choose a strategy or add a leg.'), 'err');
+      return;
+    }
+    const canvas = renderShareImage(analyse());
+    if (!canvas) {
+      setSaveStatus(t('The chart library could not be loaded, so there is no picture to make.'), 'err');
+      return;
+    }
+    const name = state.commodity + '-' + new Date().toISOString().slice(0, 10) + '.png';
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const file = typeof File === 'function' ? new File([blob], name, { type: 'image/png' }) : null;
+    if (file && typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: document.title });
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+      }
+    }
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    setSaveStatus(t('Picture saved as {name}.', { name }), 'ok');
   });
 
   // The browser's own Print does the same as the button.

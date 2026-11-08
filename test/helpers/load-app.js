@@ -24,7 +24,7 @@ const STYLES = path.join(ROOT, 'styles.css');
  * function as well, 81 names kept by hand. */
 const EPILOGUE = `
 ;globalThis.__bindings = {
-  state, COMMODITIES, STRATEGIES, PROXY_COMMODITIES, KEY_STORE, STORE_KEY, CACHE_MAX_AGE
+  state, COMMODITIES, STRATEGIES, PROXY_COMMODITIES, KEY_STORE, STORE_KEY, CACHE_MAX_AGE, SHARE_IMAGE
 };
 `;
 /* No stub for renderAll: nothing outside the wiring calls it, and with no page

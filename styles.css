@@ -284,6 +284,11 @@ label.file-button:hover { filter: brightness(1.08); }
  * when their words are long: in Spanish they need about 410px of a phone's 324.
  * Each row still shares its width equally. */
 #cardMarket > .row.tight { flex-wrap: wrap; }
+/* So do the five Save & share buttons: in one row they needed 436px of a
+ * phone's 324 and widened the page. Each keeps the width of its words, and a
+ * row's buttons share what is left. */
+#cardSave > .row { flex-wrap: wrap; }
+#cardSave > .row > * { flex: 1 1 auto; }
 /* The month picker gets the room, not the button: it read "Front month (conti". */
 #contractMonth { flex: 2; }
 #loadMonths { flex: 0 0 auto; width: auto; }
@@ -335,8 +340,12 @@ label.file-button:hover { filter: brightness(1.08); }
 /* tables */
 /* A shade at whichever edge has more table behind it. The card-coloured covers
  * scroll with the content and hide the shade once that edge is reached; macOS
- * and iOS show no scrollbar until you scroll. */
+ * and iOS show no scrollbar until you scroll. It positions what it holds: the
+ * legs table's hidden headings (.sr-only) are absolute, and placed against the
+ * page instead they escaped the scrolling and widened every window from 900px
+ * to 1280px by up to 140px. */
 .table-scroll {
+  position: relative;
   overflow-x: auto;
   background:
     linear-gradient(to right, var(--card) 30%, transparent) left / 24px 100% no-repeat local,
