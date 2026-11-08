@@ -273,6 +273,12 @@ used to carry the last point's sign to infinity: futures against calls on a mont
 dearer lost the breakeven at 556.41, just past the grid's 552.03, and read a 59.27%
 chance of profit for 57.07%.
 
+**The hedges come first.** `STRATEGIES` entries marked `hedge` are listed under
+"Hedging a physical position", ahead of the trading ones, and named for who holds the
+position: a seller's underlying leg is long, a buyer's short. Whoever hedges read
+"Covered call" and "Iron condor" and did not find themselves. `strategyOptionsHtml()`
+builds the list; `test/hedging.test.js` checks the order and each side.
+
 **The horizon is the nearest expiry among active legs**, which is what makes calendar
 spreads read correctly — the far leg still holds time value there.
 
