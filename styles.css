@@ -280,6 +280,8 @@ label.file-button:hover { filter: brightness(1.08); }
 .row { display: flex; gap: 8px; }
 .row > * { flex: 1; }
 .row.tight { gap: 6px; margin-top: 8px; }
+/* The leg the strike solver moves takes the room its name needs. */
+.pay-row > :first-child { flex: 2; }
 /* The four market-data buttons take a second row rather than run past the card
  * when their words are long: in Spanish they need about 410px of a phone's 324.
  * Each row still shares its width equally. */
@@ -554,6 +556,13 @@ footer p { margin: 6px 0; }
 @media (max-width: 600px) {
   .strategy-row { flex-wrap: wrap; }
   .strategy-row #strategy { flex-basis: 100%; }
+}
+
+/* The leg the strike solver moves on its own row too: a third of a phone's
+ * width read "Leg 3: Sh". */
+@media (max-width: 600px) {
+  .pay-row { flex-wrap: wrap; }
+  .pay-row > :first-child { flex-basis: 100%; }
 }
 
 /* Each leg as a card of three columns on a phone, every field under its own
