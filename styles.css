@@ -90,6 +90,10 @@
 }
 
 * { box-sizing: border-box; }
+/* Hidden means hidden. The browser's own rule loses to any class that sets a
+   display: .row is flex, and the two "Hedge with" buttons showed, blank, before
+   any quantity was typed. */
+[hidden] { display: none !important; }
 
 body {
   /* Each system's own interface face: SF on Apple, Segoe UI on Windows, Roboto on
@@ -430,7 +434,6 @@ table.scenario th.rowhead, table.scenario thead th:first-child {
   display: flex; align-items: center; justify-content: center; text-align: center;
   color: var(--muted);
 }
-.chart-empty[hidden] { display: none; }
 .chart-empty:not([hidden]) + canvas { visibility: hidden; }
 .chart-box:has(.chart-empty:not([hidden])) { height: 140px; }
 .chart-controls {

@@ -62,6 +62,17 @@ test('nothing a table scrolls escapes it, and a row of buttons wraps', () => {
   assert.match(css, /#cardSave > \.row \{ flex-wrap: wrap; \}/);
 });
 
+test('a hidden element stays hidden, whatever its class displays it as', () => {
+  // The browser's own [hidden] rule loses to a class: .row is display: flex,
+  // and the hedge's two buttons showed, blank, with no quantity typed.
+  assert.match(css, /\[hidden\] \{ display: none !important; \}/);
+  assert.match(css, /\.row \{ display: flex;/);
+  for (const file of ['index.html', 'es/index.html']) {
+    const page = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    assert.match(page, /<div class="row tight" id="hedgeButtons" hidden>/, file);
+  }
+});
+
 test('phone sizes come after the rules they override', () => {
   const sixteen = media('(max-width: 900px), (pointer: coarse)');
   assert.match(sixteen.body, /input, select, textarea, #legs input, #legs select\s*\{\s*font-size:\s*16px;/);

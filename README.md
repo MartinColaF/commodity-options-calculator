@@ -20,6 +20,11 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
   Five hedge a physical position, listed first and named for who holds it: a seller's
   price floor, collar and fence, a buyer's price cap and collar. The rest are for
   trading: spreads, straddles, butterflies, iron condor, calendar, ratio.
+- **The size of the hedge** — type the quantity to hedge, in the physical trade's unit
+  where the market has one (5,000 metric tons of soybeans) or the contract's own, and the
+  page says how many contracts that is: 36.74, so 37 cover 5,034.88 t, 34.88 more, and 36
+  cover 4,898.80 t, 101.20 less. A button puts either on the position: the physical leg,
+  or the smallest, holds that many contracts and every included leg scales with it.
 - **The strike that pays for the hedge** — pick the leg that pays, usually the option
   sold, and the cost the premiums should come to ($0 for a zero-cost collar), and the page
   finds its strike: for soybeans at 1050 ¢, the call that pays a 1000 put at 60 days and
@@ -222,6 +227,10 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/hedging.test.js` — the hedging presets: listed first under their heading,
   the physical held by a seller and to be bought by a buyer, and a floor or a cap
   bounding what each can lose.
+- `test/hedge-size.test.js` — the size of the hedge: each market's unit and contract,
+  the product review's 5,000 tons of soybeans, a whole number of contracts and less than
+  one, the legs scaled with a ratio's shape, the field refused and cleared, the quantity
+  kept across markets in the same unit, saved and shared, in both languages.
 - `test/pay-strike.test.js` — the strike that pays for the hedge: the product review's
   soybean collar exactly and on a 5 ¢ grid, a target other than zero, the skew moving the
   strike, the entries kept and dropped, the reason when no strike reaches the cost, the

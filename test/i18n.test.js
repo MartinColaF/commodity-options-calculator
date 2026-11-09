@@ -51,6 +51,7 @@ const FROM_DATA = [
   'json.error',                // the market function's own message
   'c.unit', 'c.label',         // a market in commodities.js
   'phys.price', 'phys.unit',   // its physical unit, where it has one
+  'u.unit',                    // the unit a hedge is sized in (hedgeUnit())
   'COMMODITIES[k].label',
   'meta.proxy',                // the market's ETF proxy, described
   'STRATEGIES[k].label',

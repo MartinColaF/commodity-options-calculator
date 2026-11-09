@@ -279,6 +279,14 @@ chance of profit for 57.07%.
 position: a seller's underlying leg is long, a buyer's short. Whoever hedges read
 "Covered call" and "Iron condor" and did not find themselves. `strategyOptionsHtml()`
 builds the list; `test/hedging.test.js` checks the order and each side.
+**The size of the hedge** is `state.hedgeQty`, in `hedgeUnit()`'s unit: the market's
+`physical` one where it has one, else the contract's. `contractsFor()` gives the exact
+number of contracts and the whole numbers either side with what each covers, and
+`applyHedgeContracts()` puts one on the position: the physical leg, or the smallest, holds
+it, and every included leg is scaled with it to whole contracts. `changeCommodity()` drops
+the quantity when the unit changes (tons of corn are tons of soybeans, not ounces of
+gold), and `snapshot()`/`restore()` carry it; a scenario saved before it hedged no stated
+quantity. `test/hedge-size.test.js` pins the review's 5,000 tons: 36.74 contracts.
 **The strike that pays for the hedge** moves one option leg's strike until the
 position's premiums, `netCost()`'s dollars, come to the cost asked: `strikeForCost()`
 bisects on the strike's log, `costWithStrike()` prices the leg there at its theoretical

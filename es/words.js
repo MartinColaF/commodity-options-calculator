@@ -223,6 +223,20 @@ const SPANISH = {
   'Net cost: zero.': 'Costo neto: cero.',
   'Leg {n}: {side} {kind} {strike}': 'Pata {n}: {side} {kind} {strike}',
   'No option legs yet': 'Todavía no hay patas de opciones',
+  'Enter a quantity above zero, or leave it blank.': 'Se necesita una cantidad mayor que cero, o dejar el campo en blanco.',
+  '1 contract of {per} {unit} covers it exactly.': '1 contrato de {per} {unit} la cubre exacta.',
+  '{n} contracts of {per} {unit} cover it exactly.': '{n} contratos de {per} {unit} la cubren exacta.',
+  '{exact} contracts of {per} {unit}: 1 covers {upQty}, {over} more.':
+    '{exact} contratos de {per} {unit}: 1 cubre {upQty}, {over} de más.',
+  '{exact} contracts of {per} {unit}: {up} cover {upQty}, {over} more; {down} cover {downQty}, {under} less.':
+    '{exact} contratos de {per} {unit}: {up} cubren {upQty}, {over} de más; {down} cubren {downQty}, {under} de menos.',
+  'Hedge with 1 contract': 'Cubrir con 1 contrato',
+  'Hedge with {n} contracts': 'Cubrir con {n} contratos',
+  'Add a leg first: there is nothing to size.': 'Primero agregar una pata: no hay nada que dimensionar.',
+  'Sized to 1 contract, {covers} {unit}: every included leg is scaled with it.':
+    'Posición de 1 contrato, {covers} {unit}: cada pata incluida se ajustó en proporción.',
+  'Sized to {n} contracts, {covers} {unit}: every included leg is scaled with it.':
+    'Posición de {n} contratos, {covers} {unit}: cada pata incluida se ajustó en proporción.',
   'Choose an option leg that is included in the strategy.': 'Elegir una pata de opción incluida en la estrategia.',
   'No strike of leg {n} brings the premiums to {target}: moving it, the most they come to is {bound}.':
     'Ningún strike de la pata {n} lleva las primas a {target}: al moverlo, lo más que suman es {bound}.',

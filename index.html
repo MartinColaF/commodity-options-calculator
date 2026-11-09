@@ -283,6 +283,19 @@
             <tbody id="legsBody"></tbody>
           </table>
         </div>
+        <h3 class="mt-14">Size of the hedge</h3>
+        <div class="row tight">
+          <div>
+            <label for="hedgeQty">Quantity to hedge, in <span id="hedgeUnit">troy oz</span></label>
+            <input type="number" id="hedgeQty" step="any" min="0" placeholder="e.g. 5000">
+            <p class="problem" id="hedgeQtyProblem" role="alert"></p>
+          </div>
+        </div>
+        <p class="note" id="hedgeInfo" hidden></p>
+        <div class="row tight" id="hedgeButtons" hidden>
+          <button id="hedgeUp" class="ghost">Hedge</button>
+          <button id="hedgeDown" class="ghost">Hedge</button>
+        </div>
         <div class="title-row mt-14">
           <h3>Strike that pays for the hedge</h3>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="payHelp" aria-label="How the strike that pays for the hedge is found">?</button>

@@ -79,8 +79,10 @@ test('hostile top-level fields leave the state as it was', () => {
     S: 'abc', vol: HOSTILE, days: HOSTILE, size: [100],
     chart: { mode: 'constructor', tDays: HOSTILE, range: '40', showLegs: 'yes' },
     skew: { on: true, rr: '-5', bf: HOSTILE },
-    scenario: { volShift: HOSTILE, pricePct: '20' }
+    scenario: { volShift: HOSTILE, pricePct: '20' },
+    hedgeQty: HOSTILE
   });
+  assert.strictEqual(state.hedgeQty, null);
   assert.strictEqual(state.commodity, 'cocoa');
   assert.strictEqual(state.model, 'bs');
   assert.strictEqual(state.quote, 'cents');
@@ -119,7 +121,8 @@ test('a legitimate scenario round-trips through a link unchanged', () => {
     S: 5560, vol: 42.47213595499958, rate: 3.9, yield: -3.59, days: 90, size: 10,
     skew: { on: true, rr: -6.5, bf: 1.25 },
     scenario: { volShift: 8, pricePct: 35 },
-    financing: { mode: 'custom', rate: 6.25 }
+    financing: { mode: 'custom', rate: 6.25 },
+    hedgeQty: 1234.5
   });
   state.chart = { mode: 'vega', tDays: 12, showLegs: false, range: 55 };
   state.legs = [
