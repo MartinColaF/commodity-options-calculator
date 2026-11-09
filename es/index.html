@@ -65,6 +65,7 @@
 
         <label for="days">Días al vencimiento (por defecto para las patas nuevas)</label>
         <input type="number" id="days" min="0" step="1" value="30">
+        <p class="note" id="expiryInfo" hidden></p>
 
         <label for="vol">Volatilidad (% anualizada)</label>
         <input type="number" id="vol" step="any" value="15">
@@ -430,6 +431,7 @@
      and from /es a bare words.js is /words.js, which does not exist. -->
 <script src="../commodities.js"></script>
 <script src="../events.js"></script>
+<script src="../expiries.js"></script>
 <script src="../i18n.js"></script>
 <script src="../es/words.js"></script>
 <script src="../app.js"></script>

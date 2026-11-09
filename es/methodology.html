@@ -65,6 +65,7 @@
     <li><strong>Volatilidad:</strong> volatilidad realizada (histórica) del futuro del primer vencimiento, close-to-close, EWMA (&lambda; = 0.94) o Parkinson, en una ventana de 20 a 90 días. <strong>No es volatilidad implícita</strong>, para la que la calculadora no tiene fuente, y el paso de un contrato al siguiente (el roll) puede inflarla un poco.</li>
     <li><strong>Rendimiento de conveniencia:</strong> implícito en dos contratos listados de la curva real.</li>
     <li><strong>Precios de las patas:</strong> el mes de entrega propio de cada pata, interpolado en escala logarítmica entre los contratos listados, o sobre la pendiente entre los dos más cercanos cuando la lista no está cargada. Más allá del último mes listado es una extrapolación, y la página lo dice.</li>
+    <li><strong>Vencimientos de las opciones:</strong> al elegir un mes listado, los días al vencimiento pasan a ser los de sus opciones, que dejan de operarse antes que el futuro. Para azúcar, café, cacao y algodón son las fechas que lista ICE Futures U.S.; para maíz, trigo y soja se calculan con la regla de CBOT, el último viernes que precede por al menos dos días hábiles al último día hábil del mes anterior, sobre los feriados de las bolsas de EE. UU. Los demás mercados conservan los días que se ingresan.</li>
     <li><strong>Calendario de informes:</strong> las fechas de publicación del WASDE que da a conocer el USDA, a las 12:00 ET, para maíz, trigo, soja y algodón; el Weekly Petroleum Status Report de la EIA, los miércoles a las 10:30 ET, para WTI y Brent; y su Weekly Natural Gas Storage Report, los jueves a las 10:30 ET, para gas natural, cada uno con los cambios por feriados que lista la EIA. Los resultados dicen cuántos salen hasta el horizonte; nada se valúa con ellos. Pasada la última fecha que tiene el calendario, la página dice que termina ahí.</li>
     <li><strong>Respaldo:</strong> Alpha Vantage, con una clave gratuita propia, mide la volatilidad sobre un ETF que sigue al mercado. Solo se usan sus rendimientos, nunca su precio.</li>
     <li>Cada valor muestra su fuente y su fecha. Un valor predeterminado dice "no es dato de mercado". Ninguno es una cotización en vivo.</li>
@@ -75,7 +76,7 @@
     <li>Barone-Adesi-Whaley es una aproximación, no un árbol exacto; su error está arriba.</li>
     <li>La curva se mueve en paralelo: en el gráfico, cada mes de entrega se mueve en proporción con el contrato del panel izquierdo. Las curvas reales también cambian de forma.</li>
     <li>El skew no se mueve con el precio, y las superficies de volatilidad reales sí.</li>
-    <li>Los vencimientos de los contratos se aproximan a mitad de su mes.</li>
+    <li>Los vencimientos de los futuros, que solo usa el carry, se aproximan a mitad de su mes. El vencimiento propio de una opción se conoce solo para los mercados de arriba y para la opción regular de cada mes, no para las semanales ni las seriales.</li>
     <li>La ganancia y la pérdida máximas se leen sobre una grilla de 1,200 puntos; en una posición curva el extremo real puede quedar entre dos de ellos, por $12.84 como máximo sobre una pérdida de $24,768, en 1,000 diagonales y ratio calendars americanos al azar.</li>
     <li>El interés de la prima corre desde hoy, porque no hay fecha de operación.</li>
     <li>El precio neto toma la base fija; en el mercado también se mueve.</li>

@@ -50,7 +50,11 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
   specific delivery month, which is what an option quote on a broker's screen refers
   to. The continuous front-month series stays the default. With the strip loaded, the
   per-leg fill interpolates between real quotes instead of extrapolating a single
-  slope measured at the front of the curve.
+  slope measured at the front of the curve. Picking a month of corn, wheat, soybeans,
+  sugar, coffee, cocoa or cotton sets the days to expiry to its options' own, which stop
+  trading before the future: December 2026 corn options on Nov 20, the future on Dec 14.
+  Priced to mid-December, an at-the-money call on corn at 430 ¢ read 14.49 ¢ for 9.24,
+  $262.38 a contract too dear. The note under the days says the date and whose word it is.
 - **Payoff chart** — P&L at the nearest expiry plus a mark-to-market curve for any
   date in between, individual leg overlays, strike and spot markers. The same chart
   also plots the net price and delta / gamma / vega / theta profiles across underlying
@@ -111,6 +115,14 @@ Weekly Petroleum Status Report for WTI and Brent, and its Weekly Natural Gas Sto
 Report for natural gas. Past the calendar's last date, the line says it ends there rather
 than count none.
 
+When the options on a listed month stop trading comes from `expiries.js`: ICE Futures
+U.S. lists the dates for sugar, coffee, cocoa and cotton on each option's expiry page,
+and they are as it lists them; CME's calendar pages refuse automated reading, so the
+CBOT grains are worked out from their rule (the last Friday at least two business days
+before the last business day of the month before) on the US exchange holidays NYSE
+published for 2026 to 2028. Gold, silver, copper, crude, natural gas and cattle have no
+calendar here yet, and keep the days you type.
+
 ### The `/api/market` function
 
 Yahoo Finance sends no CORS headers, so the browser cannot read it directly. The
@@ -137,6 +149,9 @@ Notes and limitations, stated plainly in the UI as well:
   inflate the estimate** slightly.
 - Contract expiries from the function are approximated to mid-month. Both
   contracts use the same convention, so the *gap* driving the carry stays accurate.
+  The days to an option's expiry are its own only where `expiries.js` has its market,
+  and only for the regular option on each month: weekly, short-dated and serial options
+  keep their own calendars.
 - The skew is read once per leg, at today's price and the leg's full tenor, and held
   as the scenario price moves — sticky strike, not sticky delta. Real surfaces shift
   with spot; that is not modelled. The risk reversal and butterfly are inputs you
@@ -190,6 +205,9 @@ Notes and limitations, stated plainly in the UI as well:
 - `commodities.js` — the table of markets: contract specs and ticks, presets and
   futures symbols. The page and the function both read it, so adding a market is one
   entry.
+- `expiries.js` — when the options on each listed month stop trading: ICE's published
+  dates for its softs, and CBOT's rule for the grains with the US exchange holidays to
+  2028. ICE lists new months as they open; add them, and each new year's holidays.
 - `events.js` — the calendar of scheduled reports: USDA's WASDE dates for 2026 and
   2027, and EIA's two weekly reports for 2026. USDA publishes each next year's dates in
   the autumn, and EIA its holiday changes late in the year; add them when they do.
@@ -231,6 +249,11 @@ some browsers restrict cross-origin requests from `file://`.
   volatility, curve interpolation and the carry inversion.
 - `test/print.test.js` — the printed report: no controls, the light palette in step
   with the screen's, and the date and the scenario's link at the top.
+- `test/expiry.test.js` — the options' expiries: ICE's dates as it lists them, sugar's
+  against its rule, the holidays against NYSE's and ICE's calendars, the CBOT rule on
+  the review's December corn and the dates StoneX reports, Christmas on a Friday and a
+  leap February, the days counted in the exchange's time zone, the legs that follow, the
+  note when a month has no date, and Spanish.
 - `test/reports.test.js` — the reports line: USDA's WASDE dates at 12:00 in
   Washington, EIA's weekly reports by its rule and its holiday changes, which markets
   follow which, a report counted until the minute it comes out, and the line past the

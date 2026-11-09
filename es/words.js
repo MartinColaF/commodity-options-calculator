@@ -475,6 +475,17 @@ const SPANISH = {
     'Esa prima no tiene valor tiempo - es lo que vale la opción con volatilidad cero -, así que cualquier volatilidad hasta cierto nivel da el mismo precio y no se puede implicar ninguna. La pata conserva su volatilidad.',
   'No implied volatility solves that premium (check the price and the strike).':
     'Ninguna volatilidad implícita reproduce esa prima (conviene revisar el precio y el strike).',
+  'The page does not have this market\'s option expiries: enter the days to the expiry of the options you price.':
+    'La página no tiene los vencimientos de las opciones de este mercado: ingresar los días hasta el vencimiento de las opciones que se valúan.',
+  'The page\'s calendar of these options goes only to {last}: enter the days to the {month} options\' expiry.':
+    'El calendario de estas opciones en la página llega solo hasta el {last}: ingresar los días hasta el vencimiento de las opciones {month}.',
+  'The regular {month} options stopped trading on {date}.': 'Las opciones regulares {month} dejaron de operarse el {date}.',
+  'The {month} options stop trading on {date}, as {exchange} lists them.':
+    'Según el calendario de {exchange}, las opciones {month} dejan de operarse el {date}.',
+  'The {month} options stop trading on {date}, by {exchange}\'s rule.':
+    'Las opciones {month} dejan de operarse el {date}, según la regla de {exchange}.',
+  'Days to expiry set to {n}: the {month} options stop trading on {date}.':
+    'Días al vencimiento: {n}. Las opciones {month} dejan de operarse el {date}.',
   'Implied volatility for that leg: {vol}%. The table shows it to two decimals; the leg is priced at the exact figure, so it is worth its premium.':
     'Volatilidad implícita de esa pata: {vol}%. La tabla la muestra con dos decimales; la pata se valúa con la cifra exacta, así que vale su prima.'
 };

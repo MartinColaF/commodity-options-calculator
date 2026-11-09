@@ -78,6 +78,7 @@
 
         <label for="days">Days to expiration (default for new legs)</label>
         <input type="number" id="days" min="0" step="1" value="30">
+        <p class="note" id="expiryInfo" hidden></p>
 
         <label for="vol">Volatility (% annualized)</label>
         <input type="number" id="vol" step="any" value="15">
@@ -446,6 +447,7 @@
 <!-- commodities.js first: app.js reads its table as soon as it loads. -->
 <script src="commodities.js"></script>
 <script src="events.js"></script>
+<script src="expiries.js"></script>
 <script src="i18n.js"></script>
 <script src="app.js"></script>
 <!-- Visit counting, as the privacy policy describes it: see analytics.js. -->
