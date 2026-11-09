@@ -380,6 +380,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 #legs tr.off { opacity: .45; }
 
 .greeks td:first-child { font-weight: 600; }
+/* A greek's meaning under its name, shown only on the narrowest phones (at the
+ * end of the file); elsewhere it has its own column. */
+.greeks .meaning-under { display: none; }
 
 /* an inline checkbox label, for toggles that sit above their own inputs */
 label.inline {
@@ -582,4 +585,13 @@ footer p { margin: 6px 0; }
 /* A page of text gets the width on a phone: the card's own padding takes less. */
 @media (max-width: 600px) {
   .doc .card { padding: 16px; }
+}
+
+/* On the narrowest phones each greek's meaning goes under its name, not in a
+ * fourth column: "SIGNIFICADO" and "−0.001533" needed 311px of a 320px phone's
+ * 254, and the page scrolled sideways. The table stays a table, and only one of
+ * the two copies is ever shown, so a screen reader reads it once. */
+@media (max-width: 400px) {
+  .greeks .meaning { display: none; }
+  .greeks .meaning-under { display: block; font-weight: 400; font-size: .76rem; color: var(--muted); }
 }

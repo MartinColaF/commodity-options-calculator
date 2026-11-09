@@ -342,7 +342,10 @@ to be four screens down. A new card needs an `id` and a place in that list. The 
 need `min-width: 0` there, since `.grid > *` no longer reaches them, and without it the
 legs table widened the page to 858 px. The order is visual only; tabbing follows the
 markup. `.context` is the line in Strategy that names the contract it prices, shown only
-in that layout.
+in that layout. At 400 px and under, each greek's meaning goes under its name
+(`.meaning-under`) and its column hides: as a fourth column, "SIGNIFICADO" and "−0.001533"
+needed 311 px of a 320 px phone's 254. The markup carries both copies and the stylesheet
+shows one, so the table stays a table; `test/layout.test.js` checks they say the same.
 
 **The page prints as a report.** The Print button, or the browser's own, gives the
 position, its results, chart and scenarios, the assumptions and sources and the
