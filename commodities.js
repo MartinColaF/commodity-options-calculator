@@ -24,7 +24,8 @@
  * futures price and the contract in it; nothing is priced in it.
  * reports names the scheduled reports in events.js that move the market, by
  * key; the page says how many come out before the horizon. The WASDE's balance
- * sheets are the grains', the oilseeds' and cotton's.
+ * sheets are the grains', the oilseeds' and cotton's; EIA's weekly petroleum
+ * inventories move both crude benchmarks, and its storage report natural gas.
  * futures is how Yahoo names the contracts, and null for a market with none:
  *   root   = continuous front-month symbol prefix (root + "=F")
  *   suffix = exchange code used by month contracts
@@ -53,16 +54,19 @@ const COMMODITIES = {
   wti: {
     label: 'Crude Oil WTI (NYMEX CL)', size: 1000, unit: 'barrels', quote: 'USD', tick: 0.01, vol: 35, yield: 4,
     priceSymbol: 'USO', proxy: 'US Oil Fund - rolls front-month WTI',
+    reports: ['wpsr'],
     futures: { root: 'CL', suffix: 'NYM', months: 'FGHJKMNQUVXZ' }
   },
   brent: {
     label: 'Crude Oil Brent (ICE B)', size: 1000, unit: 'barrels', quote: 'USD', tick: 0.01, vol: 33, yield: 3.5,
     priceSymbol: 'BNO', proxy: 'US Brent Oil Fund',
+    reports: ['wpsr'],
     futures: { root: 'BZ', suffix: 'NYM', months: 'FGHJKMNQUVXZ' }
   },
   natgas: {
     label: 'Natural Gas (NYMEX NG)', size: 10000, unit: 'MMBtu', quote: 'USD', tick: 0.001, vol: 60, yield: 5,
     priceSymbol: 'UNG', proxy: 'US Natural Gas Fund',
+    reports: ['wngsr'],
     futures: { root: 'NG', suffix: 'NYM', months: 'FGHJKMNQUVXZ' }
   },
   corn: {
