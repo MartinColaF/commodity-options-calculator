@@ -237,6 +237,38 @@ const SPANISH = {
     'Posición de 1 contrato, {covers} {unit}: cada pata incluida se ajustó en proporción.',
   'Sized to {n} contracts, {covers} {unit}: every included leg is scaled with it.':
     'Posición de {n} contratos, {covers} {unit}: cada pata incluida se ajustó en proporción.',
+  'USD': 'USD',
+  'Enter commissions of zero or more: they are a cost, and a basis may be below zero instead.':
+    'Se necesitan comisiones de cero o más: son un costo; la que puede ser negativa es la base.',
+  'Underlying legs on both sides: the page cannot tell the physical from a futures hedge, so it shows no net price.':
+    'Hay patas de subyacente de los dos lados: la página no puede distinguir el físico de una cobertura con futuros, así que no muestra precio neto.',
+  'The net price needs a leg for the physical: an underlying leg, long if you sell it, short if you buy it.':
+    'El precio neto necesita una pata para el físico: una pata de subyacente, comprada si se lo vende, vendida si se lo compra.',
+  'Net sale price floor': 'Piso del precio neto de venta',
+  'Net sale price ceiling': 'Techo del precio neto de venta',
+  'Net purchase price cap': 'Techo del precio neto de compra',
+  'Net purchase price floor': 'Piso del precio neto de compra',
+  'rises with the price': 'sube con el precio',
+  'falls as the price rises': 'baja cuando el precio sube',
+  'The net sale price is per unit, in {quote}, at the horizon: the futures price there, plus the basis of {basis}, plus what the options make net of their premiums, as the P&L counts them, less commissions of {commission}.':
+    'El precio neto de venta es por unidad, en {quote}, al horizonte: el precio del futuro en ese momento, más la base de {basis}, más lo que dejan las opciones neto de sus primas, como las cuenta el P&L, menos comisiones de {commission}.',
+  'The net purchase price is per unit, in {quote}, at the horizon: the futures price there, plus the basis of {basis}, less what the options make net of their premiums, as the P&L counts them, plus commissions of {commission}.':
+    'El precio neto de compra es por unidad, en {quote}, al horizonte: el precio del futuro en ese momento, más la base de {basis}, menos lo que dejan las opciones neto de sus primas, como las cuenta el P&L, más comisiones de {commission}.',
+  'Net sale price': 'Precio neto de venta',
+  'Net purchase price': 'Precio neto de compra',
+  'Floor {price}': 'Piso {price}',
+  'Ceiling {price}': 'Techo {price}',
+  'Cap {price}': 'Techo {price}',
+  'Net price chart: no leg for the physical.': 'Gráfico del precio neto: no hay pata para el físico.',
+  'no limit': 'sin límite',
+  'Net sale price at the {n}-day horizon, for an underlying price from {lo} to {hi}: floor {worst}, ceiling {best}.':
+    'Precio neto de venta al horizonte de {n} días, para un precio del subyacente de {lo} a {hi}: piso {worst}, techo {best}.',
+  'Net purchase price at the {n}-day horizon, for an underlying price from {lo} to {hi}: cap {worst}, floor {best}.':
+    'Precio neto de compra al horizonte de {n} días, para un precio del subyacente de {lo} a {hi}: techo {worst}, piso {best}.',
+  'No net price to chart: add an underlying leg for the physical, long if you sell it, short if you buy it.':
+    'No hay precio neto para graficar: agregar una pata de subyacente para el físico, comprada si se lo vende, vendida si se lo compra.',
+  'No legs to chart yet. Choose a strategy or add a leg.':
+    'Todavía no hay patas para graficar. Elegir una estrategia o agregar una pata.',
   'Choose an option leg that is included in the strategy.': 'Elegir una pata de opción incluida en la estrategia.',
   'No strike of leg {n} brings the premiums to {target}: moving it, the most they come to is {bound}.':
     'Ningún strike de la pata {n} lleva las primas a {target}: al moverlo, lo más que suman es {bound}.',

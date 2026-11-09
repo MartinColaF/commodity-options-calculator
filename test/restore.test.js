@@ -80,9 +80,12 @@ test('hostile top-level fields leave the state as it was', () => {
     chart: { mode: 'constructor', tDays: HOSTILE, range: '40', showLegs: 'yes' },
     skew: { on: true, rr: '-5', bf: HOSTILE },
     scenario: { volShift: HOSTILE, pricePct: '20' },
-    hedgeQty: HOSTILE
+    hedgeQty: HOSTILE, basis: '-40', commission: -1
   });
   assert.strictEqual(state.hedgeQty, null);
+  // No basis, and commissions below zero are not commissions.
+  assert.strictEqual(state.basis, 0);
+  assert.strictEqual(state.commission, 0);
   assert.strictEqual(state.commodity, 'cocoa');
   assert.strictEqual(state.model, 'bs');
   assert.strictEqual(state.quote, 'cents');
@@ -122,7 +125,7 @@ test('a legitimate scenario round-trips through a link unchanged', () => {
     skew: { on: true, rr: -6.5, bf: 1.25 },
     scenario: { volShift: 8, pricePct: 35 },
     financing: { mode: 'custom', rate: 6.25 },
-    hedgeQty: 1234.5
+    hedgeQty: 1234.5, basis: -42.5, commission: 0.75
   });
   state.chart = { mode: 'vega', tDays: 12, showLegs: false, range: 55 };
   state.legs = [

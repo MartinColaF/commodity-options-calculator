@@ -297,11 +297,29 @@
           <button id="hedgeDown" class="ghost">Hedge</button>
         </div>
         <div class="title-row mt-14">
+          <h3>Net price</h3>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="netHelp" aria-label="How the net price is worked out">?</button>
+        </div>
+        <p class="note help" id="netHelp" hidden>The net price is what the physical sells for, or costs, at the horizon, per unit: the futures price there plus the basis, with what the options make net of their premiums, interest included, and the commissions taken off. Enter both in the futures price&rsquo;s unit, cents a bushel for soybeans; a basis under the futures is below zero. The basis is held fixed, though in the market it moves too. The floor and the ceiling show under Results, and <strong>Net price</strong>, in the chart&rsquo;s Show list, draws it across prices.</p>
+        <div class="row tight field-row">
+          <div>
+            <label for="basis">Basis, in <span id="basisUnit">USD</span></label>
+            <input type="number" id="basis" step="any" value="0">
+          </div>
+          <div>
+            <label for="commission">Commissions, in <span id="commissionUnit">USD</span></label>
+            <input type="number" id="commission" step="any" min="0" value="0">
+          </div>
+        </div>
+        <p class="problem" id="basisProblem" role="alert"></p>
+        <p class="problem" id="commissionProblem" role="alert"></p>
+        <p class="note" id="netInfo" hidden></p>
+        <div class="title-row mt-14">
           <h3>Strike that pays for the hedge</h3>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="payHelp" aria-label="How the strike that pays for the hedge is found">?</button>
         </div>
         <p class="note help" id="payHelp" hidden>Pick the leg whose strike moves, usually the option you sell: the call of a collar, the lower put of a fence, the put of a buyer&rsquo;s collar. The page moves its strike until the position&rsquo;s premiums net to the cost you set, $0 for a zero-cost hedge, and prices each strike at its own volatility, the skew&rsquo;s when it is on. Strikes are listed at set intervals: enter the one your broker&rsquo;s screen shows to land on a strike you can trade.</p>
-        <div class="row tight pay-row">
+        <div class="row tight pay-row field-row">
           <div><label for="payLeg">Move the strike of</label><select id="payLeg"></select></div>
           <div><label for="payTarget">Net cost of the premiums ($)</label><input type="number" id="payTarget" step="any" value="0"></div>
           <div><label for="payStep">Strikes listed every</label><input type="number" id="payStep" step="any" min="0" placeholder="exact"></div>
@@ -321,6 +339,7 @@
       <section class="card" id="cardResults" aria-labelledby="hResults">
         <h2 id="hResults">Results</h2>
         <div id="summary"></div>
+        <p class="note mt-12" id="netPriceInfo" hidden></p>
         <p class="note mt-12" id="reportsInfo" hidden></p>
         <div id="greeks" class="mt-14"></div>
       </section>
@@ -336,6 +355,7 @@
             <label for="chartMode">Show</label>
             <select id="chartMode">
               <option value="payoff">Profit / loss</option>
+              <option value="net">Net price</option>
               <option value="delta">Delta profile</option>
               <option value="gamma">Gamma profile</option>
               <option value="vega">Vega profile</option>

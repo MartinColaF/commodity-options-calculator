@@ -286,6 +286,10 @@ label.file-button:hover { filter: brightness(1.08); }
 .row.tight { gap: 6px; margin-top: 8px; }
 /* The leg the strike solver moves takes the room its name needs. */
 .pay-row > :first-child { flex: 2; }
+/* Fields side by side line up at the bottom, so a label that takes two lines
+   on a phone does not push its field below its neighbour. Their reasons sit
+   under the row, or one appearing would move the others. */
+.field-row { align-items: flex-end; }
 /* The four market-data buttons take a second row rather than run past the card
  * when their words are long: in Spanish they need about 410px of a phone's 324.
  * Each row still shares its width equally. */

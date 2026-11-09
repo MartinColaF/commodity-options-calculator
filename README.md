@@ -32,6 +32,17 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
   Given the interval strikes are listed at, it lands on the listed strike nearest the
   exact one that costs no more (1100, a credit of 1.17 ¢/bu), and it says when no strike
   of that leg can reach the cost.
+- **The net price** — type the basis and the commissions, per unit in the price's own
+  quote, and the results give the price the physical fetches, or costs, at the horizon:
+  the futures price there, plus the basis, plus what the options make net of their
+  premiums, less the commissions; for a buyer the options' result and the commissions
+  turn sign. A seller reads a floor and a ceiling, a buyer a cap and a floor, in the
+  price and in USD a ton where the market trades physically in tons: the 1000 put on
+  soybeans at 1050 ¢, with a basis of −40 ¢ and a cent of commissions, floors the sale at
+  947.80 ¢/bu, **348.26 USD/t**, read nominally as the extension services' sheets do, and at
+  947.73 once the premium carries its interest. **Net price** on the chart draws it across
+  prices, the floor and the ceiling marked. The physical is the position's underlying
+  leg: long for whoever sells it, short for whoever buys it.
   Per-leg volatility (skew), per-leg expiry (calendars) and **per-leg underlying
   price** are supported: in a real commodity calendar each delivery month trades
   at its own price, and one button fills each leg from the listed futures curve.
@@ -42,7 +53,8 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
   slope measured at the front of the curve.
 - **Payoff chart** — P&L at the nearest expiry plus a mark-to-market curve for any
   date in between, individual leg overlays, strike and spot markers. The same chart
-  also plots delta / gamma / vega / theta profiles across underlying prices.
+  also plots the net price and delta / gamma / vega / theta profiles across underlying
+  prices.
 - **In physical terms** — under the price, grains, sugar, cotton and copper read in USD
   a ton, coffee in USD a 60-kg bag and cattle in USD a kilo of live weight, with the
   contract in the same unit: 5,000 bushels of soybeans are 136.08 tons. The greeks say
@@ -164,6 +176,9 @@ Notes and limitations, stated plainly in the UI as well:
   leg has no premium and carries none; under Black-Scholes an underlying leg stands for
   the physical, and the cost of funding it is not modelled. A scenario saved before
   financing existed opens with it set to None, so its numbers stay as they were.
+- The net price holds the basis fixed, while in the market it moves too. It reads the
+  physical off the underlying legs, so with underlying legs on both sides, a physical
+  against a futures hedge, the page cannot tell which is which and shows no net price.
 - Yahoo's quote endpoint is undocumented: it can change without notice, and their
   terms do not grant redistribution rights. If it breaks, the app degrades to the
   Alpha Vantage path and manual entry.
@@ -231,6 +246,11 @@ some browsers restrict cross-origin requests from `file://`.
   the product review's 5,000 tons of soybeans, a whole number of contracts and less than
   one, the legs scaled with a ratio's shape, the field refused and cleared, the quantity
   kept across markets in the same unit, saved and shared, in both languages.
+- `test/net-price.test.js` — the net price: the product review's soybean floor, nominal
+  and financed, a collar's band and a buyer's cap, the curve against its sum, the reasons
+  there is none, the results and the chart with its floor and ceiling, the fields refused
+  and cleared, the basis dropped with the market and absent from an older scenario, in
+  both languages.
 - `test/pay-strike.test.js` — the strike that pays for the hedge: the product review's
   soybean collar exactly and on a 5 ¢ grid, a target other than zero, the skew moving the
   strike, the entries kept and dropped, the reason when no strike reaches the cost, the
