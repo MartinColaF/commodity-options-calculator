@@ -1914,7 +1914,7 @@ function reportsLine(a, nowMs) {
     const known = { publisher: r.publisher, report: r.name, horizon, last: reportDate(r.last, nowMs) };
     const n = r.within.length;
     if (!n && r.next === null) {
-      return t('{publisher} has dated {report} reports only to {last}, so those before the horizon, {horizon}, are not known here.', known);
+      return t('The {report} calendar on this page goes only to {last}, so the reports before the horizon, {horizon}, are not known.', known);
     }
     if (!n) {
       return t('No {report} report comes out by the horizon, {horizon}; the next is on {next}.',
@@ -1929,7 +1929,7 @@ function reportsLine(a, nowMs) {
         ? t('By the horizon, {horizon}, {publisher} publishes {n} {report} reports: {dates}.', Object.assign(known, { n, dates }))
         : t('By the horizon, {horizon}, {publisher} publishes {n} {report} reports, from {first} to {final}.',
           Object.assign(known, { n, first: reportDate(r.within[0], nowMs), final: reportDate(r.within[n - 1], nowMs) }));
-    return end > r.last ? s + ' ' + t('{publisher} has dated them only to {last}, so there may be more.', known) : s;
+    return end > r.last ? s + ' ' + t('The calendar on this page goes only to {last}, so there may be more.', known) : s;
   }).join(' ');
 }
 
