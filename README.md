@@ -20,6 +20,13 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
   Five hedge a physical position, listed first and named for who holds it: a seller's
   price floor, collar and fence, a buyer's price cap and collar. The rest are for
   trading: spreads, straddles, butterflies, iron condor, calendar, ratio.
+- **The strike that pays for the hedge** — pick the leg that pays, usually the option
+  sold, and the cost the premiums should come to ($0 for a zero-cost collar), and the page
+  finds its strike: for soybeans at 1050 ¢, the call that pays a 1000 put at 60 days and
+  18% is 1104.89. Each strike is priced at its own volatility, the skew's when it is on.
+  Given the interval strikes are listed at, it lands on the listed strike nearest the
+  exact one that costs no more (1100, a credit of 1.17 ¢/bu), and it says when no strike
+  of that leg can reach the cost.
   Per-leg volatility (skew), per-leg expiry (calendars) and **per-leg underlying
   price** are supported: in a real commodity calendar each delivery month trades
   at its own price, and one button fills each leg from the listed futures curve.
@@ -215,6 +222,10 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/hedging.test.js` — the hedging presets: listed first under their heading,
   the physical held by a seller and to be bought by a buyer, and a floor or a cap
   bounding what each can lose.
+- `test/pay-strike.test.js` — the strike that pays for the hedge: the product review's
+  soybean collar exactly and on a 5 ¢ grid, a target other than zero, the skew moving the
+  strike, the entries kept and dropped, the reason when no strike reaches the cost, the
+  leg choice and the button's refusals, in both languages.
 - `test/strategies.test.js` — closed-form limits for spreads, straddles, condors and
   butterflies, financed and nominal; bounded put payoffs; the rate an unlimited maximum
   grows at, a European calendar's against an American one's and a naked call's; the

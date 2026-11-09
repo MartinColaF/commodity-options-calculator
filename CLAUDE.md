@@ -279,6 +279,18 @@ chance of profit for 57.07%.
 position: a seller's underlying leg is long, a buyer's short. Whoever hedges read
 "Covered call" and "Iron condor" and did not find themselves. `strategyOptionsHtml()`
 builds the list; `test/hedging.test.js` checks the order and each side.
+**The strike that pays for the hedge** moves one option leg's strike until the
+position's premiums, `netCost()`'s dollars, come to the cost asked: `strikeForCost()`
+bisects on the strike's log, `costWithStrike()` prices the leg there at its theoretical
+value (an entry typed for another strike would not hold) and at its own volatility, the
+skew's when it is on, which is what moves a zero-cost strike. The page does not know the
+intervals exchanges list strikes at: they change with the market and the month, and CME's
+site refuses automated reading, so they cannot be checked here. The user types the
+interval their screen shows, and `strikeOnGrid()` lands on the strike nearest the exact
+one that costs no more; with none, the exact strike to the price's decimals, on the same
+side. `applyStrikeForCost()` reports under the legs table, and says when no strike of the
+leg reaches the cost, with the bound on that side. `test/pay-strike.test.js` pins the
+product review's soybean collar: put 11.20, call 1104.89, 1100 for a credit of 1.17 ¢/bu.
 
 **The horizon is the nearest expiry among active legs**, which is what makes calendar
 spreads read correctly — the far leg still holds time value there.

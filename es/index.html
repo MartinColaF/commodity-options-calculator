@@ -267,6 +267,17 @@
             <tbody id="legsBody"></tbody>
           </table>
         </div>
+        <div class="title-row mt-14">
+          <h3>Strike que paga la cobertura</h3>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="payHelp" aria-label="Cómo se busca el strike que paga la cobertura">?</button>
+        </div>
+        <p class="note help" id="payHelp" hidden>Elegir la pata cuyo strike se mueve, por lo general la opción que se vende: el call de un collar, el put más bajo de un fence, el put del collar de un comprador. La página mueve su strike hasta que las primas de la posición sumen el costo indicado, $0 para una cobertura de costo cero, y valúa cada strike con su propia volatilidad, la del skew cuando está activo. Los strikes se listan a intervalos fijos: con el intervalo que muestra la pantalla del broker, el resultado cae en un strike que se puede operar.</p>
+        <div class="row tight pay-row">
+          <div><label for="payLeg">Mover el strike de</label><select id="payLeg"></select></div>
+          <div><label for="payTarget">Costo neto de las primas ($)</label><input type="number" id="payTarget" step="any" value="0"></div>
+          <div><label for="payStep">Strikes listados cada</label><input type="number" id="payStep" step="any" min="0" placeholder="exacto"></div>
+        </div>
+        <button id="payStrike" class="ghost mt-8">Buscar el strike</button>
         <p class="problem" id="legProblem" role="alert"></p>
         <div class="status" id="legStatus" role="status"></div>
         <button id="undoRemove" class="ghost undo" hidden>Deshacer: volver a poner las patas</button>

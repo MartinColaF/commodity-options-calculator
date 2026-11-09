@@ -283,6 +283,17 @@
             <tbody id="legsBody"></tbody>
           </table>
         </div>
+        <div class="title-row mt-14">
+          <h3>Strike that pays for the hedge</h3>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="payHelp" aria-label="How the strike that pays for the hedge is found">?</button>
+        </div>
+        <p class="note help" id="payHelp" hidden>Pick the leg whose strike moves, usually the option you sell: the call of a collar, the lower put of a fence, the put of a buyer&rsquo;s collar. The page moves its strike until the position&rsquo;s premiums net to the cost you set, $0 for a zero-cost hedge, and prices each strike at its own volatility, the skew&rsquo;s when it is on. Strikes are listed at set intervals: enter the one your broker&rsquo;s screen shows to land on a strike you can trade.</p>
+        <div class="row tight pay-row">
+          <div><label for="payLeg">Move the strike of</label><select id="payLeg"></select></div>
+          <div><label for="payTarget">Net cost of the premiums ($)</label><input type="number" id="payTarget" step="any" value="0"></div>
+          <div><label for="payStep">Strikes listed every</label><input type="number" id="payStep" step="any" min="0" placeholder="exact"></div>
+        </div>
+        <button id="payStrike" class="ghost mt-8">Find the strike</button>
         <p class="problem" id="legProblem" role="alert"></p>
         <div class="status" id="legStatus" role="status"></div>
         <button id="undoRemove" class="ghost undo" hidden>Undo: put the legs back</button>

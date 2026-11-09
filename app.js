@@ -580,6 +580,50 @@ function applyStrategy(name) {
   state.legs = def.legs(k, step, state.days).map(l => newLeg(Object.assign({ days: state.days }, l)));
 }
 
+/* Moves one option leg's strike so the position's premiums come to `target`
+ * dollars, 0 for a zero-cost hedge: to the exact strike, to the price's
+ * decimals, or, given the interval `step` the market lists strikes at, to the
+ * listed strike nearest it; either way on the side that costs no more. The leg's entry goes, being for
+ * another strike. Returns { message, kind } and changes nothing when no strike
+ * reaches the target. */
+function applyStrikeForCost(id, target, step) {
+  const n = state.legs.findIndex(l => String(l.id) === String(id)) + 1;
+  const leg = state.legs[n - 1];
+  if (!leg || !leg.on || leg.kind === 'underlying') {
+    return { message: t('Choose an option leg that is included in the strategy.'), kind: 'err' };
+  }
+  const solved = strikeForCost(leg, target);
+  // Only the bound on the target's side says how far off it is.
+  if (!isFinite(solved.strike)) {
+    return {
+      message: target > solved.highest
+        ? t('No strike of leg {n} brings the premiums to {target}: moving it, the most they come to is {bound}.',
+          { n, target: money(target), bound: money(solved.highest) })
+        : t('No strike of leg {n} brings the premiums to {target}: moving it, the least they come to is {bound}.',
+          { n, target: money(target), bound: money(solved.lowest) }),
+      kind: 'err'
+    };
+  }
+  // The exact strike is shown to the price's decimals, on the side of it
+  // that costs no more, as a listed one is.
+  const placed = step > 0 ? strikeOnGrid(leg, target, solved.strike, step) : null;
+  leg.strike = (placed || strikeOnGrid(leg, target, solved.strike, Math.pow(10, -priceDp()))).strike;
+  leg.entry = null;
+  const cost = netCost();
+  const where = placed
+    ? t('Leg {n} set to a strike of {strike}: the cost asked is met exactly at {exact}, and {strike} is the ' +
+      'nearest strike every {step} that costs no more.', {
+      n, strike: fmtPrice(leg.strike, true), exact: fmtPrice(solved.strike, true), step: fmtPrice(step, true)
+    })
+    : t('Leg {n} set to a strike of {strike}, where the premiums come to the cost asked.', {
+      n, strike: fmtPrice(leg.strike, true)
+    });
+  const what = Math.abs(cost) < 0.005 ? t('Net cost: zero.')
+    : cost > 0 ? t('Net debit (paid): {amount}.', { amount: money(cost) })
+      : t('Net credit (received): {amount}.', { amount: money(-cost) });
+  return { message: where + ' ' + what, kind: 'ok' };
+}
+
 function strikeStep(S) {
   // A price of zero or a half-typed field would make log10 return -Infinity and
   // every derived strike NaN, which poisons the whole payoff curve.
@@ -918,6 +962,60 @@ function netCost() {
     c += leg.side * leg.qty * mult * legEntry(leg);
   }
   return c;
+}
+
+/* The position's net cost, netCost()'s dollars, with one option leg moved to
+ * strike K: the other legs as they stand, entries included, and this one at
+ * its theoretical value there, since an entry typed for another strike would
+ * not hold. Its volatility is its own at each strike, the skew's when it is on
+ * (legVolPct()), which is what moves a zero-cost strike once the skew is on. */
+function costWithStrike(leg) {
+  const mult = dollarMultiplier(currentCommodity());
+  const rest = netCost() - (leg.on ? leg.side * leg.qty * mult * legEntry(leg) : 0);
+  const probe = Object.assign({}, leg, { entry: null });
+  return K => {
+    probe.strike = K;
+    return rest + leg.side * leg.qty * mult * legValue(probe);
+  };
+}
+
+/* The strike at which one option leg brings the position's premiums to
+ * `target` dollars: the call a zero-cost collar sells, or the lower put a
+ * fence sells. Its premium moves one way with its strike, so the cost crosses
+ * the target once, and bisection on the strike's log finds the crossing: sixty
+ * steps between a fiftieth and fifty times the leg's own price. Returns the
+ * strike and the cost there, or a strike of NaN with the cost at each end of
+ * that range when no strike in it reaches the target. */
+function strikeForCost(leg, target) {
+  const cost = costWithStrike(leg);
+  const U = legUnder(leg);
+  let lo = Math.log(U / 50), hi = Math.log(U * 50);
+  const atLo = cost(Math.exp(lo)), atHi = cost(Math.exp(hi));
+  if (!(leg.qty > 0) || !((atLo - target) * (atHi - target) <= 0)) {
+    return { strike: NaN, lowest: Math.min(atLo, atHi), highest: Math.max(atLo, atHi) };
+  }
+  const below = atLo <= target;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if ((cost(Math.exp(mid)) <= target) === below) lo = mid; else hi = mid;
+  }
+  const K = Math.exp((lo + hi) / 2);
+  return { strike: K, cost: cost(K) };
+}
+
+/* The strike on a grid `step` apart, the one the user's screen lists, nearest
+ * `exact` among those that cost no more than `target`: one of the two that
+ * bracket it, since the cost moves one way with the strike. */
+function strikeOnGrid(leg, target, exact, step) {
+  const cost = costWithStrike(leg);
+  const tidy = x => Number(x.toPrecision(12));
+  const options = [Math.floor(exact / step) * step, Math.ceil(exact / step) * step]
+    .map(tidy).filter(K => K > 0)
+    .map(K => ({ strike: K, cost: cost(K) }));
+  const within = options.filter(o => o.cost <= target + 1e-9);
+  const pool = within.length ? within : options;
+  pool.sort((a, b) => Math.abs(a.strike - exact) - Math.abs(b.strike - exact));
+  return pool[0];
 }
 
 /* The interest the position's premiums carry from today to tDays, in dollars:
@@ -1837,7 +1935,30 @@ function legRowHtml(leg, mult, n) {
     </tr>`;
 }
 
+/* The legs the strike solver under the table can move: the included options.
+ * The choice stays on the leg it was on, and otherwise falls on the last one
+ * sold, the one that pays: a collar's call, a fence's call, a buyer's put. */
+function renderPayLegs() {
+  const select = $('payLeg');
+  const legs = state.legs.map((leg, i) => ({ leg, n: i + 1 }))
+    .filter(x => x.leg.on && x.leg.kind !== 'underlying');
+  const sold = legs.filter(x => x.leg.side < 0);
+  const chosen = legs.find(x => String(x.leg.id) === select.value) || sold[sold.length - 1] || legs[legs.length - 1];
+  select.innerHTML = legs.length
+    ? legs.map(x => `<option value="${escapeHtml(x.leg.id)}"${x === chosen ? ' selected' : ''}>${escapeHtml(
+      t('Leg {n}: {side} {kind} {strike}', {
+        n: x.n,
+        side: x.leg.side > 0 ? t('Long') : t('Short'),
+        kind: x.leg.kind === 'call' ? t('Call') : t('Put'),
+        strike: fmtPrice(x.leg.strike, true)
+      }))}</option>`).join('')
+    : `<option value="">${escapeHtml(t('No option legs yet'))}</option>`;
+  select.disabled = !legs.length;
+  $('payStrike').disabled = !legs.length;
+}
+
 function renderLegs() {
+  renderPayLegs();
   // Show the way out before it is needed: the button sits there greyed until a
   // leg actually carries its own price, then lights up.
   $('clearLegPrices').disabled = !state.legs.some(l => l.under != null);
@@ -3404,6 +3525,27 @@ function bindInputs() {
     if (!e.target.value) return;
     applyStrategy(e.target.value);
     renderAll();
+  });
+
+  // The strike that pays for the hedge. A blank cost is zero and a blank
+  // interval the exact strike; anything else that is not a number is refused
+  // beside the table, as a leg's own field would be.
+  $('payStrike').addEventListener('click', () => {
+    const typed = id => $(id).value.trim();
+    const target = typed('payTarget') === '' ? 0 : Number(typed('payTarget'));
+    if (!isNum(target)) {
+      refuse($('payTarget'), 'legProblem', t('Enter a number.'));
+      return;
+    }
+    const step = typed('payStep') === '' ? 0 : Number(typed('payStep'));
+    if (!(isNum(step) && step >= 0)) {
+      refuse($('payStep'), 'legProblem', t('Enter the interval strikes are listed at, above zero, or leave it blank ' +
+        'for the exact strike.'));
+      return;
+    }
+    const result = applyStrikeForCost($('payLeg').value, target, step);
+    renderAll();
+    setStatus(result.message, result.kind, 'legStatus');
   });
 
   $('addLeg').addEventListener('click', () => {

@@ -218,6 +218,22 @@ const SPANISH = {
     'Todavía no hay patas. <a href="#strategy">Elegir una estrategia</a> o agregar una pata arriba para ver los resultados.',
   'Net debit (paid)': 'Débito neto (pagado)',
   'Net credit (received)': 'Crédito neto (cobrado)',
+  'Net debit (paid): {amount}.': 'Débito neto (pagado): {amount}.',
+  'Net credit (received): {amount}.': 'Crédito neto (cobrado): {amount}.',
+  'Net cost: zero.': 'Costo neto: cero.',
+  'Leg {n}: {side} {kind} {strike}': 'Pata {n}: {side} {kind} {strike}',
+  'No option legs yet': 'Todavía no hay patas de opciones',
+  'Choose an option leg that is included in the strategy.': 'Elegir una pata de opción incluida en la estrategia.',
+  'No strike of leg {n} brings the premiums to {target}: moving it, the most they come to is {bound}.':
+    'Ningún strike de la pata {n} lleva las primas a {target}: al moverlo, lo más que suman es {bound}.',
+  'No strike of leg {n} brings the premiums to {target}: moving it, the least they come to is {bound}.':
+    'Ningún strike de la pata {n} lleva las primas a {target}: al moverlo, lo menos que suman es {bound}.',
+  'Leg {n} set to a strike of {strike}: the cost asked is met exactly at {exact}, and {strike} is the nearest strike every {step} that costs no more.':
+    'Pata {n} con strike {strike}: el costo pedido se cumple exacto en {exact}, y {strike} es el strike más cercano, de los listados cada {step}, que no cuesta más.',
+  'Leg {n} set to a strike of {strike}, where the premiums come to the cost asked.':
+    'Pata {n} con strike {strike}, donde las primas suman el costo pedido.',
+  'Enter the interval strikes are listed at, above zero, or leave it blank for the exact strike.':
+    'Se necesita el intervalo en que se listan los strikes, mayor que cero, o dejarlo en blanco para el strike exacto.',
   'Max profit': 'Ganancia máxima',
   'Max loss': 'Pérdida máxima',
   'Breakeven': 'Punto de equilibrio',
