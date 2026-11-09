@@ -48,6 +48,7 @@
     <li><strong>Los puntos de equilibrio</strong> son donde el P&amp;L al horizonte cruza el cero.</li>
     <li><strong>La probabilidad de ganancia</strong> es neutral al riesgo: la probabilidad, con un precio lognormal a la volatilidad de la propia posición, de que el P&amp;L al horizonte sea mayor que cero. No es un pronóstico.</li>
     <li><strong>El interés de la prima.</strong> Una prima se paga o se cobra hoy, así que un P&amp;L leído en una fecha posterior incluye el interés que devengó desde entonces: a la tasa libre de riesgo por defecto, a una tasa elegida, o ninguno.</li>
+    <li><strong>El precio neto</strong> es lo que se cobra por el físico, o lo que cuesta, por unidad al horizonte: el precio del futuro en ese momento, más la base, más lo que dejan las opciones neto de sus primas y del interés de las primas, menos las comisiones; para quien compra, el resultado de las opciones y las comisiones cambian de signo. Es el P&amp;L leído como precio, así que su peor y su mejor valor son la pérdida y la ganancia máximas. El físico es la pata de subyacente de la posición, comprada para quien vende y vendida para quien compra.</li>
   </ul>
 
   <h2>4. Volatilidad</h2>
@@ -77,6 +78,7 @@
     <li>Los vencimientos de los contratos se aproximan a mitad de su mes.</li>
     <li>La ganancia y la pérdida máximas se leen sobre una grilla de 1,200 puntos; en una posición curva el extremo real puede quedar entre dos de ellos, por $12.84 como máximo sobre una pérdida de $24,768, en 1,000 diagonales y ratio calendars americanos al azar.</li>
     <li>El interés de la prima corre desde hoy, porque no hay fecha de operación.</li>
+    <li>El precio neto toma la base fija; en el mercado también se mueve.</li>
     <li>Todos los modelos son lognormales, así que el precio debe ser mayor que cero. El WTI cerró a −37.63 en abril de 2020, lo que requeriría un modelo normal (Bachelier).</li>
   </ul>
 

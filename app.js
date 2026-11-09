@@ -487,6 +487,11 @@ const state = {
   legs: [],
   // The physical quantity to hedge, in hedgeUnit()'s unit, or null for none.
   hedgeQty: null,
+  // What the physical trades at over the futures, and what the hedge costs in
+  // commissions, both per unit in the price's own quote (cents a bushel for
+  // soybeans). The basis may be below zero; commissions may not.
+  basis: 0,
+  commission: 0,
   skew: { on: false, rr: 0, bf: 0 },
   scenario: { volShift: 5, pricePct: 20 },
   // Each leg's own curve is off until asked for: with several legs it ran far
@@ -1051,6 +1056,56 @@ function contractsFor(qty) {
     exact, unit: u.unit, perContract: u.perContract,
     up: whole(Math.ceil(exact - 1e-9)), down: whole(Math.floor(exact + 1e-9))
   };
+}
+
+/* The physical a hedge protects: the included underlying legs, all on one
+ * side, long for whoever sells it and short for whoever buys it, as the hedges
+ * in STRATEGIES hold it. Gives that side, the quantity in contracts and its
+ * price today, the legs' entries weighted by quantity. Null with no such leg,
+ * or with underlying legs on both sides: a physical against a futures hedge,
+ * which the page cannot tell apart. */
+function physicalPosition() {
+  const legs = activeLegs().filter(l => l.kind === 'underlying' && l.qty > 0);
+  if (!legs.length || legs.some(l => l.side !== legs[0].side)) return null;
+  const qty = legs.reduce((s, l) => s + l.qty, 0);
+  return { side: legs[0].side, qty, price: legs.reduce((s, l) => s + l.qty * legEntry(l), 0) / qty };
+}
+
+/* The net price of the physical, per unit in the price's quote, at underlying
+ * price P and tDays from today: what a seller is paid for it or a buyer pays,
+ * the extension services' sum. For a seller, the futures price then plus the
+ * basis, plus what the rest of the position makes, its premiums and their
+ * interest included (pnlEvaluator()), less the commissions; for a buyer the
+ * position's result and the commissions turn sign. The physical leg's own P&L
+ * carries the price from today's to P, so it is read off the whole position.
+ * Null with no physical. */
+function netPriceEvaluator() {
+  const phys = physicalPosition();
+  if (!phys) return null;
+  const pnl = pnlEvaluator();
+  const units = phys.qty * dollarMultiplier(currentCommodity());
+  const base = phys.price + state.basis;
+  return (P, tDays) => base + phys.side * (pnl(P, tDays) / units - state.commission);
+}
+
+/* The net price at its worst and at its best over every price at the horizon:
+ * a seller's floor and ceiling, a buyer's cap and lowest price. It moves with
+ * the position's P&L, a buyer's against it, so it is analyse()'s maximum loss
+ * and maximum profit read as prices; one the P&L does not bound is infinite,
+ * on the side the price runs to as it rises. Null with no physical. */
+function netPrices(a) {
+  const phys = physicalPosition();
+  if (!phys) return null;
+  const units = phys.qty * dollarMultiplier(currentCommodity());
+  const at = pnl => phys.price + state.basis + phys.side * (pnl / units - state.commission);
+  return { side: phys.side, worst: at(a.maxLoss), best: at(a.maxProfit) };
+}
+
+/* A price per unit of the quote in the physical trade's price, USD a metric
+ * ton for soybeans, or NaN for a market with none. */
+function physicalPrice(x) {
+  const c = currentCommodity();
+  return c.physical ? (c.quote === 'cents' ? x / 100 : x) * c.physical.per : NaN;
 }
 
 /* The interest the position's premiums carry from today to tDays, in dollars:
@@ -1827,7 +1882,7 @@ function renderInputs() {
   $('physicalInfo').hidden = !phys;
   $('physicalInfo').textContent = phys
     ? t('In physical terms: {price} {priceUnit}, and 1 contract = {amount} {unit}.', {
-      price: fmt((c.quote === 'cents' ? state.S / 100 : state.S) * phys.per, 2),
+      price: fmt(physicalPrice(state.S), 2),
       priceUnit: t(phys.price),
       amount: fmt(c.size / phys.per, 2),
       unit: t(phys.unit)
@@ -2032,9 +2087,27 @@ function renderHedge() {
   button('hedgeDown', s.down.n === s.up.n ? 0 : s.down.n);
 }
 
+/* The basis and the commissions, in the price's quote, and why there is no net
+ * price when the position holds no physical to put one on. */
+function renderNetPriceInputs() {
+  const quote = currentCommodity().quote === 'cents' ? t('cents') : t('USD');
+  $('basisUnit').textContent = quote;
+  $('commissionUnit').textContent = quote;
+  setField('basis', state.basis);
+  setField('commission', state.commission);
+  const underlying = activeLegs().filter(l => l.kind === 'underlying' && l.qty > 0);
+  const why = physicalPosition() ? ''
+    : underlying.length
+      ? t('Underlying legs on both sides: the page cannot tell the physical from a futures hedge, so it shows no net price.')
+      : t('The net price needs a leg for the physical: an underlying leg, long if you sell it, short if you buy it.');
+  $('netInfo').textContent = why;
+  $('netInfo').hidden = !why;
+}
+
 function renderLegs() {
   renderPayLegs();
   renderHedge();
+  renderNetPriceInputs();
   // Show the way out before it is needed: the button sits there greyed until a
   // leg actually carries its own price, then lights up.
   $('clearLegPrices').disabled = !state.legs.some(l => l.under != null);
@@ -2140,6 +2213,49 @@ function risingRate(a) {
   return t('{amount} per point as the price rises', { amount: perPoint });
 }
 
+/* The names of a net price at its worst and at its best: a seller's floor and
+ * ceiling, a buyer's cap and floor. */
+function netPriceNames(side) {
+  return side > 0
+    ? { worst: t('Net sale price floor'), best: t('Net sale price ceiling') }
+    : { worst: t('Net purchase price cap'), best: t('Net purchase price floor') };
+}
+
+/* The two net prices as results, each in the price's quote and, where the
+ * market has one, the physical trade's price: 947.80 for soybeans, 348.26 USD
+ * a ton. One the position does not bound says which way it runs. */
+function netPriceKpis(a) {
+  const np = netPrices(a);
+  if (!np) return '';
+  const c = currentCommodity();
+  const names = netPriceNames(np.side);
+  const kpi = (name, x) => {
+    if (!isFinite(x)) {
+      return `<div class="kpi"><span>${name}</span><strong>${t('None')}</strong><small>${x > 0
+        ? t('rises with the price') : t('falls as the price rises')}</small></div>`;
+    }
+    const phys = c.physical;
+    return `<div class="kpi"><span>${name}</span><strong>${fmtPrice(x)}</strong>${phys
+      ? `<small>${escapeHtml(fmt(physicalPrice(x), 2))} ${escapeHtml(t(phys.price))}</small>` : ''}</div>`;
+  };
+  return kpi(names.worst, np.worst) + kpi(names.best, np.best);
+}
+
+/* What a net price is made of, in words: '' with no physical. */
+function netPriceLine() {
+  const phys = physicalPosition();
+  if (!phys) return '';
+  const parts = {
+    quote: currentCommodity().quote === 'cents' ? t('cents') : t('USD'),
+    basis: fmtPrice(state.basis, true), commission: fmtPrice(state.commission, true)
+  };
+  return phys.side > 0
+    ? t('The net sale price is per unit, in {quote}, at the horizon: the futures price there, plus the basis of ' +
+      '{basis}, plus what the options make net of their premiums, as the P&L counts them, less commissions of {commission}.', parts)
+    : t('The net purchase price is per unit, in {quote}, at the horizon: the futures price there, plus the basis of ' +
+      '{basis}, less what the options make net of their premiums, as the P&L counts them, plus commissions of {commission}.', parts);
+}
+
 function renderResults() {
   const a = analyse();
   const g = netGreeks();
@@ -2170,7 +2286,7 @@ function renderResults() {
       <div class="kpi"><span>${a.breakevens.length === 1 ? t('Breakeven') : t('Breakevens')}</span><strong>${a.breakevens.length ? a.breakevens.map(b => fmtPrice(b)).join(' / ') : t('None')}</strong></div>
       <div class="kpi"><span>${t('Prob. of profit')}</span><strong>${(a.pop * 100).toFixed(1)}%</strong><small>${t('risk-neutral, at {vol}% vol', { vol: escapeHtml(fmt(a.popVol * 100, 1)) })}</small></div>
       <div class="kpi"><span>${t('Horizon')}</span><strong>${a.t === 1 ? t('{n} day', { n: escapeHtml(a.t) }) : t('{n} days', { n: escapeHtml(a.t) })}</strong></div>
-      <div class="kpi"><span>${t('Premium interest')}</span>${interest}</div>`;
+      <div class="kpi"><span>${t('Premium interest')}</span>${interest}</div>${netPriceKpis(a)}`;
 
     const mult = dollarMultiplier(c);
     // Once a leg prices off its own month, "a point" needs saying: a point of
@@ -2204,6 +2320,11 @@ function renderResults() {
           '{amount} a day at {rate}%.', { amount: money(-perDay), rate: ratePct })
         : ''}</p>`;
   }
+
+  // What the net prices above are made of, beside them.
+  const net = activeLegs().length ? netPriceLine() : '';
+  $('netPriceInfo').textContent = net;
+  $('netPriceInfo').hidden = !net;
 
   // A grain option priced across a WASDE holds that report's risk.
   const reports = activeLegs().length ? reportsLine(a, Date.now()) : '';
@@ -2252,6 +2373,24 @@ const markerPlugin = {
       ctx.fillStyle = k.m.labelColor || k.m.color;
       ctx.fillText(k.m.label, k.x, chartArea.top + 11 + rows[i] * 13);
     });
+    // A level runs across the chart, its label at the right end above it, or
+    // under it where the strikes' two rows of labels would cover it.
+    ctx.textAlign = 'right';
+    for (const m of opts.levels || []) {
+      const y = scales.y.getPixelForValue(m.value);
+      if (y < chartArea.top || y > chartArea.bottom) continue;
+      ctx.save();
+      ctx.beginPath();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = m.color;
+      ctx.lineWidth = 1;
+      ctx.moveTo(chartArea.left, y);
+      ctx.lineTo(chartArea.right, y);
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = m.labelColor || m.color;
+      ctx.fillText(m.label, chartArea.right - 4, y - 4 < chartArea.top + 30 ? y + 13 : y - 4);
+    }
     ctx.restore();
   }
 };
@@ -2298,6 +2437,8 @@ function chartConfig(a) {
   const col = themeColors();
   const mult = dollarMultiplier(currentCommodity());
   const datasets = [];
+  // Prices marked across the chart: the net price's floor and ceiling.
+  const levels = [];
   let yTitle;
 
   if (state.chart.mode === 'payoff') {
@@ -2326,6 +2467,37 @@ function chartConfig(a) {
             (leg.kind === 'underlying' ? '' : ' ' + fmtPrice(leg.strike, true)),
           data: a.xs.map(x => ({ x, y: pnl(x, a.t) })),
           borderColor: col.leg, borderWidth: 1, borderDash: [2, 3], pointRadius: 0, tension: 0
+        });
+      }
+    }
+  } else if (state.chart.mode === 'net') {
+    // The physical's net price, per unit in the price's quote, along the same
+    // axis and on the same dates as the P&L; with no physical, nothing.
+    const net = netPriceEvaluator();
+    const np = net ? netPrices(a) : null;
+    yTitle = np && np.side < 0 ? t('Net purchase price') : t('Net sale price');
+    if (net) {
+      datasets.push({
+        label: t('At horizon ({n}d)', { n: a.t }),
+        data: a.xs.map(x => ({ x, y: net(x, a.t) })),
+        borderColor: col.net, borderWidth: 2, pointRadius: 0, tension: STRAIGHT
+      });
+      if (state.chart.tDays < a.t) {
+        datasets.push({
+          label: state.chart.tDays === 0 ? t('Today (mark to market)') : t('In {n}d', { n: state.chart.tDays }),
+          data: a.xs.map(x => ({ x, y: net(x, state.chart.tDays) })),
+          borderColor: col.now, borderWidth: 2, borderDash: [6, 4], pointRadius: 0, tension: 0
+        });
+      }
+      // The floor and the ceiling across the chart, where the position has them.
+      for (const which of ['worst', 'best']) {
+        if (!isFinite(np[which])) continue;
+        const price = { price: fmtPrice(np[which]) };
+        levels.push({
+          value: np[which], color: col.strike, labelColor: col.strikeLabel,
+          label: which === 'worst'
+            ? (np.side > 0 ? t('Floor {price}', price) : t('Cap {price}', price))
+            : (np.side > 0 ? t('Ceiling {price}', price) : t('Floor {price}', price))
         });
       }
     }
@@ -2365,6 +2537,8 @@ function chartConfig(a) {
   // P&L axis reads 150k for 150,000: three rows of legend and seven-character
   // ticks left the plot about 300px of its 420.
   const narrow = isNarrow();
+  // The net price is a price, not dollars: no 150k on its axis, nor a $.
+  const prices = state.chart.mode === 'net';
 
   const cfg = {
     type: 'line',
@@ -2387,18 +2561,18 @@ function chartConfig(a) {
             color: ctx => ctx.tick.value === 0 ? col.zero : col.grid,
             lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1
           },
-          ticks: Object.assign({ color: col.text, includeBounds: !own }, narrow ? { callback: compactNumber } : {})
+          ticks: Object.assign({ color: col.text, includeBounds: !own }, narrow && !prices ? { callback: compactNumber } : {})
         }, own || {})
       },
       plugins: {
         legend: Object.assign({ labels: { color: col.text, boxWidth: 12 } }, narrow
           ? { position: 'bottom', labels: { color: col.text, boxWidth: 12, filter: item => item.datasetIndex < POSITION_SERIES } }
           : {}),
-        markers: { lines },
+        markers: { lines, levels },
         tooltip: {
           callbacks: {
             title: items => t('Price {price}', { price: fmtPrice(items[0].parsed.x) }),
-            label: item => item.dataset.label + ': ' + money(item.parsed.y)
+            label: item => item.dataset.label + ': ' + (prices ? fmtPrice(item.parsed.y) : money(item.parsed.y))
           }
         }
       }
@@ -2532,6 +2706,15 @@ function chartSummary(a) {
   if (!activeLegs().length) return t('Payoff chart: no legs yet.');
   const range = { lo: fmtPrice(a.xs[0], true), hi: fmtPrice(a.xs[a.xs.length - 1], true) };
   const mode = state.chart.mode;
+  if (mode === 'net') {
+    const np = netPrices(a);
+    if (!np) return t('Net price chart: no leg for the physical.');
+    const at = x => (isFinite(x) ? fmtPrice(x) : t('no limit'));
+    const prices = Object.assign({ n: a.t, worst: at(np.worst), best: at(np.best) }, range);
+    return np.side > 0
+      ? t('Net sale price at the {n}-day horizon, for an underlying price from {lo} to {hi}: floor {worst}, ceiling {best}.', prices)
+      : t('Net purchase price at the {n}-day horizon, for an underlying price from {lo} to {hi}: cap {worst}, floor {best}.', prices);
+  }
   if (mode !== 'payoff') {
     return t('{greek} profile of the position, for an underlying price from {lo} to {hi}.',
       Object.assign({ greek: mode.charAt(0).toUpperCase() + mode.slice(1) }, range));
@@ -2547,9 +2730,16 @@ function chartSummary(a) {
 }
 
 function renderChartSafely(a) {
-  // With nothing to chart, the box says so in its place.
+  // With nothing to chart, the box says so in its place: no legs, or a net
+  // price with no physical to put one on.
   const empty = $('chartEmpty');
-  if (empty) empty.hidden = activeLegs().length > 0;
+  if (empty) {
+    const noNet = activeLegs().length > 0 && state.chart.mode === 'net' && !physicalPosition();
+    empty.hidden = activeLegs().length > 0 && !noNet;
+    empty.textContent = noNet
+      ? t('No net price to chart: add an underlying leg for the physical, long if you sell it, short if you buy it.')
+      : t('No legs to chart yet. Choose a strategy or add a leg.');
+  }
   const canvas = $('payoffChart');
   if (canvas) canvas.setAttribute('aria-label', chartSummary(a));
   if (chartBroken) return;
@@ -2750,6 +2940,7 @@ function snapshot() {
     scenario: { volShift: state.scenario.volShift, pricePct: state.scenario.pricePct },
     financing: { mode: state.financing.mode, rate: state.financing.rate },
     hedgeQty: state.hedgeQty,
+    basis: state.basis, commission: state.commission,
     legs: state.legs.map(l => ({
       on: l.on, side: l.side, kind: l.kind, qty: l.qty,
       strike: l.strike, days: l.days, vol: l.vol, under: l.under, entry: l.entry
@@ -2774,7 +2965,7 @@ function snapshot() {
 const LEG_KINDS = ['call', 'put', 'underlying'];
 const MODELS = ['b76', 'bs'];
 const QUOTES = ['USD', 'cents'];
-const CHART_MODES = ['payoff', 'delta', 'gamma', 'vega', 'theta'];
+const CHART_MODES = ['payoff', 'net', 'delta', 'gamma', 'vega', 'theta'];
 const FINANCING = ['rate', 'custom', 'none'];
 
 function isNum(x) {
@@ -2806,6 +2997,8 @@ function inputProblem(key, v) {
       return v >= 0 ? '' : t('Enter a volatility of zero or more.');
     case 'hedgeQty':
       return v > 0 ? '' : t('Enter a quantity above zero, or leave it blank.');
+    case 'commission':
+      return v >= 0 ? '' : t('Enter commissions of zero or more: they are a cost, and a basis may be below zero instead.');
     default:
       return '';
   }
@@ -2879,6 +3072,10 @@ function restore(o) {
   if (Array.isArray(o.legs)) state.legs = o.legs.map(sanitizeLeg).filter(Boolean);
   // A scenario saved before the field existed hedged no stated quantity.
   state.hedgeQty = !inputProblem('hedgeQty', o.hedgeQty) ? o.hedgeQty : null;
+  // And none of a basis or commissions: its net price is the futures'. Nothing
+  // priced or measured rests on either, so no saved number moves.
+  state.basis = !inputProblem('basis', o.basis) ? o.basis : 0;
+  state.commission = !inputProblem('commission', o.commission) ? o.commission : 0;
   return true;
 }
 
@@ -3091,6 +3288,10 @@ function changeCommodity(key) {
   applyPreset();
   // 5,000 tons of soybeans are 5,000 tons of corn, not 5,000 ounces of gold.
   if (hedgeUnit().unit !== unit) state.hedgeQty = null;
+  // A basis is one market's over its own futures: soybeans' 40 cents under is
+  // not corn's, nor 40 dollars an ounce of gold. Commissions go with it.
+  state.basis = 0;
+  state.commission = 0;
 }
 
 /* Price the panel against one specific delivery month. */
@@ -3369,7 +3570,7 @@ function refuse(field, reasonId, text) {
 }
 
 function clearRefusals() {
-  ['spotProblem', 'volProblem', 'sizeProblem', 'legProblem', 'hedgeQtyProblem'].forEach(id => { $(id).textContent = ''; });
+  ['spotProblem', 'volProblem', 'sizeProblem', 'legProblem', 'hedgeQtyProblem', 'basisProblem', 'commissionProblem'].forEach(id => { $(id).textContent = ''; });
   refusedFields.splice(0).forEach(field => {
     field.removeAttribute('aria-invalid');
     field.removeAttribute('aria-describedby');
@@ -3624,6 +3825,21 @@ function bindInputs() {
     const text = e.target.value.trim();
     const problem = text === '' ? '' : inputProblem('hedgeQty', Number(text));
     if (problem) refuse($('hedgeQty'), 'hedgeQtyProblem', problem);
+  });
+  // The basis and the commissions: blank is zero. Commissions below zero are
+  // refused once the field is committed, keeping what was typed.
+  [['basis', 'basisProblem'], ['commission', 'commissionProblem']].forEach(([key, reason]) => {
+    $(key).addEventListener('input', e => {
+      const text = e.target.value.trim();
+      const v = text === '' ? 0 : Number(text);
+      if (!inputProblem(key, v)) state[key] = v;
+      scheduleRender();
+    });
+    $(key).addEventListener('change', e => {
+      const text = e.target.value.trim();
+      const problem = text === '' ? '' : inputProblem(key, Number(text));
+      if (problem) refuse($(key), reason, problem);
+    });
   });
   ['hedgeUp', 'hedgeDown'].forEach(id => $(id).addEventListener('click', () => {
     const n = Number($(id).dataset.n);

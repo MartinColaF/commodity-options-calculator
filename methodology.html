@@ -50,6 +50,7 @@
     <li><strong>Breakevens</strong> are where the P&amp;L at the horizon crosses zero.</li>
     <li><strong>The probability of profit</strong> is risk-neutral: the chance, under a lognormal price at the position's own volatility, that the P&amp;L at the horizon is above zero. It is not a forecast.</li>
     <li><strong>The premium's interest.</strong> A premium is paid or received today, so a P&amp;L read at a later date includes the interest it carried since: at the risk-free rate by default, at a rate of your choosing, or none.</li>
+    <li><strong>The net price</strong> is what the physical fetches, or costs, per unit at the horizon: the futures price there, plus the basis, plus what the options make net of their premiums and the premiums' interest, less the commissions, with the options' result and the commissions turning sign for a buyer. It is the P&amp;L read as a price, so its worst and its best are the maximum loss and the maximum profit. The physical is the position's underlying leg, long for a seller and short for a buyer.</li>
   </ul>
 
   <h2>4. Volatility</h2>
@@ -79,6 +80,7 @@
     <li>Contract expiries are approximated to the middle of their month.</li>
     <li>Maximum profit and loss are read off a grid of 1,200 points; on a curved position the true extreme can sit between two of them, by $12.84 at most on a $24,768 loss across 1,000 random American diagonals and ratio calendars.</li>
     <li>The premium's interest runs from today, since there is no trade date.</li>
+    <li>The net price holds the basis fixed; in the market it moves too.</li>
     <li>Every model here is lognormal, so a price must be above zero. WTI futures settled at −37.63 in April 2020, which would need a normal (Bachelier) model.</li>
   </ul>
 

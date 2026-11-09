@@ -25,7 +25,7 @@ const STYLES = path.join(ROOT, 'styles.css');
  * function as well, 81 names kept by hand. */
 const EPILOGUE = `
 ;globalThis.__bindings = {
-  state, COMMODITIES, STRATEGIES, PROXY_COMMODITIES, KEY_STORE, STORE_KEY, CACHE_MAX_AGE, SHARE_IMAGE
+  state, COMMODITIES, STRATEGIES, PROXY_COMMODITIES, KEY_STORE, STORE_KEY, CACHE_MAX_AGE, SHARE_IMAGE, markerPlugin
 };
 `;
 /* No stub for renderAll: nothing outside the wiring calls it, and with no page
@@ -183,7 +183,7 @@ function resetState(app, over) {
   Object.assign(app.state, {
     commodity: 'gold', model: 'b76', style: 'european',
     S: 4000, vol: 15, rate: 4, yield: 0.3,
-    days: 30, size: 100, quote: 'USD', legs: [], hedgeQty: null
+    days: 30, size: 100, quote: 'USD', legs: [], hedgeQty: null, basis: 0, commission: 0
   }, over || {});
   // Nested state is shared across tests, so reset it rather than letting one
   // test's skew or scenario settings leak into the next.

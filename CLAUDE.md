@@ -299,6 +299,20 @@ one that costs no more; with none, the exact strike to the price's decimals, on 
 side. `applyStrikeForCost()` reports under the legs table, and says when no strike of the
 leg reaches the cost, with the bound on that side. `test/pay-strike.test.js` pins the
 product review's soybean collar: put 11.20, call 1104.89, 1100 for a credit of 1.17 ¢/bu.
+**The net price** is the P&L read as a price, per unit in the price's quote:
+`netPriceEvaluator()` is the physical's price today, plus `state.basis`, plus the side
+times the position's P&L per unit less `state.commission`, so a seller gets the futures
+price at the horizon plus what the options make, and a buyer pays it less what they make.
+The physical is `physicalPosition()`: the included underlying legs, all on one side, as
+every hedge in `STRATEGIES` holds it; with legs on both sides there is none, since a
+physical cannot be told from a futures hedge. Because it moves with the P&L, `netPrices()`
+reads its worst and best off `analyse()`'s maximum loss and profit rather than sweeping
+again, and the premium's interest comes with them. The results give both in the price and,
+through `physicalPrice()`, the market's physical price; the chart's `net` mode draws it,
+with the two as `levels`, horizontal marks the marker plugin draws. The basis may be below
+zero and commissions may not (`inputProblem()`), `changeCommodity()` drops both, and a
+scenario saved before them has neither. `test/net-price.test.js` pins the review's floor:
+947.80 ¢/bu, 348.26 USD/t, nominal.
 
 **The horizon is the nearest expiry among active legs**, which is what makes calendar
 spreads read correctly — the far leg still holds time value there.
@@ -401,7 +415,10 @@ put `maximum-scale=1` in the viewport to stop the zoom; it stops everyone zoomin
 **A field's edge is `--field-border`, not `--line`.** WCAG asks 3:1 of a control's
 boundary, and `--line` is 1.29:1; it stays for dividers. A placeholder is a hint, muted
 and italic: the legs table puts in it what a blank field takes from the panel, which read
-as a value typed in. A disabled field is dashed on the page's ground, not only faded. `test/layout.test.js` checks the
+as a value typed in. A disabled field is dashed on the page's ground, not only faded. Fields side by side
+in a `.field-row` line up at the bottom, so a label wrapped to two lines on a phone does not
+push its field below its neighbour; their reasons sit under the row, or one appearing would
+move the others. `test/layout.test.js` checks the
 ratio in both schemes, the phone order and where the phone sizes sit.
 
 **A shared link's preview is in the markup.** LinkedIn, X and messaging apps read the

@@ -281,11 +281,29 @@
           <button id="hedgeDown" class="ghost">Cubrir</button>
         </div>
         <div class="title-row mt-14">
+          <h3>Precio neto</h3>
+          <button type="button" class="help-btn" aria-expanded="false" aria-controls="netHelp" aria-label="Cómo se calcula el precio neto">?</button>
+        </div>
+        <p class="note help" id="netHelp" hidden>El precio neto es lo que se cobra por el físico, o lo que cuesta, al horizonte, por unidad: el precio del futuro en ese momento más la base, con lo que dejan las opciones neto de sus primas, intereses incluidos, y descontadas las comisiones. Las dos se cargan en la unidad del precio del futuro, centavos por bushel para la soja; una base por debajo del futuro es negativa. La base se toma fija, aunque en el mercado también se mueve. El piso y el techo aparecen en Resultados, y <strong>Precio neto</strong>, en la lista Mostrar del gráfico, lo dibuja para cada precio.</p>
+        <div class="row tight field-row">
+          <div>
+            <label for="basis">Base, en <span id="basisUnit">USD</span></label>
+            <input type="number" id="basis" step="any" value="0">
+          </div>
+          <div>
+            <label for="commission">Comisiones, en <span id="commissionUnit">USD</span></label>
+            <input type="number" id="commission" step="any" min="0" value="0">
+          </div>
+        </div>
+        <p class="problem" id="basisProblem" role="alert"></p>
+        <p class="problem" id="commissionProblem" role="alert"></p>
+        <p class="note" id="netInfo" hidden></p>
+        <div class="title-row mt-14">
           <h3>Strike que paga la cobertura</h3>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="payHelp" aria-label="Cómo se busca el strike que paga la cobertura">?</button>
         </div>
         <p class="note help" id="payHelp" hidden>Elegir la pata cuyo strike se mueve, por lo general la opción que se vende: el call de un collar, el put más bajo de un fence, el put del collar de un comprador. La página mueve su strike hasta que las primas de la posición sumen el costo indicado, $0 para una cobertura de costo cero, y valúa cada strike con su propia volatilidad, la del skew cuando está activo. Los strikes se listan a intervalos fijos: con el intervalo que muestra la pantalla del broker, el resultado cae en un strike que se puede operar.</p>
-        <div class="row tight pay-row">
+        <div class="row tight pay-row field-row">
           <div><label for="payLeg">Mover el strike de</label><select id="payLeg"></select></div>
           <div><label for="payTarget">Costo neto de las primas ($)</label><input type="number" id="payTarget" step="any" value="0"></div>
           <div><label for="payStep">Strikes listados cada</label><input type="number" id="payStep" step="any" min="0" placeholder="exacto"></div>
@@ -305,6 +323,7 @@
       <section class="card" id="cardResults" aria-labelledby="hResults">
         <h2 id="hResults">Resultados</h2>
         <div id="summary"></div>
+        <p class="note mt-12" id="netPriceInfo" hidden></p>
         <p class="note mt-12" id="reportsInfo" hidden></p>
         <div id="greeks" class="mt-14"></div>
       </section>
@@ -320,6 +339,7 @@
             <label for="chartMode">Mostrar</label>
             <select id="chartMode">
               <option value="payoff">Ganancia / pérdida</option>
+              <option value="net">Precio neto</option>
               <option value="delta">Perfil de delta</option>
               <option value="gamma">Perfil de gamma</option>
               <option value="vega">Perfil de vega</option>

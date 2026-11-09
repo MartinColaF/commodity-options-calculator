@@ -73,6 +73,18 @@ test('a hidden element stays hidden, whatever its class displays it as', () => {
   }
 });
 
+test('fields side by side line up, whatever their labels wrap to', () => {
+  // "Comisiones, en centavos" took two lines on a phone and pushed its field
+  // below the basis beside it.
+  assert.match(css, /\.field-row \{ align-items: flex-end; \}/);
+  for (const file of ['index.html', 'es/index.html']) {
+    const page = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    const rows = Array.from(page.matchAll(/<div class="row tight[^"]*field-row">([\s\S]*?)\n {8}<\/div>\n/g), m => m[1]);
+    assert.strictEqual(rows.length, 2, `${file}: the net price and the strike that pays`);
+    for (const row of rows) assert.doesNotMatch(row, /class="problem"/, `${file}: a reason inside would move the fields`);
+  }
+});
+
 test('phone sizes come after the rules they override', () => {
   const sixteen = media('(max-width: 900px), (pointer: coarse)');
   assert.match(sixteen.body, /input, select, textarea, #legs input, #legs select\s*\{\s*font-size:\s*16px;/);
