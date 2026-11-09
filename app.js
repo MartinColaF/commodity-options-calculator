@@ -1982,14 +1982,20 @@ function renderResults() {
     // Theta stays the options' own; the interest is the rest of the P&L's change
     // from one day to the next, so it is given beside it.
     const perDay = carried ? premiumInterestPerDay(0) : 0;
+    // Each meaning is written twice, in its column and under the greek's name;
+    // the stylesheet shows one, the second on the narrowest phones, where a
+    // fourth column did not fit.
+    const greekRows = [
+      ['Delta', fmt(g.unit.delta, 4), money(g.money.delta), t('$ P&L per 1 point move')],
+      ['Gamma', fmt(g.unit.gamma, 6), money(g.money.gamma), t('delta change per 1 point move')],
+      ['Vega', fmt(g.unit.vega, 4), money(g.money.vega), t('$ per +1 vol point')],
+      ['Theta', fmt(g.unit.theta, 4), money(g.money.theta), t('$ per calendar day')],
+      ['Rho', fmt(g.unit.rho, 4), money(g.money.rho), t('$ per +1 rate point')]
+    ].map(([name, unit, position, meaning]) => `
+        <tr><td>${name}<span class="meaning-under">${escapeHtml(meaning)}</span></td><td class="num">${unit}</td><td class="num">${position}</td><td class="muted meaning">${escapeHtml(meaning)}</td></tr>`).join('');
     $('greeks').innerHTML = `
       <table class="greeks">
-        <tr><th><span class="sr-only">${t('Greek')}</span></th><th>${t('Per unit')}</th><th>${t('Position ($)')}</th><th>${t('Meaning')}</th></tr>
-        <tr><td>Delta</td><td class="num">${fmt(g.unit.delta, 4)}</td><td class="num">${money(g.money.delta)}</td><td class="muted">${escapeHtml(t('$ P&L per 1 point move'))}</td></tr>
-        <tr><td>Gamma</td><td class="num">${fmt(g.unit.gamma, 6)}</td><td class="num">${money(g.money.gamma)}</td><td class="muted">${t('delta change per 1 point move')}</td></tr>
-        <tr><td>Vega</td><td class="num">${fmt(g.unit.vega, 4)}</td><td class="num">${money(g.money.vega)}</td><td class="muted">${t('$ per +1 vol point')}</td></tr>
-        <tr><td>Theta</td><td class="num">${fmt(g.unit.theta, 4)}</td><td class="num">${money(g.money.theta)}</td><td class="muted">${t('$ per calendar day')}</td></tr>
-        <tr><td>Rho</td><td class="num">${fmt(g.unit.rho, 4)}</td><td class="num">${money(g.money.rho)}</td><td class="muted">${t('$ per +1 rate point')}</td></tr>
+        <tr><th><span class="sr-only">${t('Greek')}</span></th><th>${t('Per unit')}</th><th>${t('Position ($)')}</th><th class="meaning">${t('Meaning')}</th></tr>${greekRows}
       </table>
       <p class="small">${futuresDelta(g.unit.delta)}</p>
       <p class="muted small">${t('Position column = per-unit greek × quantity × ${mult} multiplier.', { mult: fmt(mult, 2) })}${ownMonth

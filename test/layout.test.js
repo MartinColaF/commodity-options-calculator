@@ -131,3 +131,27 @@ test('a hint reads as a hint and an idle field as idle, both still legible', () 
     }
   }
 });
+
+test('on the narrowest phones each greek says what it is under its name', () => {
+  // As a fourth column, "SIGNIFICADO" and "−0.001533" needed 311px of a 320px
+  // phone's 254, and the page scrolled sideways.
+  const { app, el } = wired();
+  app.applyStrategy('iron-condor');
+  app.renderResults();
+  const greeks = el('greeks').innerHTML;
+  const rows = greeks.match(/<tr><td>\w+<span class="meaning-under">[^<]+<\/span><\/td>(<td[^>]*>[^<]*<\/td>){3}<\/tr>/g);
+  assert.strictEqual(rows.length, 5, 'every greek');
+  for (const r of rows) {
+    // The same words in both places, so whichever shows says the same.
+    const under = r.match(/class="meaning-under">([^<]+)</)[1];
+    assert.ok(r.endsWith(`<td class="muted meaning">${under}</td></tr>`), r);
+  }
+  assert.match(greeks, /<th class="meaning">Meaning<\/th>/);
+  // Hidden unless the screen is narrow, and then the column goes instead; the
+  // narrow rule comes after the one it overrides, as the phone sizes do.
+  assert.match(css, /\.greeks \.meaning-under \{ display: none; \}/);
+  const narrow = media('(max-width: 400px)');
+  assert.match(narrow.body, /\.greeks \.meaning \{ display: none; \}/);
+  assert.match(narrow.body, /\.greeks \.meaning-under \{ display: block;/);
+  assert.ok(narrow.at > css.indexOf('.greeks .meaning-under { display: none; }'));
+});
