@@ -183,7 +183,7 @@ function resetState(app, over) {
   Object.assign(app.state, {
     commodity: 'gold', model: 'b76', style: 'european',
     S: 4000, vol: 15, rate: 4, yield: 0.3,
-    days: 30, size: 100, quote: 'USD', legs: []
+    days: 30, size: 100, quote: 'USD', legs: [], hedgeQty: null
   }, over || {});
   // Nested state is shared across tests, so reset it rather than letting one
   // test's skew or scenario settings leak into the next.

@@ -485,6 +485,8 @@ const state = {
   size: 100,
   quote: 'USD',
   legs: [],
+  // The physical quantity to hedge, in hedgeUnit()'s unit, or null for none.
+  hedgeQty: null,
   skew: { on: false, rr: 0, bf: 0 },
   scenario: { volShift: 5, pricePct: 20 },
   // Each leg's own curve is off until asked for: with several legs it ran far
@@ -622,6 +624,17 @@ function applyStrikeForCost(id, target, step) {
     : cost > 0 ? t('Net debit (paid): {amount}.', { amount: money(cost) })
       : t('Net credit (received): {amount}.', { amount: money(-cost) });
   return { message: where + ' ' + what, kind: 'ok' };
+}
+
+/* Puts `n` contracts on the position: the physical leg, or else the smallest
+ * included one, holds n, and every included leg is scaled with it to whole
+ * contracts, so a ratio keeps its shape. False when there is nothing to size. */
+function applyHedgeContracts(n) {
+  const legs = activeLegs().filter(l => l.qty > 0);
+  if (!legs.length || !(n >= 1)) return false;
+  const base = (legs.find(l => l.kind === 'underlying') || legs.reduce((a, b) => (b.qty < a.qty ? b : a))).qty;
+  legs.forEach(l => { l.qty = Math.max(1, Math.round(l.qty * n / base)); });
+  return true;
 }
 
 function strikeStep(S) {
@@ -1016,6 +1029,28 @@ function strikeOnGrid(leg, target, exact, step) {
   const pool = within.length ? within : options;
   pool.sort((a, b) => Math.abs(a.strike - exact) - Math.abs(b.strike - exact));
   return pool[0];
+}
+
+/* The unit a hedge is sized in, and how much of it one contract holds: the
+ * physical trade's where the market has one (metric tons, 60-kg bags, kilos,
+ * from commodities.js), else the contract's own. */
+function hedgeUnit() {
+  const c = currentCommodity();
+  return c.physical
+    ? { unit: c.physical.unit, perContract: c.size / c.physical.per }
+    : { unit: c.unit, perContract: c.size };
+}
+
+/* The contracts a physical quantity needs: the exact number, and the whole
+ * numbers either side of it with what each covers. */
+function contractsFor(qty) {
+  const u = hedgeUnit();
+  const exact = qty / u.perContract;
+  const whole = n => ({ n, covers: n * u.perContract });
+  return {
+    exact, unit: u.unit, perContract: u.perContract,
+    up: whole(Math.ceil(exact - 1e-9)), down: whole(Math.floor(exact + 1e-9))
+  };
 }
 
 /* The interest the position's premiums carry from today to tDays, in dollars:
@@ -1957,8 +1992,49 @@ function renderPayLegs() {
   $('payStrike').disabled = !legs.length;
 }
 
+/* The size of the hedge: the contracts the quantity needs, what the whole
+ * numbers either side cover, and a button for each. */
+function renderHedge() {
+  const u = hedgeUnit();
+  $('hedgeUnit').textContent = t(u.unit);
+  setField('hedgeQty', state.hedgeQty == null ? '' : state.hedgeQty);
+  const q = state.hedgeQty;
+  const s = q ? contractsFor(q) : null;
+  const info = $('hedgeInfo');
+  info.hidden = !s;
+  $('hedgeButtons').hidden = !s;
+  if (!s) {
+    info.textContent = '';
+    return;
+  }
+  // Two decimals where there are any: 136.08 tons, but 100 ounces.
+  const amount = x => fmt(x, Math.abs(x - Math.round(x)) < 0.005 ? 0 : 2);
+  const per = amount(s.perContract), unit = t(u.unit);
+  info.textContent = s.up.n === s.down.n
+    ? (s.up.n === 1
+      ? t('1 contract of {per} {unit} covers it exactly.', { per, unit })
+      : t('{n} contracts of {per} {unit} cover it exactly.', { n: fmt(s.up.n, 0), per, unit }))
+    : s.down.n === 0
+      ? t('{exact} contracts of {per} {unit}: 1 covers {upQty}, {over} more.', {
+        exact: fmt(s.exact, 2), per, unit, upQty: amount(s.up.covers), over: amount(s.up.covers - q)
+      })
+      : t('{exact} contracts of {per} {unit}: {up} cover {upQty}, {over} more; {down} cover {downQty}, {under} less.', {
+        exact: fmt(s.exact, 2), per, unit,
+        up: fmt(s.up.n, 0), upQty: amount(s.up.covers), over: amount(s.up.covers - q),
+        down: fmt(s.down.n, 0), downQty: amount(s.down.covers), under: amount(q - s.down.covers)
+      });
+  const button = (id, n) => {
+    $(id).hidden = !(n >= 1);
+    $(id).dataset.n = String(n);
+    $(id).textContent = n === 1 ? t('Hedge with 1 contract') : t('Hedge with {n} contracts', { n: fmt(n, 0) });
+  };
+  button('hedgeUp', s.up.n);
+  button('hedgeDown', s.down.n === s.up.n ? 0 : s.down.n);
+}
+
 function renderLegs() {
   renderPayLegs();
+  renderHedge();
   // Show the way out before it is needed: the button sits there greyed until a
   // leg actually carries its own price, then lights up.
   $('clearLegPrices').disabled = !state.legs.some(l => l.under != null);
@@ -2673,6 +2749,7 @@ function snapshot() {
     skew: { on: state.skew.on, rr: state.skew.rr, bf: state.skew.bf },
     scenario: { volShift: state.scenario.volShift, pricePct: state.scenario.pricePct },
     financing: { mode: state.financing.mode, rate: state.financing.rate },
+    hedgeQty: state.hedgeQty,
     legs: state.legs.map(l => ({
       on: l.on, side: l.side, kind: l.kind, qty: l.qty,
       strike: l.strike, days: l.days, vol: l.vol, under: l.under, entry: l.entry
@@ -2727,6 +2804,8 @@ function inputProblem(key, v) {
       return v > 0 ? '' : t('Enter units per contract above zero.');
     case 'vol':
       return v >= 0 ? '' : t('Enter a volatility of zero or more.');
+    case 'hedgeQty':
+      return v > 0 ? '' : t('Enter a quantity above zero, or leave it blank.');
     default:
       return '';
   }
@@ -2798,6 +2877,8 @@ function restore(o) {
   state.financing.mode = pick(fin.mode, FINANCING, 'none');
   if (!inputProblem('financingRate', fin.rate)) state.financing.rate = fin.rate;
   if (Array.isArray(o.legs)) state.legs = o.legs.map(sanitizeLeg).filter(Boolean);
+  // A scenario saved before the field existed hedged no stated quantity.
+  state.hedgeQty = !inputProblem('hedgeQty', o.hedgeQty) ? o.hedgeQty : null;
   return true;
 }
 
@@ -3004,9 +3085,12 @@ async function loadContractMonths() {
  * keeping the old strip would offer cocoa months while pricing gold. */
 function changeCommodity(key) {
   if (!Object.prototype.hasOwnProperty.call(COMMODITIES, key)) return;
+  const unit = hedgeUnit().unit;
   state.commodity = key;
   state.session.strip = [];
   applyPreset();
+  // 5,000 tons of soybeans are 5,000 tons of corn, not 5,000 ounces of gold.
+  if (hedgeUnit().unit !== unit) state.hedgeQty = null;
 }
 
 /* Price the panel against one specific delivery month. */
@@ -3285,7 +3369,7 @@ function refuse(field, reasonId, text) {
 }
 
 function clearRefusals() {
-  ['spotProblem', 'volProblem', 'sizeProblem', 'legProblem'].forEach(id => { $(id).textContent = ''; });
+  ['spotProblem', 'volProblem', 'sizeProblem', 'legProblem', 'hedgeQtyProblem'].forEach(id => { $(id).textContent = ''; });
   refusedFields.splice(0).forEach(field => {
     field.removeAttribute('aria-invalid');
     field.removeAttribute('aria-describedby');
@@ -3526,6 +3610,35 @@ function bindInputs() {
     applyStrategy(e.target.value);
     renderAll();
   });
+
+  // The quantity to hedge: blank is none, and anything else must be above zero.
+  // A refused one keeps what was typed, with its reason under it, once the
+  // field is committed.
+  $('hedgeQty').addEventListener('input', e => {
+    const text = e.target.value.trim();
+    if (text === '') state.hedgeQty = null;
+    else if (!inputProblem('hedgeQty', Number(text))) state.hedgeQty = Number(text);
+    scheduleRender();
+  });
+  $('hedgeQty').addEventListener('change', e => {
+    const text = e.target.value.trim();
+    const problem = text === '' ? '' : inputProblem('hedgeQty', Number(text));
+    if (problem) refuse($('hedgeQty'), 'hedgeQtyProblem', problem);
+  });
+  ['hedgeUp', 'hedgeDown'].forEach(id => $(id).addEventListener('click', () => {
+    const n = Number($(id).dataset.n);
+    if (!applyHedgeContracts(n)) {
+      setStatus(t('Add a leg first: there is nothing to size.'), 'err', 'legStatus');
+      return;
+    }
+    const u = hedgeUnit();
+    const covers = n * u.perContract;
+    const sized = { n: fmt(n, 0), covers: fmt(covers, Math.abs(covers - Math.round(covers)) < 0.005 ? 0 : 2), unit: t(u.unit) };
+    renderAll();
+    setStatus(n === 1
+      ? t('Sized to 1 contract, {covers} {unit}: every included leg is scaled with it.', sized)
+      : t('Sized to {n} contracts, {covers} {unit}: every included leg is scaled with it.', sized), 'ok', 'legStatus');
+  }));
 
   // The strike that pays for the hedge. A blank cost is zero and a blank
   // interval the exact strike; anything else that is not a number is refused

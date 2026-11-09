@@ -267,6 +267,19 @@
             <tbody id="legsBody"></tbody>
           </table>
         </div>
+        <h3 class="mt-14">Tamaño de la cobertura</h3>
+        <div class="row tight">
+          <div>
+            <label for="hedgeQty">Cantidad a cubrir, en <span id="hedgeUnit">onzas troy</span></label>
+            <input type="number" id="hedgeQty" step="any" min="0" placeholder="p. ej. 5000">
+            <p class="problem" id="hedgeQtyProblem" role="alert"></p>
+          </div>
+        </div>
+        <p class="note" id="hedgeInfo" hidden></p>
+        <div class="row tight" id="hedgeButtons" hidden>
+          <button id="hedgeUp" class="ghost">Cubrir</button>
+          <button id="hedgeDown" class="ghost">Cubrir</button>
+        </div>
         <div class="title-row mt-14">
           <h3>Strike que paga la cobertura</h3>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="payHelp" aria-label="Cómo se busca el strike que paga la cobertura">?</button>
