@@ -1711,7 +1711,7 @@ function proxyAvailable(commodity) {
 async function proxyGet(fn, commodity, ttlMs) {
   if (!proxyAvailable(commodity)) {
     throw new Error(PROXY_COMMODITIES.indexOf(commodity) === -1
-      ? t('no futures contract mapped for this commodity')
+      ? t('the page reads no quotes for this market')
       : t('the futures proxy only runs on the deployed site'));
   }
   const ck = 'proxy.' + fn + '.' + commodity;
@@ -3771,11 +3771,15 @@ function reasonOf(err) {
  * futures price (Upstream quote unavailable); volatility (Upstream quote
  * unavailable); ..." was one sentence of server words, three of them alike. */
 function failureLines(failed) {
-  const byService = {}, other = [];
+  const byService = {}, byReason = {};
   for (const f of failed) {
     if (f.error.service) (byService[f.error.service] = byService[f.error.service] || []).push(f.name);
-    else other.push(t('The {field} is unchanged: {reason}.', { field: f.name, reason: reasonOf(f.error) }));
+    else (byReason[reasonOf(f.error)] = byReason[reasonOf(f.error)] || []).push(f.name);
   }
+  // A market the page reads no quotes for failed the same way three times.
+  const other = Object.keys(byReason).map(reason => byReason[reason].length === 1
+    ? t('The {field} is unchanged: {reason}.', { field: byReason[reason][0], reason })
+    : t('These are unchanged: {fields}. The reason: {reason}.', { fields: listOf(byReason[reason]), reason }));
   return Object.keys(byService).map(s => t('Could not reach {service}, so these are unchanged: {fields}.',
     { service: serviceName(s), fields: listOf(byService[s]) })).concat(other);
 }

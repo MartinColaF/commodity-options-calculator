@@ -41,6 +41,16 @@ test('a shared link has a title, a description and a large image, in the page\'s
   }
 });
 
+test('the preview counts the markets the page has', () => {
+  // It said 14 after Rosario's three made 17.
+  const markets = Object.keys(require('../commodities.js')).filter(k => k !== 'custom').length;
+  for (const p of PAGES) {
+    const n = p.meta('og:description').match(/(\d+) (?:futures markets|mercados de futuros)/);
+    assert.ok(n, p.file);
+    assert.strictEqual(+n[1], markets, p.file);
+  }
+});
+
 test('the preview promises nothing live', () => {
   // The disclaimer says the market data is historical or reference values, not
   // live quotes; the description once offered "live risk-free rates".

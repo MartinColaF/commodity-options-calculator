@@ -13,6 +13,14 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
   `b = 0` the early-exercise premium is real on calls and puts alike.
 - **Greeks** — delta, gamma, vega, theta, rho, both per unit and in dollars for the
   position (contract size and cents-vs-dollars quoting are handled).
+- **Markets** — 17 and a custom contract: gold, silver and copper; WTI, Brent and
+  natural gas; corn, wheat and soybeans on CBOT; sugar, coffee, cocoa and cotton on ICE;
+  live cattle; and soybeans, corn and wheat in Rosario, on A3 Mercados (MATba-ROFEX), in
+  dollars a metric ton. The page reads no quote for Rosario: type the price from your
+  screen. A3's contracts are 100 tons, its options American with a 10-cent tick; their
+  premium is paid up front, as the page values it, and the exchange also settles daily
+  differences on the intrinsic value, which the page does not model. Collections and
+  payments are in pesos at A3's reference rate; the page shows dollars.
 - **Prices to the tick** — every price shows as many decimals as the market's option
   tick: four for copper, three for gas, silver, cattle and the grains (an eighth of a
   cent), two elsewhere. Nothing on screen is rounded past a step the market trades in.
@@ -259,6 +267,9 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/seo.test.js` — what search engines read: the Search Console tag on both home
   pages, the sitemap against each page's canonical and translation tags, and the
   crawl rules.
+- `test/latam.test.js` — Rosario's grains: A3's contract size, unit and tick, no feed
+  and no month to look up, a hedge in tons in whole contracts, Auto-fill taking the rate
+  and saying once why the rest stays typed, and Spanish.
 - `test/reports.test.js` — the reports line: USDA's WASDE dates at 12:00 in
   Washington, EIA's weekly reports by its rule and its holiday changes, which markets
   follow which, a report counted until the minute it comes out, and the line past the
