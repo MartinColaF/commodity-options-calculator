@@ -1,0 +1,7 @@
+# Every page may be crawled. The market-data function is not a page: each
+# request to it asks Yahoo for quotes, so crawlers are kept off it.
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://commodity-options-calculator.vercel.app/sitemap.xml

@@ -205,6 +205,8 @@ Notes and limitations, stated plainly in the UI as well:
 - `commodities.js` — the table of markets: contract specs and ticks, presets and
   futures symbols. The page and the function both read it, so adding a market is one
   entry.
+- `sitemap.xml`, `robots.txt` — every page for search engines, at its canonical address
+  with its translation, and the crawl rules that name the sitemap
 - `expiries.js` — when the options on each listed month stop trading: ICE's published
   dates for its softs, and CBOT's rule for the grains with the US exchange holidays to
   2028. ICE lists new months as they open; add them, and each new year's holidays.
@@ -254,6 +256,9 @@ some browsers restrict cross-origin requests from `file://`.
   the review's December corn and the dates StoneX reports, Christmas on a Friday and a
   leap February, the days counted in the exchange's time zone, the legs that follow, the
   note when a month has no date, and Spanish.
+- `test/seo.test.js` — what search engines read: the Search Console tag on both home
+  pages, the sitemap against each page's canonical and translation tags, and the
+  crawl rules.
 - `test/reports.test.js` — the reports line: USDA's WASDE dates at 12:00 in
   Washington, EIA's weekly reports by its rule and its holiday changes, which markets
   follow which, a report counted until the minute it comes out, and the line past the

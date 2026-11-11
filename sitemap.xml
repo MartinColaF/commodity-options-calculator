@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The site's pages for search engines, each at its canonical address with its
+     translation, as the pages' own <link rel="alternate" hreflang> tags give them.
+     test/seo.test.js holds the two together. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://commodity-options-calculator.vercel.app/"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/es/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://commodity-options-calculator.vercel.app/"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/methodology.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/methodology.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/methodology.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/es/methodology.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/methodology.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/methodology.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/privacy.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/privacy.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/es/privacy.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/privacy.html"/>
+  </url>
+</urlset>
