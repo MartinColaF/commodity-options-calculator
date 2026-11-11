@@ -21,6 +21,7 @@ for users; this file covers what is easy to get wrong when changing it.
 | `test/` | `node --test` suite, no framework |
 | `scripts/serve.js` | dependency-free dev server |
 | `og.png`, `favicon.*`, `apple-touch-icon.png` | link preview image and icons |
+| `sitemap.xml`, `robots.txt` | the pages for search engines, and the crawl rules that name the sitemap |
 
 ## Commands
 
@@ -434,6 +435,13 @@ disclaimer denies. LinkedIn keeps its own copy of a preview: after changing any 
 the URL through linkedin.com/post-inspector. `test/social.test.js` pins the tags and the
 image's size, and `test/deploy.test.js` maps the absolute image URL back to its file, so
 `.vercelignore` cannot drop it.
+
+**Search engines read the head and the sitemap.** Google Search Console verifies the site
+by the `google-site-verification` tag in both home pages' `<head>`, and checks it again
+from time to time: removing it loses the property. `sitemap.xml` lists every page at its
+canonical address with the translations its own `hreflang` tags give, and `robots.txt`
+names it and keeps crawlers off `/api/`, where each request asks Yahoo for quotes. A new
+page goes in the sitemap with the same tags; `test/seo.test.js` reads both from the pages.
 
 **The Save & share card answers under its own buttons**, in `#saveStatus` through
 `setSaveStatus()`: on a phone the market-data status line is 3,400 px above them. The
