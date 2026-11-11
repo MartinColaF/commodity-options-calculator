@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Un piso de precio para el ganado con puts de live cattle - Calculadora de opciones sobre commodities</title>
+  <meta name="description" content="Cómo un productor ganadero fija un precio mínimo con opciones put sobre futuros de live cattle de CME: el costo del put, el piso en centavos por libra y en dólares por kilo, y cuántos contratos hacen falta para 100 cabezas.">
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-ganado.html">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/cattle-price-floor.html">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-ganado.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Calculadora de opciones sobre commodities">
+  <meta property="og:title" content="Un piso de precio para el ganado con puts de live cattle">
+  <meta property="og:description" content="Cómo un productor ganadero fija un precio mínimo con opciones put sobre futuros de live cattle de CME: el costo del put, el piso en centavos por libra y en dólares por kilo, y cuántos contratos hacen falta para 100 cabezas.">
+  <meta property="og:url" content="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-ganado.html">
+  <meta property="og:image" content="https://commodity-options-calculator.vercel.app/es/og.png">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../../favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+<!-- A worked case, its figures the calculator's own for the scenario its link
+     opens: test/guides.test.js recomputes them and holds this page and its
+     translation together. -->
+<div class="wrap doc">
+  <nav class="doc-nav">
+    <a href="/es/guides/">&larr; Todas las guías</a>
+    <a href="/guides/cattle-price-floor.html" hreflang="en" lang="en">English</a>
+  </nav>
+  <main class="card">
+  <h1>Un piso de precio para el ganado con puts de live cattle</h1>
+  <p>Un engordador con novillos para vender en dos meses quiere protección contra una baja sin limitar la suba. Un put sobre el futuro de live cattle fija ese piso.</p>
+
+  <h2>La posición</h2>
+  <ul>
+    <li>Futuro de live cattle (CME LE) a 220.000 ¢/lb, un precio ilustrativo.</li>
+    <li>Un put con strike 215 ¢, 60 días, americano.</li>
+    <li>Volatilidad del 15% y tasa libre de riesgo del 4%.</li>
+    <li>El ganado como pata de subyacente comprada.</li>
+  </ul>
+
+  <h2>Cuántos contratos</h2>
+  <p>Un contrato son 40,000 libras, 18,143.69 kg de peso vivo. 100 cabezas de 600 kg son 60,000 kg: 3.31 contratos. 3 cubren 54,431.08 kg, 5,568.92 de menos; 4 cubren 72,574.78 kg, 12,574.78 de más, que serían una posición sin ganado detrás.</p>
+
+  <h2>Lo que cuesta el put</h2>
+  <p>El put cuesta 3.131 ¢ por libra, $1,252.56 por contrato.</p>
+
+  <h2>El piso</h2>
+  <p>Por debajo de 215 ¢ el put compensa la baja: el precio neto no baja de <strong>211.848 ¢ por libra, 4.67 dólares por kilo de peso vivo</strong>, antes de la base. Por encima, el ganado se vende al precio de mercado.</p>
+  <p><a class="cta" href="/es/?ref=guide#s=eyJjb21tb2RpdHkiOiJjYXR0bGUiLCJtb2RlbCI6ImI3NiIsInN0eWxlIjoiYW1lcmljYW4iLCJTIjoyMjAsInZvbCI6MTUsInJhdGUiOjQsInlpZWxkIjoxLCJkYXlzIjo2MCwic2l6ZSI6NDAwMDAsInF1b3RlIjoiY2VudHMiLCJjaGFydCI6eyJtb2RlIjoibmV0IiwidERheXMiOjAsInNob3dMZWdzIjpmYWxzZSwicmFuZ2UiOjQwfSwic2tldyI6eyJvbiI6ZmFsc2UsInJyIjowLCJiZiI6MH0sInNjZW5hcmlvIjp7InZvbFNoaWZ0Ijo1LCJwcmljZVBjdCI6MjB9LCJmaW5hbmNpbmciOnsibW9kZSI6InJhdGUiLCJyYXRlIjo0fSwiaGVkZ2VRdHkiOjYwMDAwLCJiYXNpcyI6MCwiY29tbWlzc2lvbiI6MCwibGVncyI6W3sib24iOnRydWUsInNpZGUiOjEsImtpbmQiOiJ1bmRlcmx5aW5nIiwicXR5IjoxLCJzdHJpa2UiOjAsImRheXMiOjYwLCJ2b2wiOm51bGwsInVuZGVyIjpudWxsLCJlbnRyeSI6bnVsbH0seyJvbiI6dHJ1ZSwic2lkZSI6MSwia2luZCI6InB1dCIsInF0eSI6MSwic3RyaWtlIjoyMTUsImRheXMiOjYwLCJ2b2wiOm51bGwsInVuZGVyIjpudWxsLCJlbnRyeSI6bnVsbH1dfQ">Abrir este escenario en la calculadora</a></p>
+
+  <h2>Qué tener en cuenta</h2>
+  <ul>
+    <li>El precio local difiere del futuro. Con esa base cargada, el piso queda expresado en el precio del mercado propio.</li>
+    <li>El 15% es un dato de entrada, no la volatilidad implícita del mercado.</li>
+    <li>La calculadora no tiene el calendario de vencimientos de las opciones de CME sobre ganado, así que los días se ingresan a mano.</li>
+  </ul>
+
+  <p class="muted">Los precios de esta guía son ilustrativos, no datos de mercado, y sus cifras son las de la calculadora para ellos. Nada de esto es asesoramiento de inversión.</p>
+  </main>
+  <footer><p><a href="/es/">Calculadora de opciones sobre commodities</a> · <a href="/es/methodology.html">Metodología</a></p></footer>
+</div>
+<script src="../../analytics.js"></script>
+</body>
+</html>

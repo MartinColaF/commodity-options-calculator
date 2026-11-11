@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>A price floor for cattle with live cattle puts - Commodity Options Calculator</title>
+  <meta name="description" content="How a cattle producer sets a minimum price with put options on CME live cattle futures: the put&rsquo;s cost, the floor in cents a pound and dollars a kilo, and how many contracts 100 head need.">
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/guides/cattle-price-floor.html">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/cattle-price-floor.html">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-ganado.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Commodity Options Calculator">
+  <meta property="og:title" content="A price floor for cattle with live cattle puts">
+  <meta property="og:description" content="How a cattle producer sets a minimum price with put options on CME live cattle futures: the put&rsquo;s cost, the floor in cents a pound and dollars a kilo, and how many contracts 100 head need.">
+  <meta property="og:url" content="https://commodity-options-calculator.vercel.app/guides/cattle-price-floor.html">
+  <meta property="og:image" content="https://commodity-options-calculator.vercel.app/og.png">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<!-- A worked case, its figures the calculator's own for the scenario its link
+     opens: test/guides.test.js recomputes them and holds this page and its
+     translation together. -->
+<div class="wrap doc">
+  <nav class="doc-nav">
+    <a href="/guides/">&larr; All guides</a>
+    <a href="/es/guides/piso-de-precio-ganado.html" hreflang="es" lang="es">Español</a>
+  </nav>
+  <main class="card">
+  <h1>A price floor for cattle with live cattle puts</h1>
+  <p>A feeder with steers to sell in two months wants protection against a fall without capping the upside. A put on live cattle futures sets that floor.</p>
+
+  <h2>The position</h2>
+  <ul>
+    <li>Live cattle futures (CME LE) at 220.000 ¢/lb, an illustrative price.</li>
+    <li>A put struck at 215 ¢, 60 days, American.</li>
+    <li>Volatility 15%, risk-free rate 4%.</li>
+    <li>The cattle as an underlying leg, long.</li>
+  </ul>
+
+  <h2>How many contracts</h2>
+  <p>A contract is 40,000 lb, 18,143.69 kg of live weight. 100 head at 600 kg are 60,000 kg: 3.31 contracts. 3 cover 54,431.08 kg, 5,568.92 short; 4 cover 72,574.78 kg, 12,574.78 over, which would be a position with no cattle behind it.</p>
+
+  <h2>What the put costs</h2>
+  <p>The put costs 3.131 ¢ a pound, $1,252.56 a contract.</p>
+
+  <h2>The floor</h2>
+  <p>Below 215 ¢ the put makes up the fall: the net price cannot fall below <strong>211.848 ¢ a pound, 4.67 dollars a kilo of live weight</strong>, before any basis. Above it the cattle sell at the market.</p>
+  <p><a class="cta" href="/?ref=guide#s=eyJjb21tb2RpdHkiOiJjYXR0bGUiLCJtb2RlbCI6ImI3NiIsInN0eWxlIjoiYW1lcmljYW4iLCJTIjoyMjAsInZvbCI6MTUsInJhdGUiOjQsInlpZWxkIjoxLCJkYXlzIjo2MCwic2l6ZSI6NDAwMDAsInF1b3RlIjoiY2VudHMiLCJjaGFydCI6eyJtb2RlIjoibmV0IiwidERheXMiOjAsInNob3dMZWdzIjpmYWxzZSwicmFuZ2UiOjQwfSwic2tldyI6eyJvbiI6ZmFsc2UsInJyIjowLCJiZiI6MH0sInNjZW5hcmlvIjp7InZvbFNoaWZ0Ijo1LCJwcmljZVBjdCI6MjB9LCJmaW5hbmNpbmciOnsibW9kZSI6InJhdGUiLCJyYXRlIjo0fSwiaGVkZ2VRdHkiOjYwMDAwLCJiYXNpcyI6MCwiY29tbWlzc2lvbiI6MCwibGVncyI6W3sib24iOnRydWUsInNpZGUiOjEsImtpbmQiOiJ1bmRlcmx5aW5nIiwicXR5IjoxLCJzdHJpa2UiOjAsImRheXMiOjYwLCJ2b2wiOm51bGwsInVuZGVyIjpudWxsLCJlbnRyeSI6bnVsbH0seyJvbiI6dHJ1ZSwic2lkZSI6MSwia2luZCI6InB1dCIsInF0eSI6MSwic3RyaWtlIjoyMTUsImRheXMiOjYwLCJ2b2wiOm51bGwsInVuZGVyIjpudWxsLCJlbnRyeSI6bnVsbH1dfQ">Open this scenario in the calculator</a></p>
+
+  <h2>What to watch</h2>
+  <ul>
+    <li>The local cash price differs from the futures. Enter that basis to read the floor for your own market.</li>
+    <li>The 15% is an input, not the market&rsquo;s implied volatility.</li>
+    <li>The calculator does not know CME&rsquo;s option calendar for cattle, so the days to expiry are typed.</li>
+  </ul>
+
+  <p class="muted">The prices in this guide are illustrative, not market data, and its figures are the calculator&rsquo;s for them. Nothing here is investment advice.</p>
+  </main>
+  <footer><p><a href="/">Commodity Options Calculator</a> · <a href="/methodology.html">Methodology</a></p></footer>
+</div>
+<script src="../analytics.js"></script>
+</body>
+</html>
