@@ -579,6 +579,16 @@ one of it (bushels in a metric ton, from the bushel's legal weight), its name an
 price's. The page shows the futures price and the contract in it under the price field,
 "385.81 USD/t, and 1 contract = 136.08 metric tons"; nothing is priced in it.
 `test/physical.test.js` pins each factor.
+**Rosario's grains** (`soybean-a3`, `corn-a3`, `wheat-a3`) are A3 Mercados' (MATba-ROFEX's)
+contracts in dollars a metric ton: 100 tons, a US$0.10 tick, from A3's own guide and
+trading parameters. They have no `futures`, so the page reads no quote for them and the
+price is typed; the market note says so, and Auto-fill takes only the rate.
+`failureLines()` gives inputs that failed for the same reason one sentence, so a market
+with no feed reads "These are unchanged: futures price, volatility and convenience
+yield" once, not three times. Their options are American with the premium paid up front,
+as the page values them; the exchange's daily differences on intrinsic value are not
+modelled. The preview's market count follows the table (`test/social.test.js`), and
+LinkedIn keeps its old copy until the URL goes through its post inspector.
 
 **A price of zero must not reach `Math.log10`.** `strikeStep()` guards it. A half-typed
 price field used to make every derived strike `NaN` and poison the whole curve.

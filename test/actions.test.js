@@ -196,7 +196,7 @@ test('the proxy is not tried from file://, nor for a market it does not serve', 
   resetState(local);
   await assert.rejects(local.applyFuturesPrice(), /the futures proxy only runs on the deployed site/);
   fresh({ commodity: 'custom' });
-  await assert.rejects(app.applyFuturesPrice(), /no futures contract mapped for this commodity/);
+  await assert.rejects(app.applyFuturesPrice(), /the page reads no quotes for this market/);
   assert.strictEqual(asked + calls.length, 0, 'no request made');
 });
 

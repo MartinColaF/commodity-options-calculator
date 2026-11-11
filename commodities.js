@@ -126,6 +126,32 @@ const COMMODITIES = {
     physical: { per: 1 / 0.45359237, unit: 'kg', price: 'USD/kg live weight' },
     futures: { root: 'LE', suffix: 'CME', months: 'GJMQVZ' }
   },
+  // A3 Mercados (MATba-ROFEX), Rosario: futures of 100 metric tons in US
+  // dollars a ton, delivered, every month of the year; collections and
+  // payments are in pesos at the exchange's reference rate. The options on
+  // them are American, quoted to US$0.10 a ton, the premium paid up front, with
+  // daily differences on their intrinsic value besides (Argentina Clearing's
+  // "Matba Rofex" style). From A3's Guía de Futuros y Opciones Agro and its
+  // trading parameters (Modalidad Operativa), checked 2026-11-11. The page
+  // reads no quote for them: the price is typed, and its line says so.
+  'soybean-a3': {
+    label: 'Soybeans Rosario (A3/MATba SOJ)', size: 100, unit: 'metric tons', quote: 'USD', tick: 0.1, vol: 25, yield: 2.5,
+    priceSymbol: '', proxy: 'No quote feed and no ETF proxy - type the price and the volatility',
+    reports: ['wasde'],
+    futures: null
+  },
+  'corn-a3': {
+    label: 'Corn Rosario (A3/MATba MAI)', size: 100, unit: 'metric tons', quote: 'USD', tick: 0.1, vol: 28, yield: 2.5,
+    priceSymbol: '', proxy: 'No quote feed and no ETF proxy - type the price and the volatility',
+    reports: ['wasde'],
+    futures: null
+  },
+  'wheat-a3': {
+    label: 'Wheat Rosario (A3/MATba TRI)', size: 100, unit: 'metric tons', quote: 'USD', tick: 0.1, vol: 30, yield: 3,
+    priceSymbol: '', proxy: 'No quote feed and no ETF proxy - type the price and the volatility',
+    reports: ['wasde'],
+    futures: null
+  },
   custom: {
     label: 'Custom / other', size: 1, unit: 'units', quote: 'USD', tick: null, vol: 30, yield: 0,
     priceSymbol: '', proxy: 'Set the contract size and symbol yourself',

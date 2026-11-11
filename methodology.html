@@ -62,7 +62,7 @@
 
   <h2>5. Market data</h2>
   <ul>
-    <li><strong>Futures prices and history:</strong> Yahoo Finance, read by this site's own server function, for the front-month contract and the listed delivery months.</li>
+    <li><strong>Futures prices and history:</strong> Yahoo Finance, read by this site's own server function, for the front-month contract and the listed delivery months. Rosario&rsquo;s grains on A3 Mercados (MATba-ROFEX) have no feed here: their price is typed, and the page says so.</li>
     <li><strong>Risk-free rate:</strong> the US Treasury daily par yield curve, interpolated to the expiry and converted from its semi-annual bond-equivalent basis to a continuous rate, <em>r</em> = 2&nbsp;ln(1 + <em>y</em>/2).</li>
     <li><strong>Volatility:</strong> realized (historical) volatility of the front-month futures, close-to-close, EWMA (&lambda; = 0.94) or Parkinson, over a window of 20 to 90 days. <strong>It is not implied volatility</strong>, which the calculator has no source for, and the roll from one contract to the next can inflate it slightly.</li>
     <li><strong>Convenience yield:</strong> implied by two listed contracts on the real curve.</li>
@@ -81,6 +81,7 @@
     <li>The futures&rsquo; expiries, which only the carry uses, are approximated to the middle of their month. An option&rsquo;s own expiry is known only for the markets above and for the regular option on each month, not for weekly or serial options.</li>
     <li>Maximum profit and loss are read off a grid of 1,200 points; on a curved position the true extreme can sit between two of them, by $12.84 at most on a $24,768 loss across 1,000 random American diagonals and ratio calendars.</li>
     <li>The premium's interest runs from today, since there is no trade date.</li>
+    <li>A3 Mercados&rsquo; options in Rosario are paid for up front, as the page values them, and the exchange also settles daily differences on their intrinsic value, in pesos; those flows change when money moves, not what the position comes to, and are not modeled.</li>
     <li>The net price holds the basis fixed; in the market it moves too.</li>
     <li>Every model here is lognormal, so a price must be above zero. WTI futures settled at −37.63 in April 2020, which would need a normal (Bachelier) model.</li>
   </ul>

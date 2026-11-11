@@ -79,6 +79,8 @@ test('EIA\'s weekly reports are its rule and its listed exceptions, each at its 
 test('each market follows the reports that move it, and no other', () => {
   const follows = {
     corn: ['wasde'], wheat: ['wasde'], soybean: ['wasde'], cotton: ['wasde'],
+    // Rosario's grains move on the same world balance sheets, Argentina's in them.
+    'soybean-a3': ['wasde'], 'corn-a3': ['wasde'], 'wheat-a3': ['wasde'],
     wti: ['wpsr'], brent: ['wpsr'], natgas: ['wngsr']
   };
   for (const [key, c] of Object.entries(COMMODITIES)) {

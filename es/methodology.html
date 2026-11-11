@@ -60,7 +60,7 @@
 
   <h2>5. Datos de mercado</h2>
   <ul>
-    <li><strong>Precios e historia de futuros:</strong> Yahoo Finance, leído por la propia función de servidor de este sitio, para el contrato del primer vencimiento y los meses de entrega listados.</li>
+    <li><strong>Precios e historia de futuros:</strong> Yahoo Finance, leído por la propia función de servidor de este sitio, para el contrato del primer vencimiento y los meses de entrega listados. Los granos de Rosario en A3 Mercados (MATba-ROFEX) no tienen cotización acá: su precio se ingresa a mano, y la página lo dice.</li>
     <li><strong>Tasa libre de riesgo:</strong> la curva diaria de rendimientos par del Tesoro de EE. UU., interpolada al vencimiento y convertida de su base semestral equivalente de bono a una tasa continua, <em>r</em> = 2&nbsp;ln(1 + <em>y</em>/2).</li>
     <li><strong>Volatilidad:</strong> volatilidad realizada (histórica) del futuro del primer vencimiento, close-to-close, EWMA (&lambda; = 0.94) o Parkinson, en una ventana de 20 a 90 días. <strong>No es volatilidad implícita</strong>, para la que la calculadora no tiene fuente, y el paso de un contrato al siguiente (el roll) puede inflarla un poco.</li>
     <li><strong>Rendimiento de conveniencia:</strong> implícito en dos contratos listados de la curva real.</li>
@@ -79,6 +79,7 @@
     <li>Los vencimientos de los futuros, que solo usa el carry, se aproximan a mitad de su mes. El vencimiento propio de una opción se conoce solo para los mercados de arriba y para la opción regular de cada mes, no para las semanales ni las seriales.</li>
     <li>La ganancia y la pérdida máximas se leen sobre una grilla de 1,200 puntos; en una posición curva el extremo real puede quedar entre dos de ellos, por $12.84 como máximo sobre una pérdida de $24,768, en 1,000 diagonales y ratio calendars americanos al azar.</li>
     <li>El interés de la prima corre desde hoy, porque no hay fecha de operación.</li>
+    <li>Las opciones de A3 Mercados en Rosario pagan la prima al inicio, como las valúa la página, y además el mercado liquida diferencias diarias sobre su valor intrínseco, en pesos; esos flujos cambian cuándo se mueve el dinero, no el resultado de la posición, y no se modelan.</li>
     <li>El precio neto toma la base fija; en el mercado también se mueve.</li>
     <li>Todos los modelos son lognormales, así que el precio debe ser mayor que cero. El WTI cerró a −37.63 en abril de 2020, lo que requeriría un modelo normal (Bachelier).</li>
   </ul>
