@@ -67,6 +67,7 @@
     <li><strong>Volatility:</strong> realized (historical) volatility of the front-month futures, close-to-close, EWMA (&lambda; = 0.94) or Parkinson, over a window of 20 to 90 days. <strong>It is not implied volatility</strong>, which the calculator has no source for, and the roll from one contract to the next can inflate it slightly.</li>
     <li><strong>Convenience yield:</strong> implied by two listed contracts on the real curve.</li>
     <li><strong>Leg prices:</strong> each leg's own delivery month, interpolated on a log scale between the listed contracts, or along the slope between the two nearest when the list is not loaded. Past the last listed month it is an extrapolation, and the page says so.</li>
+    <li><strong>Option expiries:</strong> picking a listed month sets the days to expiry to its options&rsquo;, which stop trading before the future. For sugar, coffee, cocoa and cotton they are the dates ICE Futures U.S. lists; for corn, wheat and soybeans they are worked out from CBOT&rsquo;s rule, the last Friday at least two business days before the last business day of the month before, on the US exchange holidays. The other markets keep the days typed.</li>
     <li><strong>Report calendar:</strong> USDA's published WASDE release dates, at 12:00 ET, for corn, wheat, soybeans and cotton; EIA's Weekly Petroleum Status Report, on Wednesdays at 10:30 ET, for WTI and Brent; and its Weekly Natural Gas Storage Report, on Thursdays at 10:30 ET, for natural gas, each with the holiday changes EIA lists. The results say how many come out by the horizon; nothing is priced from them. Past the last date the calendar holds, the page says it ends there.</li>
     <li><strong>Fallback:</strong> Alpha Vantage, with your own free key, measures volatility on an ETF that tracks the market. Only its returns are used, never its price.</li>
     <li>Every value shows its source and its date. A preset is labeled "not market data". None of these is a live quote.</li>
@@ -77,7 +78,7 @@
     <li>Barone-Adesi-Whaley is an approximation, not an exact lattice; its error is above.</li>
     <li>The curve moves in parallel: on the chart every delivery month moves in proportion to the contract in the left panel. Real curves also change shape.</li>
     <li>The skew does not move with the price, and real volatility surfaces do.</li>
-    <li>Contract expiries are approximated to the middle of their month.</li>
+    <li>The futures&rsquo; expiries, which only the carry uses, are approximated to the middle of their month. An option&rsquo;s own expiry is known only for the markets above and for the regular option on each month, not for weekly or serial options.</li>
     <li>Maximum profit and loss are read off a grid of 1,200 points; on a curved position the true extreme can sit between two of them, by $12.84 at most on a $24,768 loss across 1,000 random American diagonals and ratio calendars.</li>
     <li>The premium's interest runs from today, since there is no trade date.</li>
     <li>The net price holds the basis fixed; in the market it moves too.</li>

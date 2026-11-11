@@ -12,6 +12,7 @@ for users; this file covers what is easy to get wrong when changing it.
 | `styles.css` | light/dark theming via CSS variables, the chart's colours included |
 | `commodities.js` | the one table of markets, read by the page and by the function |
 | `events.js` | the calendar of scheduled reports (USDA's WASDE, EIA's weeklies), loaded after the table |
+| `expiries.js` | when the options on each listed month stop trading (ICE's lists, CBOT's rule), loaded after the reports |
 | `i18n.js` | `t()`, and the table each language's words go into |
 | `analytics.js` | visit counting (Vercel Web Analytics), loaded last by every page |
 | `es/` | the Spanish page: `index.html`, its words (`words.js`), `privacy.html`, `og.png` |
@@ -788,6 +789,24 @@ something is missing from the repo.
   checked, and to what `test/reports.test.js` compares it to. Both functions take the
   time as an argument, so no test depends on the day it runs. Nothing is priced from a
   report.
+- **Option expiries** (`expiries.js`): an option on a futures month stops trading before
+  the future, December corn's on Nov 20, 2026 against Dec 14, so `useContractMonth()` sets
+  the days to expiry to the option's (`setDefaultDays()`, which also moves the legs on the
+  old number, as typing in the field does) and the note under the field says the date and
+  whose word it is. A market names its calendar in `commodities.js` (`optionExpiry`).
+  **ICE's are its own lists**: each product's expiry page on ice.com, with the regular
+  option named for its futures month; take them from the page's source, not a summary of
+  it, and they follow its rulebook (sugar's 15th is checked against the rule).
+  **CBOT's are worked out from its rule** (`cbotGrainExpiry()`), because CME's calendar
+  pages refuse automated reading: the last Friday at least two business days before the
+  last business day of the month before, a holiday Friday counting as the Friday. The
+  business days are the weekdays outside `US_EXCHANGE_HOLIDAYS`, NYSE's for 2026 to 2028,
+  which ICE's 2026 calendar for its softs matches day for day. `daysToDate()` counts in
+  the exchange's time zone. **Both run out**: ICE lists months as they open and the
+  holidays go as far as published, and past them the note says so and the days stay.
+  Metals, energy and cattle have no calendar yet: their rules and CME's holidays could
+  not be read from a source the page may use. `test/expiry.test.js` holds ICE's dates as
+  listed and the rule's against the review's and StoneX's.
 - **The listed strip** (`fn=months`) is the whole set of contracts that quote,
   nearest first. It lives in `state.session.strip`, is **not persisted** — `snapshot()`
   leaves `state.session` out and `restore()` never reads it, since a stale strip in a
@@ -837,6 +856,8 @@ something is missing from the repo.
   outside what the curve can read; the page says so rather than guessing.
 - Contract expiries from the function are approximated to mid-month. Both
   contracts use the same convention, so the gap driving the carry stays accurate.
+  An option's own expiry comes from `expiries.js`, for the regular option on each month
+  of the markets it holds; weekly, short-dated and serial options are not there.
 - **The maxima are read off a grid**, 1,200 points up to four times the price. Where a leg
   still alive at the horizon curves the P&L between two of them, as in a ratio calendar,
   the true extreme can sit between: in 1,000 random American diagonals and ratio

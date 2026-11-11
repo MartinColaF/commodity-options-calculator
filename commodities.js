@@ -26,6 +26,9 @@
  * key; the page says how many come out before the horizon. The WASDE's balance
  * sheets are the grains', the oilseeds' and cotton's; EIA's weekly petroleum
  * inventories move both crude benchmarks, and its storage report natural gas.
+ * optionExpiry names the calendar in expiries.js of when the options on each
+ * listed month stop trading; picking a listed month sets the days to expiry
+ * from it. A market without one keeps the days the user types.
  * futures is how Yahoo names the contracts, and null for a market with none:
  *   root   = continuous front-month symbol prefix (root + "=F")
  *   suffix = exchange code used by month contracts
@@ -73,45 +76,48 @@ const COMMODITIES = {
     label: 'Corn (CBOT ZC)', size: 5000, unit: 'bushels', quote: 'cents', tick: 0.125, vol: 28, yield: 2.5,
     priceSymbol: 'CORN', proxy: 'Teucrium Corn Fund',
     physical: { per: 1000 / (56 * 0.45359237), unit: 'metric tons', price: 'USD/t' },
-    reports: ['wasde'],
+    reports: ['wasde'], optionExpiry: 'cbot-grains',
     futures: { root: 'ZC', suffix: 'CBT', months: 'HKNUZ' }
   },
   wheat: {
     label: 'Wheat (CBOT ZW)', size: 5000, unit: 'bushels', quote: 'cents', tick: 0.125, vol: 30, yield: 3,
     priceSymbol: 'WEAT', proxy: 'Teucrium Wheat Fund',
     physical: { per: 1000 / (60 * 0.45359237), unit: 'metric tons', price: 'USD/t' },
-    reports: ['wasde'],
+    reports: ['wasde'], optionExpiry: 'cbot-grains',
     futures: { root: 'ZW', suffix: 'CBT', months: 'HKNUZ' }
   },
   soybean: {
     label: 'Soybeans (CBOT ZS)', size: 5000, unit: 'bushels', quote: 'cents', tick: 0.125, vol: 25, yield: 2.5,
     priceSymbol: 'SOYB', proxy: 'Teucrium Soybean Fund',
     physical: { per: 1000 / (60 * 0.45359237), unit: 'metric tons', price: 'USD/t' },
-    reports: ['wasde'],
+    reports: ['wasde'], optionExpiry: 'cbot-grains',
     futures: { root: 'ZS', suffix: 'CBT', months: 'FHKNQUX' }
   },
   sugar: {
     label: 'Sugar #11 (ICE SB)', size: 112000, unit: 'lb', quote: 'cents', tick: 0.01, vol: 40, yield: 2,
     priceSymbol: 'CANE', proxy: 'Teucrium Sugar Fund',
     physical: { per: 1000 / 0.45359237, unit: 'metric tons', price: 'USD/t' },
+    optionExpiry: 'ice-sugar-11',
     futures: { root: 'SB', suffix: 'NYB', months: 'HKNV' }
   },
   coffee: {
     label: 'Coffee C (ICE KC)', size: 37500, unit: 'lb', quote: 'cents', tick: 0.01, vol: 45, yield: 1.5,
     priceSymbol: 'JO', proxy: 'iPath Coffee ETN - thin, treat vol with care',
     physical: { per: 60 / 0.45359237, unit: '60-kg bags', price: 'USD per 60-kg bag' },
+    optionExpiry: 'ice-coffee-c',
     futures: { root: 'KC', suffix: 'NYB', months: 'HKNUZ' }
   },
   cocoa: {
     label: 'Cocoa (ICE CC)', size: 10, unit: 'metric tons', quote: 'USD', tick: 1, vol: 40, yield: 1,
     priceSymbol: '', proxy: 'No ETF proxy - use the futures buttons above',
+    optionExpiry: 'ice-cocoa',
     futures: { root: 'CC', suffix: 'NYB', months: 'HKNUZ' }
   },
   cotton: {
     label: 'Cotton #2 (ICE CT)', size: 50000, unit: 'lb', quote: 'cents', tick: 0.01, vol: 25, yield: 1.5,
     priceSymbol: 'BAL', proxy: 'iPath Cotton ETN - thin',
     physical: { per: 1000 / 0.45359237, unit: 'metric tons', price: 'USD/t' },
-    reports: ['wasde'],
+    reports: ['wasde'], optionExpiry: 'ice-cotton-2',
     futures: { root: 'CT', suffix: 'NYB', months: 'HKNVZ' }
   },
   cattle: {

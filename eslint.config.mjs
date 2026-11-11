@@ -22,10 +22,10 @@ export default [
     }
   },
   {
-    // The table, the reports' calendar and the page's words: plain browser
+    // The table, the reports' and the options' calendars and the page's words: plain browser
     // scripts whose module.exports is guarded, so the market function and the
     // tests can require() them as well.
-    files: ['commodities.js', 'events.js', 'i18n.js'],
+    files: ['commodities.js', 'events.js', 'expiries.js', 'i18n.js'],
     languageOptions: {
       ecmaVersion: PAGE_ES,
       sourceType: 'script',
@@ -53,7 +53,7 @@ export default [
     languageOptions: {
       ecmaVersion: PAGE_ES,
       sourceType: 'script',
-      globals: { ...globals.browser, COMMODITIES: 'readonly', REPORTS: 'readonly', Chart: 'readonly', t: 'readonly', PAGE_LANG: 'readonly' }
+      globals: { ...globals.browser, COMMODITIES: 'readonly', REPORTS: 'readonly', EXPIRIES: 'readonly', Chart: 'readonly', t: 'readonly', PAGE_LANG: 'readonly' }
     },
     rules: {
       // Its top-level functions are globals, and a few exist for the tests

@@ -458,6 +458,75 @@ function reportsBetween(key, nowMs, endMs) {
     });
 }
 
+/* The futures month of a listed contract's symbol, 'ZCZ26.CBT': its code and
+ * year as expiries.js keys them ('Z26'), the month (1 to 12) and the year.
+ * Null for anything else. */
+function futuresMonth(symbol) {
+  const m = /([FGHJKMNQUVXZ])(\d{2})\.[A-Z]+$/.exec(String(symbol || ''));
+  if (!m) return null;
+  return { key: m[1] + m[2], month: 'FGHJKMNQUVXZ'.indexOf(m[1]) + 1, year: 2000 + Number(m[2]) };
+}
+
+/* CBOT's rule for its grain options (expiries.js), on the calendar `cal`: the
+ * last Friday that precedes by at least two business days the last business
+ * day of the month before the futures month, or the business day before that
+ * Friday when it is not one. A Friday that is a holiday still counts as the
+ * Friday: Christmas 2026 moves January's soybean options to Dec 24. '' when
+ * the month lies past the business days the calendar knows. */
+function cbotGrainExpiry(year, month, cal) {
+  const holidays = {};
+  cal.holidays.forEach(d => { holidays[d] = true; });
+  const iso = d => d.toISOString().slice(0, 10);
+  const business = d => d.getUTCDay() % 6 !== 0 && !holidays[iso(d)];
+  const shift = (d, n) => new Date(d.getTime() + n * 86400000);
+  // Day 0 of the futures month is the last day of the month before.
+  let last = new Date(Date.UTC(year, month - 1, 0));
+  if (iso(last) > cal.through) return '';
+  while (!business(last)) last = shift(last, -1);
+  const businessAfter = f => {
+    let n = 0;
+    for (let d = shift(f, 1); d <= last; d = shift(d, 1)) if (business(d)) n++;
+    return n;
+  };
+  let friday = shift(last, -((last.getUTCDay() + 2) % 7));
+  while (businessAfter(friday) < 2) friday = shift(friday, -7);
+  let day = friday;
+  while (!business(day)) day = shift(day, -1);
+  return iso(day);
+}
+
+/* When the regular options on a listed futures month stop trading, from the
+ * market's calendar in expiries.js: the date ('YYYY-MM-DD'), the exchange, its
+ * time zone, and whether the date is the exchange's own list (`listed`) or
+ * worked out from its rule. The date is '' where the calendar does not reach
+ * the month, with `last`, as far as it goes. Null for a market with no
+ * calendar here, or a symbol that names no month. */
+function optionExpiry(key, symbol) {
+  const name = commodityMeta(key).optionExpiry;
+  const m = futuresMonth(symbol);
+  if (!name || !m || !Object.prototype.hasOwnProperty.call(EXPIRIES, name)) return null;
+  const cal = EXPIRIES[name];
+  const out = { exchange: cal.exchange, zone: cal.zone, listed: !!cal.dates, month: m };
+  if (cal.dates) {
+    const dates = Object.keys(cal.dates).map(k => cal.dates[k]).sort();
+    const own = Object.prototype.hasOwnProperty.call(cal.dates, m.key);
+    return Object.assign(out, { date: own ? cal.dates[m.key] : '', last: dates[dates.length - 1] });
+  }
+  return Object.assign(out, { date: cbotGrainExpiry(m.year, m.month, cal), last: cal.through });
+}
+
+/* Whole days from today, in the time zone `zone`, to the date 'YYYY-MM-DD':
+ * 0 on the day itself and below zero once it has passed. A Chicago option
+ * that stops trading on Nov 20 is 17 days away on Nov 3, whatever the reader's
+ * clock says. */
+function daysToDate(iso, zone, nowMs) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(nowMs);
+  const get = type => Number(parts.filter(p => p.type === type)[0].value);
+  const today = Date.UTC(get('year'), get('month') - 1, get('day'));
+  return Math.round((Date.parse(iso + 'T00:00:00Z') - today) / 86400000);
+}
+
 /* ============================================================
  * 3. State
  * ========================================================== */
@@ -1822,6 +1891,9 @@ function renderInputs() {
   setField('financing', state.financing.mode);
   setField('financingRate', state.financing.rate);
   setField('days', state.days);
+  const expiry = expiryLine(state.contractMonth, Date.now());
+  $('expiryInfo').textContent = expiry;
+  $('expiryInfo').hidden = !expiry;
   setField('size', state.size);
   setField('quote', state.quote);
   setField('skewRr', state.skew.rr);
@@ -2171,6 +2243,45 @@ function reportDate(ms, nowMs) {
   const opts = { month: 'short', day: 'numeric', timeZone: 'America/New_York' };
   if (year(ms) !== year(nowMs)) opts.year = 'numeric';
   return new Intl.DateTimeFormat(PAGE_LANG === 'es' ? 'es' : 'en-US', opts).format(ms);
+}
+
+/* A futures month as the page's language names it: "Dec 2026", "dic 2026". */
+function futuresMonthLabel(m) {
+  return new Intl.DateTimeFormat(PAGE_LANG === 'es' ? 'es' : 'en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+    .format(Date.UTC(m.year, m.month - 1, 15));
+}
+
+/* A day 'YYYY-MM-DD' as the page's language writes it, with its weekday
+ * unless `plain`: "Fri, Nov 20, 2026", "vie, 20 nov 2026". */
+function expiryDate(iso, plain) {
+  const opts = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
+  if (!plain) opts.weekday = 'short';
+  return new Intl.DateTimeFormat(PAGE_LANG === 'es' ? 'es' : 'en-US', opts).format(Date.parse(iso + 'T12:00:00Z'));
+}
+
+/* Under the days to expiry, while a listed month is picked: when its options
+ * stop trading and on whose word, or why the page cannot say. '' on the
+ * continuous series. */
+function expiryLine(symbol, nowMs) {
+  if (!symbol) return '';
+  const exp = optionExpiry(state.commodity, symbol);
+  if (!exp) {
+    return futuresMonth(symbol) && !commodityMeta(state.commodity).optionExpiry
+      ? t('The page does not have this market\'s option expiries: enter the days to the expiry of the options you price.')
+      : '';
+  }
+  const month = futuresMonthLabel(exp.month);
+  if (!exp.date) {
+    return t('The page\'s calendar of these options goes only to {last}: enter the days to the {month} options\' expiry.',
+      { last: expiryDate(exp.last, true), month });
+  }
+  const date = expiryDate(exp.date);
+  if (daysToDate(exp.date, exp.zone, nowMs) < 0) {
+    return t('The regular {month} options stopped trading on {date}.', { month, date });
+  }
+  return exp.listed
+    ? t('The {month} options stop trading on {date}, as {exchange} lists them.', { month, date, exchange: exp.exchange })
+    : t('The {month} options stop trading on {date}, by {exchange}\'s rule.', { month, date, exchange: exp.exchange });
 }
 
 /* What the market's scheduled reports hold for the position: how many come out
@@ -3295,13 +3406,13 @@ function changeCommodity(key) {
 }
 
 /* Price the panel against one specific delivery month. */
-function useContractMonth(symbol) {
+function useContractMonth(symbol, nowMs) {
   const hit = state.session.strip.find(c => c.symbol === symbol);
   if (!hit) {
     // Back to the continuous series: leave the price alone, since we have no
     // front-month quote in hand, but stop claiming it belongs to a month.
     setReferencePrice(state.S, null, '');
-    return;
+    return { message: '' };
   }
   setReferencePrice(hit.price, {
     live: true,
@@ -3309,6 +3420,29 @@ function useContractMonth(symbol) {
       (hit.asOf ? `, ${hit.asOf.slice(0, 10)}` : '') +
       ' - ' + t('one listed contract, not the continuous series')
   }, hit.symbol);
+  // The month's options stop trading before its futures do: the days to
+  // expiry are theirs. A month the page has no date for, or whose regular
+  // options have stopped trading, keeps the days as they were, and the note
+  // under them says why.
+  const exp = optionExpiry(state.commodity, symbol);
+  if (!exp || !exp.date) return { message: '' };
+  const days = daysToDate(exp.date, exp.zone, nowMs == null ? Date.now() : nowMs);
+  if (days < 0) return { message: '' };
+  setDefaultDays(days);
+  return {
+    message: t('Days to expiry set to {n}: the {month} options stop trading on {date}.', {
+      n: days, month: futuresMonthLabel(exp.month), date: expiryDate(exp.date)
+    })
+  };
+}
+
+/* The days to expiry new legs take, and with them every leg that was on the
+ * old number: what typing in the Days field does, and what picking a listed
+ * month does once it knows when its options stop trading. */
+function setDefaultDays(n) {
+  const old = state.days;
+  state.days = Math.max(0, n);
+  state.legs.forEach(l => { if (l.days === old) l.days = state.days; });
 }
 
 /* Undo for applyLegPrices(). The fill rewrites every option leg at once, so it
@@ -3725,8 +3859,9 @@ function bindInputs() {
     return r;
   }, 'monthStatus', () => t('The list of months is unchanged.')));
   $('contractMonth').addEventListener('change', e => {
-    useContractMonth(e.target.value);
+    const r = useContractMonth(e.target.value, Date.now());
     renderAll();
+    setStatus(r.message, 'ok', 'monthStatus');
   });
 
   /* Each handler keeps the previous value when the box is momentarily empty or
@@ -3754,12 +3889,8 @@ function bindInputs() {
     skewBf: el => { state.skew.bf = num(el, state.skew.bf); },
     scenPct: el => { state.scenario.pricePct = num(el, state.scenario.pricePct); },
     scenVol: el => { state.scenario.volShift = num(el, state.scenario.volShift); },
-    days: el => {
-      const old = state.days;
-      state.days = Math.max(0, num(el, state.days));
-      // Keep legs that were on the old default expiry in sync.
-      state.legs.forEach(l => { if (l.days === old) l.days = state.days; });
-    },
+    // Legs that were on the old default expiry move with it.
+    days: el => { setDefaultDays(num(el, state.days)); },
     size: el => {
       const v = num(el, state.size);
       if (!inputProblem('size', v)) state.size = v;
