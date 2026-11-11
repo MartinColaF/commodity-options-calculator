@@ -35,4 +35,64 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/privacy.html"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/privacy.html"/>
   </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/guides/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/es/guides/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/guides/soybean-price-floor.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/soybean-price-floor.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-soja.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-soja.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/soybean-price-floor.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-soja.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/guides/coffee-zero-cost-collar.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/coffee-zero-cost-collar.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/collar-costo-cero-cafe.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/es/guides/collar-costo-cero-cafe.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/coffee-zero-cost-collar.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/collar-costo-cero-cafe.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/guides/crude-oil-price-cap.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/crude-oil-price-cap.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/techo-de-precio-petroleo.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/es/guides/techo-de-precio-petroleo.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/crude-oil-price-cap.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/techo-de-precio-petroleo.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/guides/cattle-price-floor.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/cattle-price-floor.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-ganado.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-ganado.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/cattle-price-floor.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-ganado.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/guides/how-many-contracts.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/how-many-contracts.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/cuantos-contratos.html"/>
+  </url>
+  <url>
+    <loc>https://commodity-options-calculator.vercel.app/es/guides/cuantos-contratos.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/how-many-contracts.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/cuantos-contratos.html"/>
+  </url>
 </urlset>

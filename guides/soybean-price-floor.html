@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>A price floor for soybeans with puts - Commodity Options Calculator</title>
+  <meta name="description" content="How a soybean producer sets a minimum sale price with put options on CBOT futures: what the put costs, the floor in cents a bushel and dollars a ton, and how many contracts 5,000 tons need.">
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/guides/soybean-price-floor.html">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/soybean-price-floor.html">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-soja.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Commodity Options Calculator">
+  <meta property="og:title" content="A price floor for soybeans with puts">
+  <meta property="og:description" content="How a soybean producer sets a minimum sale price with put options on CBOT futures: what the put costs, the floor in cents a bushel and dollars a ton, and how many contracts 5,000 tons need.">
+  <meta property="og:url" content="https://commodity-options-calculator.vercel.app/guides/soybean-price-floor.html">
+  <meta property="og:image" content="https://commodity-options-calculator.vercel.app/og.png">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<!-- A worked case, its figures the calculator's own for the scenario its link
+     opens: test/guides.test.js recomputes them and holds this page and its
+     translation together. -->
+<div class="wrap doc">
+  <nav class="doc-nav">
+    <a href="/guides/">&larr; All guides</a>
+    <a href="/es/guides/piso-de-precio-soja.html" hreflang="es" lang="es">Español</a>
+  </nav>
+  <main class="card">
+  <h1>A price floor for soybeans with puts</h1>
+  <p>A producer with soybeans to sell after harvest wants a minimum price without giving up a rally. Buying put options on the futures does that: below the strike the put makes up the fall, and above it the crop sells at the market. This guide works through one case with the calculator, from the put&rsquo;s cost to the net price a ton.</p>
+
+  <h2>The position</h2>
+  <ul>
+    <li>Soybean futures (CBOT ZS) at 1,050 ¢/bu, an illustrative price.</li>
+    <li>A put struck at 1,000 ¢, expiring in 60 days, American.</li>
+    <li>Volatility 18%, risk-free rate 4%.</li>
+    <li>The soybeans to sell as an underlying leg, long.</li>
+    <li>5,000 metric tons, which is 36.74 contracts of 5,000 bushels; the scenario holds 37.</li>
+  </ul>
+
+  <h2>What the put costs</h2>
+  <p>The calculator values the put at 11.200 ¢ a bushel: $560.02 a contract, $20,720.71 for the 37. That is the price of the floor, paid today.</p>
+
+  <h2>The floor</h2>
+  <p>Below 1,000 ¢ the put pays the difference, so the least the sale comes to is the strike less the premium. With a local basis of −40 ¢ to the futures and 1 ¢ of commissions, the net sale price cannot fall below <strong>947.726 ¢ a bushel, 348.23 dollars a metric ton</strong>. Read nominally, as extension worksheets do, it is 1,000 − 40 − 11.200 − 1 = 947.800 ¢, 348.26 USD/t; the calculator also counts the interest the premium would have earned over the 60 days at 4%, which takes 0.074 ¢ off.</p>
+  <p>Above 1,000 ¢ the put expires worthless and the soybeans sell at the market: there is no ceiling.</p>
+  <p><a class="cta" href="/?ref=guide#s=eyJjb21tb2RpdHkiOiJzb3liZWFuIiwibW9kZWwiOiJiNzYiLCJzdHlsZSI6ImFtZXJpY2FuIiwiUyI6MTA1MCwidm9sIjoxOCwicmF0ZSI6NCwieWllbGQiOjIuNSwiZGF5cyI6NjAsInNpemUiOjUwMDAsInF1b3RlIjoiY2VudHMiLCJjaGFydCI6eyJtb2RlIjoibmV0IiwidERheXMiOjAsInNob3dMZWdzIjpmYWxzZSwicmFuZ2UiOjQwfSwic2tldyI6eyJvbiI6ZmFsc2UsInJyIjowLCJiZiI6MH0sInNjZW5hcmlvIjp7InZvbFNoaWZ0Ijo1LCJwcmljZVBjdCI6MjB9LCJmaW5hbmNpbmciOnsibW9kZSI6InJhdGUiLCJyYXRlIjo0fSwiaGVkZ2VRdHkiOjUwMDAsImJhc2lzIjotNDAsImNvbW1pc3Npb24iOjEsImxlZ3MiOlt7Im9uIjp0cnVlLCJzaWRlIjoxLCJraW5kIjoidW5kZXJseWluZyIsInF0eSI6MzcsInN0cmlrZSI6MCwiZGF5cyI6NjAsInZvbCI6bnVsbCwidW5kZXIiOm51bGwsImVudHJ5IjpudWxsfSx7Im9uIjp0cnVlLCJzaWRlIjoxLCJraW5kIjoicHV0IiwicXR5IjozNywic3RyaWtlIjoxMDAwLCJkYXlzIjo2MCwidm9sIjpudWxsLCJ1bmRlciI6bnVsbCwiZW50cnkiOm51bGx9XX0">Open this scenario in the calculator</a></p>
+  <p>The scenario opens with the chart on Net price: the flat stretch on the left is the floor, and the line rises with the market on the right.</p>
+
+  <h2>What to watch</h2>
+  <ul>
+    <li>The basis is held fixed. In the market it moves, and a weaker basis lowers the floor point for point.</li>
+    <li>The put expires before the future: a December option stops trading in late November. Picking a listed month in the calculator sets the days to the option&rsquo;s own expiry.</li>
+    <li>The 18% is an input, not the market&rsquo;s implied volatility. A higher one makes the put dearer and the floor lower; the IV button reads it from a premium on your screen.</li>
+  </ul>
+
+  <p class="muted">The prices in this guide are illustrative, not market data, and its figures are the calculator&rsquo;s for them. Nothing here is investment advice.</p>
+  </main>
+  <footer><p><a href="/">Commodity Options Calculator</a> · <a href="/methodology.html">Methodology</a></p></footer>
+</div>
+<script src="../analytics.js"></script>
+</body>
+</html>

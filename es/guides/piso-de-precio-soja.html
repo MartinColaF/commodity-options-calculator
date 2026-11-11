@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Un piso de precio para la soja con puts - Calculadora de opciones sobre commodities</title>
+  <meta name="description" content="Cómo un productor de soja fija un precio mínimo de venta con opciones put sobre futuros de CBOT: lo que cuesta el put, el piso en centavos por bushel y en dólares por tonelada, y cuántos contratos hacen falta para 5,000 toneladas.">
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-soja.html">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/soybean-price-floor.html">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-soja.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Calculadora de opciones sobre commodities">
+  <meta property="og:title" content="Un piso de precio para la soja con puts">
+  <meta property="og:description" content="Cómo un productor de soja fija un precio mínimo de venta con opciones put sobre futuros de CBOT: lo que cuesta el put, el piso en centavos por bushel y en dólares por tonelada, y cuántos contratos hacen falta para 5,000 toneladas.">
+  <meta property="og:url" content="https://commodity-options-calculator.vercel.app/es/guides/piso-de-precio-soja.html">
+  <meta property="og:image" content="https://commodity-options-calculator.vercel.app/es/og.png">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../../favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+<!-- A worked case, its figures the calculator's own for the scenario its link
+     opens: test/guides.test.js recomputes them and holds this page and its
+     translation together. -->
+<div class="wrap doc">
+  <nav class="doc-nav">
+    <a href="/es/guides/">&larr; Todas las guías</a>
+    <a href="/guides/soybean-price-floor.html" hreflang="en" lang="en">English</a>
+  </nav>
+  <main class="card">
+  <h1>Un piso de precio para la soja con puts</h1>
+  <p>Un productor con soja para vender después de la cosecha quiere un precio mínimo sin renunciar a una suba. Comprar puts sobre el futuro hace eso: por debajo del strike el put compensa la baja, y por encima la soja se vende al precio de mercado. Esta guía resuelve un caso con la calculadora, desde el costo del put hasta el precio neto por tonelada.</p>
+
+  <h2>La posición</h2>
+  <ul>
+    <li>Futuro de soja (CBOT ZS) a 1,050 ¢/bu, un precio ilustrativo.</li>
+    <li>Un put con strike 1,000 ¢, que vence en 60 días, americano.</li>
+    <li>Volatilidad del 18% y tasa libre de riesgo del 4%.</li>
+    <li>La soja a vender como pata de subyacente comprada.</li>
+    <li>5,000 toneladas métricas, que son 36.74 contratos de 5,000 bushels; el escenario tiene 37.</li>
+  </ul>
+
+  <h2>Lo que cuesta el put</h2>
+  <p>La calculadora valúa el put en 11.200 ¢ por bushel: $560.02 por contrato y $20,720.71 por los 37. Es el precio del piso, que se paga hoy.</p>
+
+  <h2>El piso</h2>
+  <p>Por debajo de 1,000 ¢ el put paga la diferencia, así que lo mínimo que da la venta es el strike menos la prima. Con una base local de −40 ¢ respecto del futuro y 1 ¢ de comisiones, el precio neto de venta no baja de <strong>947.726 ¢ por bushel, 348.23 dólares por tonelada métrica</strong>. Leído en forma nominal, como en las planillas de extensión, es 1,000 − 40 − 11.200 − 1 = 947.800 ¢, 348.26 USD/t; la calculadora además cuenta el interés que la prima habría ganado en los 60 días al 4%, que le resta 0.074 ¢.</p>
+  <p>Por encima de 1,000 ¢ el put vence sin valor y la soja se vende al precio de mercado: no hay techo.</p>
+  <p><a class="cta" href="/es/?ref=guide#s=eyJjb21tb2RpdHkiOiJzb3liZWFuIiwibW9kZWwiOiJiNzYiLCJzdHlsZSI6ImFtZXJpY2FuIiwiUyI6MTA1MCwidm9sIjoxOCwicmF0ZSI6NCwieWllbGQiOjIuNSwiZGF5cyI6NjAsInNpemUiOjUwMDAsInF1b3RlIjoiY2VudHMiLCJjaGFydCI6eyJtb2RlIjoibmV0IiwidERheXMiOjAsInNob3dMZWdzIjpmYWxzZSwicmFuZ2UiOjQwfSwic2tldyI6eyJvbiI6ZmFsc2UsInJyIjowLCJiZiI6MH0sInNjZW5hcmlvIjp7InZvbFNoaWZ0Ijo1LCJwcmljZVBjdCI6MjB9LCJmaW5hbmNpbmciOnsibW9kZSI6InJhdGUiLCJyYXRlIjo0fSwiaGVkZ2VRdHkiOjUwMDAsImJhc2lzIjotNDAsImNvbW1pc3Npb24iOjEsImxlZ3MiOlt7Im9uIjp0cnVlLCJzaWRlIjoxLCJraW5kIjoidW5kZXJseWluZyIsInF0eSI6MzcsInN0cmlrZSI6MCwiZGF5cyI6NjAsInZvbCI6bnVsbCwidW5kZXIiOm51bGwsImVudHJ5IjpudWxsfSx7Im9uIjp0cnVlLCJzaWRlIjoxLCJraW5kIjoicHV0IiwicXR5IjozNywic3RyaWtlIjoxMDAwLCJkYXlzIjo2MCwidm9sIjpudWxsLCJ1bmRlciI6bnVsbCwiZW50cnkiOm51bGx9XX0">Abrir este escenario en la calculadora</a></p>
+  <p>El escenario se abre con el gráfico en Precio neto: el tramo plano de la izquierda es el piso, y la línea sube con el mercado a la derecha.</p>
+
+  <h2>Qué tener en cuenta</h2>
+  <ul>
+    <li>La base se toma fija. En el mercado se mueve, y si empeora, el piso baja punto por punto.</li>
+    <li>El put vence antes que el futuro: una opción de diciembre deja de operarse a fines de noviembre. Al elegir un mes listado en la calculadora, los días pasan a ser los del vencimiento de la opción.</li>
+    <li>El 18% es un dato de entrada, no la volatilidad implícita del mercado. Una más alta encarece el put y baja el piso; el botón IV la obtiene de una prima de la pantalla.</li>
+  </ul>
+
+  <p class="muted">Los precios de esta guía son ilustrativos, no datos de mercado, y sus cifras son las de la calculadora para ellos. Nada de esto es asesoramiento de inversión.</p>
+  </main>
+  <footer><p><a href="/es/">Calculadora de opciones sobre commodities</a> · <a href="/es/methodology.html">Metodología</a></p></footer>
+</div>
+<script src="../../analytics.js"></script>
+</body>
+</html>

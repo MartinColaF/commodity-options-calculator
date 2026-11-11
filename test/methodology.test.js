@@ -22,11 +22,11 @@ const PAGES = [
     reviewed: /Metodología revisada por última vez en (\w+ de \d{4})\./, updated: /<p>Actualizado en (\w+ de \d{4})<\/p>/ }
 ];
 
-test("each calculator's footer links its methodology, the code, the issues and its policy", () => {
+test("each calculator's footer links its guides, its methodology, the code, the issues and its policy", () => {
   for (const p of PAGES) {
     const footer = read(p.page).match(/<footer>([\s\S]*?)<\/footer>/)[1];
     const links = Array.from(footer.matchAll(/<a href="([^"]+)"/g), m => m[1]);
-    assert.deepStrictEqual(links, ['/' + p.doc, REPO, REPO + '/issues', p.privacy], p.page);
+    assert.deepStrictEqual(links, [p.home + 'guides/', '/' + p.doc, REPO, REPO + '/issues', p.privacy], p.page);
   }
 });
 
