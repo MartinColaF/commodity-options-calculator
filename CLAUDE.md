@@ -372,22 +372,26 @@ template columns. Giving a table `class="grid"` makes it inherit that and splits
 `thead` from `tbody` into separate blocks. The scenario table uses
 `class="scenario"`. Check `styles.css` before reusing a short class name.
 
-**On a phone the cards are reordered, results first.** Below 900 px the two column
-wrappers become `display: contents`, so the cards are the grid's own items and `order`
-puts Strategy, Results and Payoff before Contract and Market data: the first result used
-to be four screens down. A new card needs an `id` and a place in that list. The cards also
-need `min-width: 0` there, since `.grid > *` no longer reaches them, and without it the
-legs table widened the page to 858 px. The order is visual only; tabbing follows the
-markup. `.context` is the line in Strategy that names the contract it prices, shown only
-in that layout. At 400 px and under, each greek's meaning goes under its name
+**On a phone the cards come in the order they are filled in, the contract first.** Below
+900 px the two column wrappers become `display: contents`, so the cards are the grid's own
+items and `order` sets them: Contract and Market data, then Strategy, Results and Payoff,
+which is the markup's order, so the Tab key and a screen reader meet them as the eye does.
+They were once results first, by decision, and the owner reversed it: on a phone the market,
+its price and its volatility are chosen before the strategy, and the contract sat 2,882 px
+down. Results now start about 2,300 px down an iPhone's page. A new card needs an `id` and a
+place in that list, and in the printed one. The cards also need `min-width: 0` there, since
+`.grid > *` no longer reaches them, and without it the legs table widened the page to
+858 px. `.context` is the line in Strategy that names the contract it prices, shown only on
+paper, where the contract comes after it. At 400 px and under, each greek's meaning goes under its name
 (`.meaning-under`) and its column hides: as a fourth column, "SIGNIFICADO" and "−0.001533"
 needed 311 px of a 320 px phone's 254. The markup carries both copies and the stylesheet
 shows one, so the table stays a table; `test/layout.test.js` checks they say the same.
 
 **The page prints as a report.** The Print button, or the browser's own, gives the
 position, its results, chart and scenarios, the assumptions and sources and the
-disclaimer, in the phone's order (the layout block is `@media (max-width: 900px), print`),
-with no controls, and the legs table's fields read as plain values. `renderForPrint()`
+disclaimer, in one column as on a phone (the layout block is `@media (max-width: 900px),
+print`) but in its own order, the position and its results first (`@media print`), with no
+controls, and the legs table's fields read as plain values. `renderForPrint()`
 runs on `beforeprint` and `afterprint`: it holds `:root.printing`, the light palette, so
 the dark scheme does not print light text on white paper, draws the chart again in it,
 sizes it for the page (Chart.js resizes on its own only after the print is laid out),

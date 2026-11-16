@@ -1,9 +1,9 @@
 'use strict';
 
-/* The page on a phone. Most visits come from links opened on one, so the cards
- * are reordered there, results first; fields are 16px so iOS does not zoom into
- * them; controls are 44px; and a field's edge stands out from the card. These
- * read the stylesheet and the markup, since there is no browser here. */
+/* The page on a phone. The cards come one under another in the order they are
+ * filled in, the contract first; fields are 16px so iOS does not zoom into them;
+ * controls are 44px; and a field's edge stands out from the card. These read the
+ * stylesheet and the markup, since there is no browser here. */
 
 const { test } = require('node:test');
 const assert = require('node:assert');
@@ -27,10 +27,11 @@ function media(query) {
   throw new Error('unbalanced');
 }
 
-test('every card has a place in the phone order, results before inputs', () => {
+test('every card has a place in the phone order, the contract and the market data first', () => {
+  // The order they are filled in: the market, its price and volatility, then the
+  // strategy. Results first had the contract 2,882px down an iPhone's page.
   const cards = Array.from(html.matchAll(/<section class="card" id="(\w+)"/g), m => m[1]);
   assert.strictEqual(cards.length, (html.match(/class="card"/g) || []).length, 'every card has an id');
-  // Paper reads in the same order (the printed report).
   const phone = media('(max-width: 900px), print').body;
   const order = {};
   for (const id of cards) {
@@ -39,9 +40,13 @@ test('every card has a place in the phone order, results before inputs', () => {
     order[id] = +m[1];
   }
   assert.strictEqual(new Set(Object.values(order)).size, cards.length, 'no two cards share a place');
-  for (const out of ['legs', 'cardResults', 'cardPayoff']) {
-    for (const input of ['cardContract', 'cardMarket']) assert.ok(order[out] < order[input], `${out} before ${input}`);
+  // The markup's order, so a screen reader and the Tab key meet them as the eye does.
+  assert.deepStrictEqual(cards.slice().sort((a, b) => order[a] - order[b]), cards);
+  for (const input of ['cardContract', 'cardMarket']) {
+    for (const out of ['legs', 'cardResults', 'cardPayoff']) assert.ok(order[input] < order[out], `${input} before ${out}`);
   }
+  // Contract first, the line in Strategy that names the contract would repeat it.
+  assert.doesNotMatch(phone, /\.context/);
 });
 
 test('the reordered cards keep to the screen width', () => {
