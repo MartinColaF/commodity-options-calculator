@@ -1978,7 +1978,7 @@ function renderInputs() {
     ? t('Realized-volatility window and estimator, skew on, the carry check and the Alpha Vantage fallback')
     : t('Realized-volatility window and estimator, skew off, the carry check and the Alpha Vantage fallback');
 
-  // On a phone the Strategy card comes first, above the contract it prices, so
+  // On paper the Strategy card comes first, above the contract it prices, so
   // it says which contract that is.
   const priced = { price: fmtPrice(state.S, true) };
   $('legsContext').textContent = [

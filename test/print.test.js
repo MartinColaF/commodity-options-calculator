@@ -46,8 +46,15 @@ test('on paper: no controls, results first, and the cards kept whole', () => {
     assert.ok(hidden.includes(sel), `${sel} is not printed`);
   }
   assert.match(print, /\.card \{ break-inside: avoid; \}/);
-  // The phone's order, results before inputs, is the report's.
+  // One column, as on a phone, but the report leads with the position and what
+  // it makes; the contract and the market data it rests on follow, and the line
+  // under Strategy names the contract meanwhile.
   assert.match(css, /@media \(max-width: 900px\), print \{/);
+  const order = id => Number(print.match(new RegExp(`#${id} \\{ order: (\\d+); \\}`))[1]);
+  for (const out of ['legs', 'cardResults', 'cardPayoff']) {
+    for (const input of ['cardContract', 'cardMarket']) assert.ok(order(out) < order(input), `${out} before ${input}`);
+  }
+  assert.match(print, /\.context \{ display: flex;/);
 });
 
 test('printing takes the light palette whatever the scheme, so the chart reads on paper', () => {

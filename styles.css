@@ -132,11 +132,13 @@ header .lang-switch { text-align: right; margin: 0 0 4px; font-size: .88rem; }
  * the column past the viewport instead of scrolling inside .table-scroll. */
 .grid > * { min-width: 0; }
 
-/* One column on a phone or a narrow window, and on paper, with what the page works out first:
- * the strategy, its results and its chart, then the contract and the market data.
- * The two column wrappers step aside so the cards can be ordered across them.
- * Visual order only: tabbing and screen readers still follow the markup, in which
- * every card stands on its own. */
+/* One column on a phone or a narrow window, and on paper. On a screen the cards come
+ * in the order they are filled in: the contract and the market data, then the
+ * strategy, its results and its chart. On paper the report leads with the position
+ * and what it makes, and the assumptions follow (@media print, below). The two
+ * column wrappers step aside so the cards can be ordered across them. Visual order
+ * only: tabbing and screen readers follow the markup, which a screen's order now
+ * matches. */
 .context { display: none; }
 @media (max-width: 900px), print {
   .grid { grid-template-columns: 1fr; gap: 0; }
@@ -144,15 +146,14 @@ header .lang-switch { text-align: right; margin: 0 0 4px; font-size: .88rem; }
   /* What .grid > * gave the column wrappers, given to the cards that are now the
      grid's items: without it the legs table widens the page to 858px. */
   .grid .card, .grid .disclaimer { min-width: 0; }
-  #legs { order: 1; }
-  #cardResults { order: 2; }
-  #cardPayoff { order: 3; }
-  #cardContract { order: 4; }
-  #cardMarket { order: 5; }
+  #cardContract { order: 1; }
+  #cardMarket { order: 2; }
+  #legs { order: 3; }
+  #cardResults { order: 4; }
+  #cardPayoff { order: 5; }
   #cardScenarios { order: 6; }
   #cardSave { order: 7; }
   .grid .disclaimer { order: 8; }
-  .context { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 12px; margin: -6px 0 10px; }
 }
 
 .card {
@@ -525,6 +526,14 @@ footer p { margin: 6px 0; }
 @media print {
   body { background: #fff; }
   .print-only { display: block; }
+  /* The position and what it makes first, then the contract and the market data
+     it rests on; the line under Strategy names the contract, which comes later. */
+  #legs { order: 1; }
+  #cardResults { order: 2; }
+  #cardPayoff { order: 3; }
+  #cardContract { order: 4; }
+  #cardMarket { order: 5; }
+  .context { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 12px; margin: -6px 0 10px; }
   .lang-switch, .footer-links, button, .file-button, #cardSave, #strategy,
   input[type=range] { display: none !important; }
   .card { break-inside: avoid; }
