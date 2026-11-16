@@ -413,7 +413,10 @@ sheet, where `navigator.canShare({ files })` allows it; elsewhere the PNG is dow
 the pointer coarse, because iOS Safari zooms into anything smaller and stays zoomed, and
 controls are 44 px on touch screens. Those blocks sit at the end of the file because the
 base sizes above them would otherwise win: written in the middle, they did nothing. Never
-put `maximum-scale=1` in the viewport to stop the zoom; it stops everyone zooming.
+put `maximum-scale=1` in the viewport to stop the zoom; it stops everyone zooming. A
+link made 44 px tall reaches 13 px past its words, so links that wrap to a second row need
+26 px between the rows: the footer's stood 4 px apart, and on a phone a tap on "Guías"
+opened "Reportar un problema".
 
 **A field's edge is `--field-border`, not `--line`.** WCAG asks 3:1 of a control's
 boundary, and `--line` is 1.29:1; it stays for dividers. A placeholder is a hint, muted

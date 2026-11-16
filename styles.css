@@ -560,6 +560,11 @@ footer p { margin: 6px 0; }
   #legs button.icon + button.icon { margin-left: 8px; }
   details > summary { padding: 10px 0; }
   footer a, .note a, .lang-switch a, .doc-nav a { display: inline-block; padding: 13px 4px; margin: -13px -4px; }
+  /* Those targets reach 13px above and below their words, so where the footer's
+   * links wrap to a second row the rows stand 26px apart, and the line under
+   * them starts 13px lower: 4px apart, the second row's took the first's taps,
+   * and "Guías" opened "Reportar un problema". */
+  .footer-links { row-gap: 26px; padding-bottom: 13px; }
   label.file-button { min-height: 44px; }
 }
 

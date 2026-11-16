@@ -99,6 +99,18 @@ test('phone sizes come after the rules they override', () => {
   }
 });
 
+test('a tap on a footer link opens that link, whatever row it wraps to', () => {
+  // On a touch screen each link's target reaches past its words, above and
+  // below; with rows 4px apart, the second row's covered the first's, and a tap
+  // on the middle of "Guías" opened "Reportar un problema".
+  const touch = media('(pointer: coarse)');
+  const reach = Number(touch.body.match(/footer a, [^{]*\{[^}]*padding: (\d+)px \d+px;/)[1]);
+  const [, gap, below] = touch.body.match(/\.footer-links \{ row-gap: (\d+)px; padding-bottom: (\d+)px; \}/).map(Number);
+  assert.ok(gap >= 2 * reach, `rows ${gap}px apart, targets ${reach}px past their words`);
+  // Nor does the line under them, the date, cover the last row's.
+  assert.ok(below >= reach, `${below}px below the last row`);
+});
+
 /* WCAG's contrast ratio between two #rrggbb colours. */
 function contrast(a, b) {
   const lum = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
