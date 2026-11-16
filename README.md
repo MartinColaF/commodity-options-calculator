@@ -103,6 +103,11 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
   button says so rather than writing one in.
 - **Share and save** — inputs persist in local storage, plus a shareable URL and
   JSON export/import.
+- **Guides** — five hedges worked through with illustrative prices, in English at
+  `/guides/` and in Spanish at `/es/guides/`: a soybean price floor with puts, a
+  zero-cost coffee collar, a cost cap on crude oil with calls, a floor for live cattle,
+  and how many contracts 5,000 tons are in each market. Each ends in a link that opens
+  its scenario in the calculator.
 
 ## Market data
 
@@ -229,6 +234,8 @@ Notes and limitations, stated plainly in the UI as well:
 - `i18n.js` — `t()`, through which `app.js` writes every word, keyed by its English text
 - `es/` — the Spanish page, its words (`words.js`), the policy in Spanish and its
   preview image
+- `guides/`, `es/guides/` — the guides and their list, in each language: plain HTML
+  whose figures `test/guides.test.js` recomputes from each guide's own link
 
 ## Development
 
@@ -267,6 +274,9 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/seo.test.js` — what search engines read: the Search Console tag on both home
   pages, the sitemap against each page's canonical and translation tags, and the
   crawl rules.
+- `test/guides.test.js` — each guide's link opens its whole scenario, every figure it
+  quotes is the calculator's for it in both languages, each translation matches its
+  guide tag for tag, and the English is American and the Spanish impersonal.
 - `test/latam.test.js` — Rosario's grains: A3's contract size, unit and tick, no feed
   and no month to look up, a hedge in tons in whole contracts, Auto-fill taking the rate
   and saying once why the rest stays typed, and Spanish.

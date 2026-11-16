@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Guides - Commodity Options Calculator</title>
+  <meta name="description" content="Worked hedging cases with the Commodity Options Calculator: price floors with puts, a zero-cost collar, a cost cap with calls and how many contracts a quantity needs.">
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/guides/">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Commodity Options Calculator">
+  <meta property="og:title" content="Guides">
+  <meta property="og:description" content="Worked hedging cases with the Commodity Options Calculator: price floors with puts, a zero-cost collar, a cost cap with calls and how many contracts a quantity needs.">
+  <meta property="og:url" content="https://commodity-options-calculator.vercel.app/guides/">
+  <meta property="og:image" content="https://commodity-options-calculator.vercel.app/og.png">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<!-- The guides, one line each. -->
+<div class="wrap doc">
+  <nav class="doc-nav">
+    <a href="/">&larr; Back to the calculator</a>
+    <a href="/es/guides/" hreflang="es" lang="es">Español</a>
+  </nav>
+  <main class="card">
+  <h1>Guides</h1>
+  <p>Each guide works one hedge through the calculator with illustrative prices, explains the numbers and opens the same scenario in the calculator to change.</p>
+  <ul>
+    <li><a href="/guides/soybean-price-floor.html">A price floor for soybeans with puts</a>. How a soybean producer sets a minimum sale price with put options on CBOT futures: what the put costs, the floor in cents a bushel and dollars a ton, and how many contracts 5,000 tons need.</li>
+    <li><a href="/guides/coffee-zero-cost-collar.html">A zero-cost collar on coffee</a>. How a coffee exporter buys a put and sells a call that pays for it: the call&rsquo;s strike found with the calculator, and the floor and the ceiling in cents a pound and dollars a 60-kg bag.</li>
+    <li><a href="/guides/crude-oil-price-cap.html">A cost cap for a crude oil buyer with calls</a>. How a buyer of crude oil caps its purchase price with call options on WTI futures: what the call costs, the cap in dollars a barrel, and what happens below the strike.</li>
+    <li><a href="/guides/cattle-price-floor.html">A price floor for cattle with live cattle puts</a>. How a cattle producer sets a minimum price with put options on CME live cattle futures: the put&rsquo;s cost, the floor in cents a pound and dollars a kilo, and how many contracts 100 head need.</li>
+    <li><a href="/guides/how-many-contracts.html">How many contracts for 5,000 tons</a>. How many futures or options contracts hedge 5,000 metric tons of soybeans, wheat, corn, sugar, cotton or Rosario&rsquo;s grains, and what the nearest whole numbers leave short or over.</li>
+  </ul>
+  <p class="muted">The prices in these guides are illustrative, not market data, and their figures are the calculator&rsquo;s for them. Nothing here is investment advice.</p>
+  </main>
+  <footer><p><a href="/">Commodity Options Calculator</a> · <a href="/methodology.html">Methodology</a></p></footer>
+</div>
+<script src="../analytics.js"></script>
+</body>
+</html>

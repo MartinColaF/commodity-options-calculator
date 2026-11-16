@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Un collar de costo cero en café - Calculadora de opciones sobre commodities</title>
+  <meta name="description" content="Cómo un exportador de café compra un put y vende un call que lo paga: el strike del call con la calculadora, y el piso y el techo en centavos por libra y en dólares por bolsa de 60 kg.">
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/es/guides/collar-costo-cero-cafe.html">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/coffee-zero-cost-collar.html">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/collar-costo-cero-cafe.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Calculadora de opciones sobre commodities">
+  <meta property="og:title" content="Un collar de costo cero en café">
+  <meta property="og:description" content="Cómo un exportador de café compra un put y vende un call que lo paga: el strike del call con la calculadora, y el piso y el techo en centavos por libra y en dólares por bolsa de 60 kg.">
+  <meta property="og:url" content="https://commodity-options-calculator.vercel.app/es/guides/collar-costo-cero-cafe.html">
+  <meta property="og:image" content="https://commodity-options-calculator.vercel.app/es/og.png">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../../favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+<!-- A worked case, its figures the calculator's own for the scenario its link
+     opens: test/guides.test.js recomputes them and holds this page and its
+     translation together. -->
+<div class="wrap doc">
+  <nav class="doc-nav">
+    <a href="/es/guides/">&larr; Todas las guías</a>
+    <a href="/guides/coffee-zero-cost-collar.html" hreflang="en" lang="en">English</a>
+  </nav>
+  <main class="card">
+  <h1>Un collar de costo cero en café</h1>
+  <p>Un exportador con café para embarcar quiere un piso, pero prefiere no pagarlo. Vender un call paga el put, a cambio de un techo: un collar de costo cero. La pregunta es qué call, y la calculadora busca el strike cuya prima iguala la del put.</p>
+
+  <h2>La posición</h2>
+  <ul>
+    <li>Futuro de café &laquo;C&raquo; (ICE KC) a 300.00 ¢/lb, un precio ilustrativo.</li>
+    <li>Comprado: un put con strike 280 ¢, 60 días, americano.</li>
+    <li>Vendido: un call, con el strike por encontrar.</li>
+    <li>Volatilidad del 45% y tasa libre de riesgo del 4%.</li>
+    <li>El café a embarcar como pata de subyacente comprada.</li>
+  </ul>
+
+  <h2>El call que paga el put</h2>
+  <p>El put cuesta 12.49 ¢ por libra, $4,685.53 por contrato de 37,500 libras. Debajo de la tabla de patas, Strike que paga la cobertura mueve el strike del call hasta que las primas suman cero, lo que ocurre en 324.32 ¢. Mostrado con los decimales del precio y del lado que no cuesta más, el call tiene strike 324.31 ¢ y se vende a 12.50 ¢: el collar deja un crédito de $0.79.</p>
+  <p>Los strikes se listan a intervalos fijos. Con el intervalo que muestra la pantalla del broker, la calculadora elige el strike listado más cercano que no cueste más.</p>
+
+  <h2>La banda</h2>
+  <p>Entre los strikes, el café se vende al precio de mercado. Por debajo de 280 ¢ el put sostiene el precio en <strong>280.00 ¢ por libra, 370.38 dólares por bolsa de 60 kg</strong>; por encima de 324.31 ¢ el call lo limita a <strong>324.31 ¢, 428.99 dólares por bolsa</strong>.</p>
+  <p><a class="cta" href="/es/?ref=guide#s=eyJjb21tb2RpdHkiOiJjb2ZmZWUiLCJtb2RlbCI6ImI3NiIsInN0eWxlIjoiYW1lcmljYW4iLCJTIjozMDAsInZvbCI6NDUsInJhdGUiOjQsInlpZWxkIjoxLjUsImRheXMiOjYwLCJzaXplIjozNzUwMCwicXVvdGUiOiJjZW50cyIsImNoYXJ0Ijp7Im1vZGUiOiJuZXQiLCJ0RGF5cyI6MCwic2hvd0xlZ3MiOmZhbHNlLCJyYW5nZSI6NDB9LCJza2V3Ijp7Im9uIjpmYWxzZSwicnIiOjAsImJmIjowfSwic2NlbmFyaW8iOnsidm9sU2hpZnQiOjUsInByaWNlUGN0IjoyMH0sImZpbmFuY2luZyI6eyJtb2RlIjoicmF0ZSIsInJhdGUiOjR9LCJoZWRnZVF0eSI6bnVsbCwiYmFzaXMiOjAsImNvbW1pc3Npb24iOjAsImxlZ3MiOlt7Im9uIjp0cnVlLCJzaWRlIjoxLCJraW5kIjoidW5kZXJseWluZyIsInF0eSI6MSwic3RyaWtlIjowLCJkYXlzIjo2MCwidm9sIjpudWxsLCJ1bmRlciI6bnVsbCwiZW50cnkiOm51bGx9LHsib24iOnRydWUsInNpZGUiOjEsImtpbmQiOiJwdXQiLCJxdHkiOjEsInN0cmlrZSI6MjgwLCJkYXlzIjo2MCwidm9sIjpudWxsLCJ1bmRlciI6bnVsbCwiZW50cnkiOm51bGx9LHsib24iOnRydWUsInNpZGUiOi0xLCJraW5kIjoiY2FsbCIsInF0eSI6MSwic3RyaWtlIjozMjQuMzEsImRheXMiOjYwLCJ2b2wiOm51bGwsInVuZGVyIjpudWxsLCJlbnRyeSI6bnVsbH1dfQ">Abrir este escenario en la calculadora</a></p>
+
+  <h2>Qué tener en cuenta</h2>
+  <ul>
+    <li>Vender el call resigna la suba por encima de su strike: eso es lo que paga el piso.</li>
+    <li>Con el skew activado, puts y calls se valúan con su propia volatilidad, y el strike que paga el put se mueve.</li>
+    <li>El diferencial del exportador respecto de Nueva York va en el campo Base, y mueve el piso y el techo juntos.</li>
+  </ul>
+
+  <p class="muted">Los precios de esta guía son ilustrativos, no datos de mercado, y sus cifras son las de la calculadora para ellos. Nada de esto es asesoramiento de inversión.</p>
+  </main>
+  <footer><p><a href="/es/">Calculadora de opciones sobre commodities</a> · <a href="/es/methodology.html">Metodología</a></p></footer>
+</div>
+<script src="../../analytics.js"></script>
+</body>
+</html>

@@ -14,7 +14,13 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const SITE = 'https://commodity-options-calculator.vercel.app';
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-const PAGES = ['index.html', 'es/index.html', 'methodology.html', 'es/methodology.html', 'privacy.html', 'es/privacy.html'];
+const GUIDES = [
+  ['soybean-price-floor', 'piso-de-precio-soja'], ['coffee-zero-cost-collar', 'collar-costo-cero-cafe'],
+  ['crude-oil-price-cap', 'techo-de-precio-petroleo'], ['cattle-price-floor', 'piso-de-precio-ganado'],
+  ['how-many-contracts', 'cuantos-contratos']
+];
+const PAGES = ['index.html', 'es/index.html', 'methodology.html', 'es/methodology.html', 'privacy.html', 'es/privacy.html',
+  'guides/index.html', 'es/guides/index.html'].concat(...GUIDES.map(([en, es]) => [`guides/${en}.html`, `es/guides/${es}.html`]));
 
 test('both home pages carry the Search Console tag, once', () => {
   for (const f of ['index.html', 'es/index.html']) {
@@ -27,7 +33,7 @@ test('both home pages carry the Search Console tag, once', () => {
 
 test('the sitemap lists every page at its canonical address, with the translations its tags give', () => {
   // Every page the site serves is in the list.
-  const html = ['', 'es/'].reduce((all, dir) =>
+  const html = ['', 'es/', 'guides/', 'es/guides/'].reduce((all, dir) =>
     all.concat(fs.readdirSync(path.join(ROOT, dir)).filter(f => f.endsWith('.html')).map(f => dir + f)), []);
   assert.deepStrictEqual(html.sort(), PAGES.slice().sort());
 

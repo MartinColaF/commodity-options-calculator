@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Cuántos contratos para 5,000 toneladas - Calculadora de opciones sobre commodities</title>
+  <meta name="description" content="Cuántos contratos de futuros u opciones cubren 5,000 toneladas de soja, trigo, maíz, azúcar, algodón o granos de Rosario, y qué dejan de menos o de más los números enteros más cercanos.">
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/es/guides/cuantos-contratos.html">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/how-many-contracts.html">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/cuantos-contratos.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Calculadora de opciones sobre commodities">
+  <meta property="og:title" content="Cuántos contratos para 5,000 toneladas">
+  <meta property="og:description" content="Cuántos contratos de futuros u opciones cubren 5,000 toneladas de soja, trigo, maíz, azúcar, algodón o granos de Rosario, y qué dejan de menos o de más los números enteros más cercanos.">
+  <meta property="og:url" content="https://commodity-options-calculator.vercel.app/es/guides/cuantos-contratos.html">
+  <meta property="og:image" content="https://commodity-options-calculator.vercel.app/es/og.png">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../../favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+<!-- A worked case, its figures the calculator's own for the scenario its link
+     opens: test/guides.test.js recomputes them and holds this page and its
+     translation together. -->
+<div class="wrap doc">
+  <nav class="doc-nav">
+    <a href="/es/guides/">&larr; Todas las guías</a>
+    <a href="/guides/how-many-contracts.html" hreflang="en" lang="en">English</a>
+  </nav>
+  <main class="card">
+  <h1>Cuántos contratos para 5,000 toneladas</h1>
+  <p>Un contrato es una cantidad fija en la unidad de la bolsa: bushels en CBOT, libras en ICE, toneladas en Rosario. Cubrir una cantidad en toneladas empieza por convertirla, y el resultado casi nunca es un número entero.</p>
+
+  <h2>5,000 toneladas, mercado por mercado</h2>
+  <ul>
+    <li><strong>Soja y trigo (CBOT):</strong> 5,000 bushels de 60 libras, 136.08 t. 5,000 t son 36.74 contratos: 37 cubren 5,034.88 t, 34.88 de más; 36 cubren 4,898.80 t, 101.20 de menos.</li>
+    <li><strong>Maíz (CBOT):</strong> 5,000 bushels de 56 libras, 127.01 t. 39.37 contratos: 40 cubren 5,080.23 t, 80.23 de más; 39 cubren 4,953.23 t, 46.77 de menos.</li>
+    <li><strong>Azúcar N.º 11 (ICE):</strong> 112,000 libras, 50.80 t. 98.42 contratos: 99 cubren 5,029.43 t, 29.43 de más; 98 cubren 4,978.63 t, 21.37 de menos.</li>
+    <li><strong>Algodón N.º 2 (ICE):</strong> 50,000 libras, 22.68 t. 220.46 contratos: 221 cubren 5,012.20 t, 12.20 de más; 220 cubren 4,989.52 t, 10.48 de menos.</li>
+    <li><strong>Soja, maíz y trigo en Rosario (A3/MATba):</strong> 100.00 t. Exactamente 50 contratos.</li>
+  </ul>
+  <p>Redondear hacia arriba cubre un poco más que la cosecha, una pequeña posición sin nada detrás; redondear hacia abajo deja un poco sin cubrir. La calculadora da los dos, y sus botones ponen cualquiera de los dos números en todas las patas de la posición.</p>
+
+  <h2>En la calculadora</h2>
+  <p>Debajo de la tabla de patas, Tamaño de la cobertura toma la cantidad en la unidad física del mercado (toneladas para granos, azúcar y algodón, bolsas de 60 kg para el café, kilos para el ganado) y dice cuántos contratos son. El escenario de abajo tiene 5,000 toneladas de soja y un put sobre un contrato: Cubrir con 37 contratos ajusta las dos patas.</p>
+  <p><a class="cta" href="/es/?ref=guide#s=eyJjb21tb2RpdHkiOiJzb3liZWFuIiwibW9kZWwiOiJiNzYiLCJzdHlsZSI6ImFtZXJpY2FuIiwiUyI6MTA1MCwidm9sIjoxOCwicmF0ZSI6NCwieWllbGQiOjIuNSwiZGF5cyI6NjAsInNpemUiOjUwMDAsInF1b3RlIjoiY2VudHMiLCJjaGFydCI6eyJtb2RlIjoicGF5b2ZmIiwidERheXMiOjAsInNob3dMZWdzIjpmYWxzZSwicmFuZ2UiOjQwfSwic2tldyI6eyJvbiI6ZmFsc2UsInJyIjowLCJiZiI6MH0sInNjZW5hcmlvIjp7InZvbFNoaWZ0Ijo1LCJwcmljZVBjdCI6MjB9LCJmaW5hbmNpbmciOnsibW9kZSI6InJhdGUiLCJyYXRlIjo0fSwiaGVkZ2VRdHkiOjUwMDAsImJhc2lzIjowLCJjb21taXNzaW9uIjowLCJsZWdzIjpbeyJvbiI6dHJ1ZSwic2lkZSI6MSwia2luZCI6InVuZGVybHlpbmciLCJxdHkiOjEsInN0cmlrZSI6MCwiZGF5cyI6NjAsInZvbCI6bnVsbCwidW5kZXIiOm51bGwsImVudHJ5IjpudWxsfSx7Im9uIjp0cnVlLCJzaWRlIjoxLCJraW5kIjoicHV0IiwicXR5IjoxLCJzdHJpa2UiOjEwMDAsImRheXMiOjYwLCJ2b2wiOm51bGwsInVuZGVyIjpudWxsLCJlbnRyeSI6bnVsbH1dfQ">Abrir este escenario en la calculadora</a></p>
+
+  <h2>Qué tener en cuenta</h2>
+  <ul>
+    <li>El peso del bushel es el legal, 60 libras para soja y trigo y 56 para maíz. La humedad y las impurezas del grano al entregarlo no se cuentan.</li>
+    <li>Una cobertura en contratos de un mercado para lo que se vende en otro, aceite de soja contra soja por ejemplo, es una cobertura cruzada, que la calculadora no dimensiona.</li>
+  </ul>
+
+  <p class="muted">Los precios de esta guía son ilustrativos, no datos de mercado, y sus cifras son las de la calculadora para ellos. Nada de esto es asesoramiento de inversión.</p>
+  </main>
+  <footer><p><a href="/es/">Calculadora de opciones sobre commodities</a> · <a href="/es/methodology.html">Metodología</a></p></footer>
+</div>
+<script src="../../analytics.js"></script>
+</body>
+</html>

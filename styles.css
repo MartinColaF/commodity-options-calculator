@@ -483,6 +483,10 @@ footer p { margin: 6px 0; }
 .doc ul { padding-left: 20px; }
 .doc li { margin: 4px 0; }
 .doc button { width: auto; }
+/* A guide's link into the calculator, with its scenario: the one thing on the
+ * page to do, so it looks like the filled buttons that add or fetch. */
+.doc a.cta { display: inline-block; margin: 6px 0 2px; padding: 12px 18px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; }
+.doc a.cta:hover { filter: brightness(1.08); }
 
 /* The scenario grid's shading, in ten steps from a floor that still shows to
  * half strength, gains green and losses red; renderScenarios() picks the step.

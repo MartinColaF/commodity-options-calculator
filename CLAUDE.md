@@ -16,6 +16,7 @@ for users; this file covers what is easy to get wrong when changing it.
 | `i18n.js` | `t()`, and the table each language's words go into |
 | `analytics.js` | visit counting (Vercel Web Analytics), loaded last by every page |
 | `es/` | the Spanish page: `index.html`, its words (`words.js`), `privacy.html`, `og.png` |
+| `guides/`, `es/guides/` | five hedges worked through the calculator, each linking its scenario, and their list |
 | `app.js` | pricing engine, strategy analytics, data providers, rendering |
 | `api/market.js` | serverless futures-data proxy (Vercel) |
 | `test/` | `node --test` suite, no framework |
@@ -229,8 +230,8 @@ them differently; a translation keeps the same names, in its own order.
   translated. Numbers stay in `NUMBER_LOCALE`.
 
 **The footer says how the page works, where its code is and when it changed.** It links
-`methodology.html` (and `es/methodology.html`), the source code, the issues and the
-policy, and reads "Updated November 2026". That date is the one the methodology says it was
+the guides, `methodology.html` (and `es/methodology.html`), the source code, the issues and
+the policy, and reads "Updated November 2026". That date is the one the methodology says it was
 last reviewed, in both languages, and `test/methodology.test.js` compares them: review
 the methodology when a change touches what it describes, then move both dates. The
 methodology quotes measured figures (the BAW error, the grid's worst miss); the test
@@ -441,7 +442,20 @@ by the `google-site-verification` tag in both home pages' `<head>`, and checks i
 from time to time: removing it loses the property. `sitemap.xml` lists every page at its
 canonical address with the translations its own `hreflang` tags give, and `robots.txt`
 names it and keeps crawlers off `/api/`, where each request asks Yahoo for quotes. A new
-page goes in the sitemap with the same tags; `test/seo.test.js` reads both from the pages.
+page goes in the sitemap with the same tags; `test/seo.test.js` reads both from the pages,
+and lists the folders it looks for pages in: a page in a new folder goes there too.
+
+**The guides quote the calculator.** Each page in `guides/` works one hedge through it
+with illustrative prices and ends in a link that opens the same scenario
+(`/?ref=guide#s=…`, `/es/?ref=guide#s=…` in Spanish); `es/guides/` translates each, tag
+for tag. They are plain HTML, not drawn by `app.js`, so nothing updates their figures:
+`test/guides.test.js` opens each link through `readHash()` and `restore()`, checks the
+scenario comes back whole, recomputes every figure the guide quotes and looks for it in
+both languages. When a change to the pricing moves one, the test names it; change it in
+both pages. A price is quoted as the page shows it, through `fmtPrice()`: the soybean
+floor is 947.726, not 947.73. A new guide needs its pair, a place in both lists, the
+sitemap and that test. `?ref=guide` tells a visit from a guide apart, as `?ref=share`
+does a shared link's; the scenario after `#` is never sent.
 
 **The Save & share card answers under its own buttons**, in `#saveStatus` through
 `setSaveStatus()`: on a phone the market-data status line is 3,400 px above them. The

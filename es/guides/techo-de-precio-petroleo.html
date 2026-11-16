@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Un techo de costo con calls para quien compra petróleo - Calculadora de opciones sobre commodities</title>
+  <meta name="description" content="Cómo quien compra petróleo pone un techo a su precio de compra con opciones call sobre futuros de WTI: lo que cuesta el call, el techo en dólares por barril y qué pasa por debajo del strike.">
+  <link rel="canonical" href="https://commodity-options-calculator.vercel.app/es/guides/techo-de-precio-petroleo.html">
+  <link rel="alternate" hreflang="en" href="https://commodity-options-calculator.vercel.app/guides/crude-oil-price-cap.html">
+  <link rel="alternate" hreflang="es" href="https://commodity-options-calculator.vercel.app/es/guides/techo-de-precio-petroleo.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Calculadora de opciones sobre commodities">
+  <meta property="og:title" content="Un techo de costo con calls para quien compra petróleo">
+  <meta property="og:description" content="Cómo quien compra petróleo pone un techo a su precio de compra con opciones call sobre futuros de WTI: lo que cuesta el call, el techo en dólares por barril y qué pasa por debajo del strike.">
+  <meta property="og:url" content="https://commodity-options-calculator.vercel.app/es/guides/techo-de-precio-petroleo.html">
+  <meta property="og:image" content="https://commodity-options-calculator.vercel.app/es/og.png">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../../favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+<!-- A worked case, its figures the calculator's own for the scenario its link
+     opens: test/guides.test.js recomputes them and holds this page and its
+     translation together. -->
+<div class="wrap doc">
+  <nav class="doc-nav">
+    <a href="/es/guides/">&larr; Todas las guías</a>
+    <a href="/guides/crude-oil-price-cap.html" hreflang="en" lang="en">English</a>
+  </nav>
+  <main class="card">
+  <h1>Un techo de costo con calls para quien compra petróleo</h1>
+  <p>Una refinería, un trader o cualquier empresa que va a comprar petróleo más adelante teme una suba. Comprar calls sobre el futuro de WTI pone un techo: por encima del strike el call paga la diferencia, y por debajo la compra acompaña la baja del mercado.</p>
+
+  <h2>La posición</h2>
+  <ul>
+    <li>Futuro de WTI (NYMEX CL) a 70.00 USD/bbl, un precio ilustrativo.</li>
+    <li>Comprado: un call con strike 75, 30 días, americano.</li>
+    <li>Volatilidad del 35% y tasa libre de riesgo del 4%.</li>
+    <li>El petróleo a comprar como pata de subyacente vendida, como la arma la estrategia Comprador: precio techo.</li>
+  </ul>
+
+  <h2>Lo que cuesta el call</h2>
+  <p>El call cuesta 1.06 dólares por barril, $1,057.09 por contrato de 1,000 barriles.</p>
+
+  <h2>El techo</h2>
+  <p>Por encima de 75 el call paga la diferencia, así que el precio neto de compra no supera <strong>76.06 dólares por barril</strong>: el strike, la prima y el interés de la prima en los 30 días. Por debajo de 75 el call vence sin valor y el petróleo se compra al precio de mercado, más los 1.06 que costó el call.</p>
+  <p><a class="cta" href="/es/?ref=guide#s=eyJjb21tb2RpdHkiOiJ3dGkiLCJtb2RlbCI6ImI3NiIsInN0eWxlIjoiYW1lcmljYW4iLCJTIjo3MCwidm9sIjozNSwicmF0ZSI6NCwieWllbGQiOjQsImRheXMiOjMwLCJzaXplIjoxMDAwLCJxdW90ZSI6IlVTRCIsImNoYXJ0Ijp7Im1vZGUiOiJuZXQiLCJ0RGF5cyI6MCwic2hvd0xlZ3MiOmZhbHNlLCJyYW5nZSI6NDB9LCJza2V3Ijp7Im9uIjpmYWxzZSwicnIiOjAsImJmIjowfSwic2NlbmFyaW8iOnsidm9sU2hpZnQiOjUsInByaWNlUGN0IjoyMH0sImZpbmFuY2luZyI6eyJtb2RlIjoicmF0ZSIsInJhdGUiOjR9LCJoZWRnZVF0eSI6bnVsbCwiYmFzaXMiOjAsImNvbW1pc3Npb24iOjAsImxlZ3MiOlt7Im9uIjp0cnVlLCJzaWRlIjotMSwia2luZCI6InVuZGVybHlpbmciLCJxdHkiOjEsInN0cmlrZSI6MCwiZGF5cyI6MzAsInZvbCI6bnVsbCwidW5kZXIiOm51bGwsImVudHJ5IjpudWxsfSx7Im9uIjp0cnVlLCJzaWRlIjoxLCJraW5kIjoiY2FsbCIsInF0eSI6MSwic3RyaWtlIjo3NSwiZGF5cyI6MzAsInZvbCI6bnVsbCwidW5kZXIiOm51bGwsImVudHJ5IjpudWxsfV19">Abrir este escenario en la calculadora</a></p>
+
+  <h2>Qué tener en cuenta</h2>
+  <ul>
+    <li>Quien compra gasoil o jet y cubre con crudo carga el diferencial entre los dos, que el campo Base toma fijo.</li>
+    <li>La calculadora no tiene el calendario de vencimientos de las opciones de CME sobre crudo, así que los días se ingresan a mano.</li>
+    <li>Los precios tienen que ser mayores que cero: los modelos lognormales de la página no pueden valuar el WTI negativo de abril de 2020.</li>
+  </ul>
+
+  <p class="muted">Los precios de esta guía son ilustrativos, no datos de mercado, y sus cifras son las de la calculadora para ellos. Nada de esto es asesoramiento de inversión.</p>
+  </main>
+  <footer><p><a href="/es/">Calculadora de opciones sobre commodities</a> · <a href="/es/methodology.html">Metodología</a></p></footer>
+</div>
+<script src="../../analytics.js"></script>
+</body>
+</html>
