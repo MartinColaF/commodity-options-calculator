@@ -107,17 +107,19 @@ test('a buyer\'s cap is the call\'s strike, plus the basis, the premium and the 
   assert.strictEqual(app.netPrices(app.analyse()).worst, Infinity);
 });
 
-test('with no physical, or one on both sides, there is no net price, and the page says why', () => {
+test('with no physical there is no net price and no field for it; with one on both sides the page says why', () => {
   const page = wired();
   const { app, el } = page;
   floor(page);
+  app.renderLegs();
+  assert.strictEqual(el('netBlock').hidden, false, 'a physical: the basis and the commissions are asked for');
   app.state.legs[0].on = false;
   assert.strictEqual(app.physicalPosition(), null);
   assert.strictEqual(app.netPrices(app.analyse()), null);
   app.renderLegs();
-  assert.strictEqual(el('netInfo').hidden, false);
-  assert.strictEqual(el('netInfo').textContent,
-    'The net price needs a leg for the physical: an underlying leg, long if you sell it, short if you buy it.');
+  // Without one they changed nothing on the page, and read as broken.
+  assert.strictEqual(el('netBlock').hidden, true);
+  assert.strictEqual(el('netInfo').hidden, true);
   app.renderResults();
   assert.doesNotMatch(el('summary').innerHTML, /Net sale price/);
   assert.strictEqual(el('netPriceInfo').hidden, true);
@@ -127,6 +129,8 @@ test('with no physical, or one on both sides, there is no net price, and the pag
   assert.strictEqual(app.physicalPosition(), null);
   app.renderLegs();
   assert.match(el('netInfo').textContent, /^Underlying legs on both sides/);
+  assert.strictEqual(el('netInfo').hidden, false);
+  assert.strictEqual(el('netBlock').hidden, true);
   // On the chart, the box says so in its place.
   app.state.chart.mode = 'net';
   const a = app.analyse();

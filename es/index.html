@@ -282,11 +282,12 @@
           <button id="hedgeUp" class="ghost">Cubrir</button>
           <button id="hedgeDown" class="ghost">Cubrir</button>
         </div>
+        <div id="netBlock" hidden>
         <div class="title-row mt-14">
           <h3>Precio neto</h3>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="netHelp" aria-label="Cómo se calcula el precio neto">?</button>
         </div>
-        <p class="note help" id="netHelp" hidden>El precio neto es lo que se cobra por el físico, o lo que cuesta, al horizonte, por unidad: el precio del futuro en ese momento más la base, con lo que dejan las opciones neto de sus primas, intereses incluidos, y descontadas las comisiones. Las dos se cargan en la unidad del precio del futuro, centavos por bushel para la soja; una base por debajo del futuro es negativa. La base se toma fija, aunque en el mercado también se mueve. El piso y el techo aparecen en Resultados, y <strong>Precio neto</strong>, en la lista Mostrar del gráfico, lo dibuja para cada precio.</p>
+        <p class="note help" id="netHelp" hidden>El precio neto es lo que se cobra por el físico, o lo que cuesta, al horizonte, por unidad: el precio del futuro en ese momento más la base, con lo que dejan las opciones neto de sus primas, intereses incluidos, y descontadas las comisiones. Las dos se cargan en la unidad del precio del futuro, centavos por bushel para la soja; una base por debajo del futuro es negativa. La base se toma fija, aunque en el mercado también se mueve. En Resultados, <strong>Al vencimiento</strong> dice cuánto da en cada tramo de precios y el piso y el techo aparecen junto a los demás resultados; <strong>Precio neto</strong>, en la lista Mostrar del gráfico, lo dibuja para cada precio.</p>
         <div class="row tight field-row">
           <div>
             <label for="basis">Base, en <span id="basisUnit">USD</span></label>
@@ -299,6 +300,7 @@
         </div>
         <p class="problem" id="basisProblem" role="alert"></p>
         <p class="problem" id="commissionProblem" role="alert"></p>
+        </div>
         <p class="note" id="netInfo" hidden></p>
         <div class="title-row mt-14">
           <h3>Strike que paga la cobertura</h3>
@@ -324,6 +326,11 @@
 
       <section class="card" id="cardResults" aria-labelledby="hResults">
         <h2 id="hResults">Resultados</h2>
+        <div id="expiryBlock" hidden>
+          <h3 id="hExpiry">Al vencimiento</h3>
+          <div id="expiry"></div>
+          <p class="note" id="expiryNote"></p>
+        </div>
         <div id="summary"></div>
         <p class="note mt-12" id="netPriceInfo" hidden></p>
         <p class="note mt-12" id="reportsInfo" hidden></p>

@@ -246,8 +246,6 @@ const SPANISH = {
     'Se necesitan comisiones de cero o más: son un costo; la que puede ser negativa es la base.',
   'Underlying legs on both sides: the page cannot tell the physical from a futures hedge, so it shows no net price.':
     'Hay patas de subyacente de los dos lados: la página no puede distinguir el físico de una cobertura con futuros, así que no muestra precio neto.',
-  'The net price needs a leg for the physical: an underlying leg, long if you sell it, short if you buy it.':
-    'El precio neto necesita una pata para el físico: una pata de subyacente, comprada si se lo vende, vendida si se lo compra.',
   'Net sale price floor': 'Piso del precio neto de venta',
   'Net sale price ceiling': 'Techo del precio neto de venta',
   'Net purchase price cap': 'Techo del precio neto de compra',
@@ -492,7 +490,116 @@ const SPANISH = {
   'Days to expiry set to {n}: the {month} options stop trading on {date}.':
     'Días al vencimiento: {n}. Las opciones {month} dejan de operarse el {date}.',
   'Implied volatility for that leg: {vol}%. The table shows it to two decimals; the leg is priced at the exact figure, so it is worth its premium.':
-    'Volatilidad implícita de esa pata: {vol}%. La tabla la muestra con dos decimales; la pata se valúa con la cifra exacta, así que vale su prima.'
+    'Volatilidad implícita de esa pata: {vol}%. La tabla la muestra con dos decimales; la pata se valúa con la cifra exacta, así que vale su prima.',
+  // The summary at expiry.
+  'the long call {k}':
+    'el call comprado {k}',
+  'the short call {k}':
+    'el call vendido {k}',
+  'the long put {k}':
+    'el put comprado {k}',
+  'the short put {k}':
+    'el put vendido {k}',
+  'the option expires worthless':
+    'la opción vence sin valor',
+  'every option expires worthless':
+    'todas las opciones vencen sin valor',
+  '{options} is exercised':
+    'se ejerce {options}',
+  '{options} are exercised':
+    'se ejercen {options}',
+  'Below {k}':
+    'Por debajo de {k}',
+  'Above {k}':
+    'Por encima de {k}',
+  'Between {a} and {b}':
+    'Entre {a} y {b}',
+  'a fixed profit of {amount}':
+    'ganancia fija de {amount}',
+  'a fixed loss of {amount}':
+    'pérdida fija de {amount}',
+  'no profit or loss':
+    'ni ganancia ni pérdida',
+  'the result goes from {near} at {k} to {far} if the price falls to zero, {rate} a point':
+    'el resultado va de {near} en {k} a {far} si el precio cae a cero, {rate} por punto',
+  'the result rises {rate} a point from {from}, without limit':
+    'el resultado sube {rate} por punto desde {from}, sin límite',
+  'the result falls {rate} a point from {from}, without limit':
+    'el resultado baja {rate} por punto desde {from}, sin límite',
+  'the result goes from {from} to {to}, {rate} a point':
+    'el resultado va de {from} a {to}, {rate} por punto',
+  'the options\' payoff is a fixed {amount}':
+    'el pago de las opciones es fijo: {amount}',
+  '{rate} a point above {k} is received':
+    'se cobran {rate} por punto por encima de {k}',
+  '{rate} a point above {k} is paid':
+    'se pagan {rate} por punto por encima de {k}',
+  '{rate} a point below {k} is received':
+    'se cobran {rate} por punto por debajo de {k}',
+  '{rate} a point below {k} is paid':
+    'se pagan {rate} por punto por debajo de {k}',
+  'the options\' payoff goes from {near} at {k} to {far} if the price falls to zero, {rate} a point':
+    'el pago de las opciones va de {near} en {k} a {far} si el precio cae a cero, {rate} por punto',
+  'the options\' payoff rises {rate} a point from {from}, without limit':
+    'el pago de las opciones sube {rate} por punto desde {from}, sin límite',
+  'the options\' payoff falls {rate} a point from {from}, without limit':
+    'el pago de las opciones baja {rate} por punto desde {from}, sin límite',
+  'the options\' payoff goes from {from} to {to}, {rate} a point':
+    'el pago de las opciones va de {from} a {to}, {rate} por punto',
+  'the net sale price is fixed at {price}':
+    'el precio neto de venta queda fijo en {price}',
+  'the net purchase price is fixed at {price}':
+    'el precio neto de compra queda fijo en {price}',
+  'the net sale price is the futures price minus {amount}':
+    'el precio neto de venta es el precio del futuro menos {amount}',
+  'the net sale price is the futures price plus {amount}':
+    'el precio neto de venta es el precio del futuro más {amount}',
+  'the net purchase price is the futures price minus {amount}':
+    'el precio neto de compra es el precio del futuro menos {amount}',
+  'the net purchase price is the futures price plus {amount}':
+    'el precio neto de compra es el precio del futuro más {amount}',
+  'the net sale price goes from {near} at {k} to {far} if the price falls to zero':
+    'el precio neto de venta va de {near} en {k} a {far} si el precio cae a cero',
+  'the net purchase price goes from {near} at {k} to {far} if the price falls to zero':
+    'el precio neto de compra va de {near} en {k} a {far} si el precio cae a cero',
+  'the net sale price is {from} at {k} and moves {rate} for each point the futures price rises':
+    'el precio neto de venta es {from} en {k} y se mueve {rate} por cada punto que sube el futuro',
+  'the net purchase price is {from} at {k} and moves {rate} for each point the futures price rises':
+    'el precio neto de compra es {from} en {k} y se mueve {rate} por cada punto que sube el futuro',
+  'the net sale price goes from {from} to {to}':
+    'el precio neto de venta va de {from} a {to}',
+  'the net purchase price goes from {from} to {to}':
+    'el precio neto de compra va de {from} a {to}',
+  '<strong>{range}</strong>: {what}.':
+    '<strong>{range}</strong>: {what}.',
+  '<strong>{range}</strong>: {what}; {result}.':
+    '<strong>{range}</strong>: {what}; {result}.',
+  '<strong>{range}</strong>: {what}; {result}; breakeven at {x}.':
+    '<strong>{range}</strong>: {what}; {result}; equilibrio en {x}.',
+  'At expiry each option is worth what it is in the money, so none of this depends on volatility. The premiums are counted, without interest.':
+    'Al vencimiento cada opción vale lo que está en el dinero, así que nada de esto depende de la volatilidad. Las primas se cuentan, sin intereses.',
+  'At expiry each option is worth what it is in the money, so none of this depends on volatility. The premiums are counted with their interest to expiry.':
+    'Al vencimiento cada opción vale lo que está en el dinero, así que nada de esto depende de la volatilidad. Las primas se cuentan con su interés hasta el vencimiento.',
+  'Options expiring in {when}':
+    'Opciones que vencen en {when}',
+  'Net premium paid today: {amount}.':
+    'Prima neta pagada hoy: {amount}.',
+  'Net premium received today: {amount}.':
+    'Prima neta cobrada hoy: {amount}.',
+  'The futures legs gain {rate} for each point above {price} and lose as much for each point below it.':
+    'Las patas de futuros ganan {rate} por cada punto por encima de {price} y pierden lo mismo por cada punto por debajo.',
+  'The futures legs lose {rate} for each point above {price} and gain as much for each point below it.':
+    'Las patas de futuros pierden {rate} por cada punto por encima de {price} y ganan lo mismo por cada punto por debajo.',
+  'Closing every leg at the first expiry, in {when}, as the chart does: from {min} at worst to {max} at best, breaking even at {breakevens}. The options still open then are valued by the model, each at its own volatility.':
+    'Cerrando todas las patas al primer vencimiento, en {when}, como lo muestra el gráfico: de {min} en el peor caso a {max} en el mejor, con equilibrio en {breakevens}. Las opciones que siguen abiertas se valúan con el modelo, cada una con su propia volatilidad.',
+  'Closing every leg at the first expiry, in {when}, as the chart does: from {min} at worst to {max} at best, with no breakeven. The options still open then are valued by the model, each at its own volatility.':
+    'Cerrando todas las patas al primer vencimiento, en {when}, como lo muestra el gráfico: de {min} en el peor caso a {max} en el mejor, sin punto de equilibrio. Las opciones que siguen abiertas se valúan con el modelo, cada una con su propia volatilidad.',
+  'Each expiry\'s options are shown as if held to it, worth what they are in the money then.':
+    'Las opciones de cada vencimiento se muestran como si se mantuvieran hasta él, valiendo lo que estén en el dinero en ese momento.',
+  'American options are taken as held to expiry.':
+    'Las opciones americanas se toman como mantenidas hasta el vencimiento.',
+  'Prices are those of the contract in the left panel, every month moving in proportion, as on the chart.':
+    'Los precios son los del contrato del panel izquierdo, con cada mes moviéndose en proporción, como en el gráfico.'
 };
 
 if (typeof TRANSLATIONS !== 'undefined') TRANSLATIONS.es = SPANISH;

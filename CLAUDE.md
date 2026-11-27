@@ -315,7 +315,23 @@ through `physicalPrice()`, the market's physical price; the chart's `net` mode d
 with the two as `levels`, horizontal marks the marker plugin draws. The basis may be below
 zero and commissions may not (`inputProblem()`), `changeCommodity()` drops both, and a
 scenario saved before them has neither. `test/net-price.test.js` pins the review's floor:
-947.80 ¢/bu, 348.26 USD/t, nominal.
+947.80 ¢/bu, 348.26 USD/t, nominal. **The two fields show only with a physical**
+(`#netBlock`, in `renderNetPriceInputs()`): anywhere else they changed nothing on the page,
+and the owner, testing them, took that for a fault. Underlying legs on both sides get a line
+saying why there is no net price (`#netInfo`).
+**The summary at expiry is the chart's line at the horizon, in words.** `expiryOutline()`
+(§5) cuts the reference axis at the options' strikes, on that axis (`strikeOnAxis()`), and
+reads each stretch through `pnlEvaluator()`, or `netPriceEvaluator()` when the position
+holds a physical, at the expiry. An option there is worth what it is in the money, so each
+stretch is a straight line and the summary rests on no model. `renderExpiry()` (§7) gives
+each stretch one bullet made of whole `t()` sentences: the prices, what is exercised, what
+it comes to, and a breakeven that is `analyse()`'s. With options on more than one expiry the
+result on any date holds an option still open, which only the model values, so each
+expiry's options are described alone (`optionsPayoff()`, premiums aside) and the close at
+the first expiry is `analyse()`'s, as the chart shows it: the owner's choice, over one block
+per expiry with no total. It is the first block of Results rather than a card of its own,
+since on a phone Results already starts about 2,300 px down. `test/at-expiry.test.js`
+checks every stretch against the chart over 200 random positions.
 
 **The horizon is the nearest expiry among active legs**, which is what makes calendar
 spreads read correctly — the far leg still holds time value there.

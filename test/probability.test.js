@@ -14,6 +14,7 @@ const { loadApp, resetState } = require('./helpers/load-app.js');
 
 const elements = {
   summary: { innerHTML: '' }, greeks: { innerHTML: '' }, netPriceInfo: { textContent: '', hidden: true }, reportsInfo: { textContent: '', hidden: true },
+  expiryBlock: { hidden: true }, expiry: { innerHTML: '' }, expiryNote: { textContent: '' },
   tDays: { max: 0, value: 0 }, tDaysLabel: { textContent: '' }
 };
 const app = loadApp({ elements });
