@@ -103,6 +103,14 @@ open `index.html` or serve the folder. In Spanish at `/es/`.
   button says so rather than writing one in.
 - **Share and save** — inputs persist in local storage, plus a shareable URL and
   JSON export/import.
+- **At expiry** — the first thing under Results: a line for each stretch of prices,
+  from one strike to the next, saying which options are exercised and what the
+  position makes there, or, when it holds a physical, the net price it sells or buys
+  at. With every option on one expiry it rests on no model. With a calendar or a
+  diagonal, each expiry's options are described on their own, beside what closing
+  everything at the first expiry comes to, as the chart shows it. The basis and the
+  commissions appear only when the position holds a physical, the one place they
+  change a number.
 - **Guides** — five hedges worked through with illustrative prices, in English at
   `/guides/` and in Spanish at `/es/guides/`: a soybean price floor with puts, a
   zero-cost coffee collar, a cost cap on crude oil with calls, a floor for live cattle,
@@ -274,6 +282,9 @@ some browsers restrict cross-origin requests from `file://`.
 - `test/seo.test.js` — what search engines read: the Search Console tag on both home
   pages, the sitemap against each page's canonical and translation tags, and the
   crawl rules.
+- `test/at-expiry.test.js` — the summary at expiry: every stretch the chart's P&L at
+  expiry over 200 random positions, every breakeven the results', a hedge's net price
+  with its basis, a calendar's expiries and the close at the first, and Spanish.
 - `test/guides.test.js` — each guide's link opens its whole scenario, every figure it
   quotes is the calculator's for it in both languages, each translation matches its
   guide tag for tag, and the English is American and the Spanish impersonal.

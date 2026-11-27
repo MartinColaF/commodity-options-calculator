@@ -1500,6 +1500,96 @@ function analyse() {
   };
 }
 
+/* What the position does at expiry, one stretch of prices at a time. At its
+ * expiry an option is worth what it is in the money, so the P&L - and the net
+ * price, which moves with it - is a straight line from one strike to the next:
+ * no model and no volatility. One stretch below the lowest strike, one between
+ * each pair and one above the highest, each with the options in the money
+ * there, its value at either end and its slope.
+ *
+ * With every option on one expiry the values are the position's own, read
+ * through pnlEvaluator(), or netPriceEvaluator() when the position holds a
+ * physical, so they are the chart's at the horizon, the premiums and their
+ * interest included. With options on more than one expiry, the result on any
+ * one date also holds an option still open, which only the model values: each
+ * expiry then gets what its own options pay, premiums aside, and the result of
+ * closing everything at the first expiry is analyse()'s. Null with no option. */
+function expiryOutline() {
+  const legs = activeLegs();
+  const options = legs.filter(l => l.kind !== 'underlying' && l.qty > 0);
+  if (!options.length) return null;
+  const dates = Array.from(new Set(options.map(l => l.days))).sort((x, y) => x - y);
+  if (dates.length === 1) {
+    const phys = physicalPosition();
+    const f = phys ? netPriceEvaluator() : pnlEvaluator();
+    return {
+      mode: 'single', days: dates[0], net: phys ? phys.side : 0, count: options.length,
+      regions: straightStretches(P => f(P, dates[0]), options)
+    };
+  }
+  const mult = dollarMultiplier(currentCommodity());
+  const futures = legs.filter(l => l.kind === 'underlying' && l.qty > 0);
+  // The futures legs expire with none of the options: dollars a point of the
+  // reference contract, and the price on it at which they are even.
+  const slope = futures.reduce((s, l) => s + l.side * l.qty * legRatio(l), 0) * mult;
+  const cost = futures.reduce((s, l) => s + l.side * l.qty * legEntry(l), 0) * mult;
+  return {
+    mode: 'multi',
+    groups: dates.map(d => {
+      const group = options.filter(l => l.days === d);
+      return { days: d, count: group.length, regions: straightStretches(P => optionsPayoff(group, P, mult), group) };
+    }),
+    futures: Math.abs(slope) > 0 ? { slope, even: cost / slope } : null
+  };
+}
+
+/* What options pay at their expiry with the reference contract at P, in
+ * dollars, premiums aside: each its intrinsic value on its own month. */
+function optionsPayoff(legs, P, mult) {
+  let v = 0;
+  for (const l of legs) {
+    const x = P * legRatio(l);
+    v += l.side * l.qty * mult * (l.kind === 'call' ? Math.max(x - l.strike, 0) : Math.max(l.strike - x, 0));
+  }
+  return v;
+}
+
+/* The straight stretches of f, a function of the reference price that bends
+ * only at the options' strikes: [0, first strike], between each pair, and
+ * [last strike, infinity). Each holds its bounds, f at its lower end (at a
+ * price of zero for the first), at its upper end (null for the last), its
+ * slope a point, zero when it does not move, where it crosses zero inside it
+ * (null if it does not), and the options in the money there. f is exact at the
+ * strikes, so the ends meet. */
+function straightStretches(f, options) {
+  const kinks = [];
+  options.map(strikeOnAxis).sort((x, y) => x - y).forEach(k => {
+    if (!kinks.length || k - kinks[kinks.length - 1] > k * 1e-12) kinks.push(k);
+  });
+  const bounds = [0].concat(kinks, [Infinity]);
+  const out = [];
+  for (let i = 0; i + 1 < bounds.length; i++) {
+    const lo = bounds[i], hi = bounds[i + 1];
+    let from, to, slope, mid, span;
+    if (hi === Infinity) {
+      from = f(lo); to = null; slope = (f(2 * lo) - from) / lo; mid = 1.5 * lo; span = lo;
+    } else if (lo === 0) {
+      to = f(hi); slope = (to - f(hi / 2)) / (hi / 2); from = to - slope * hi; mid = hi / 2; span = hi;
+    } else {
+      from = f(lo); to = f(hi); slope = (to - from) / (hi - lo); mid = (lo + hi) / 2; span = hi - lo;
+    }
+    // Rounding in f leaves a flat stretch a slope of a few parts in 1e15.
+    if (Math.abs(slope * span) <= 1e-9 * Math.max(1, Math.abs(from))) slope = 0;
+    const cross = slope ? lo - from / slope : NaN;
+    out.push({
+      lo, hi, from, to, slope,
+      zero: cross > lo && cross < hi ? cross : null,
+      itm: options.filter(l => (l.kind === 'call' ? mid > strikeOnAxis(l) : mid < strikeOnAxis(l)))
+    });
+  }
+  return out;
+}
+
 /* ============================================================
  * 6. Market data providers
  * ========================================================== */
@@ -2159,19 +2249,22 @@ function renderHedge() {
   button('hedgeDown', s.down.n === s.up.n ? 0 : s.down.n);
 }
 
-/* The basis and the commissions, in the price's quote, and why there is no net
- * price when the position holds no physical to put one on. */
+/* The basis and the commissions, in the price's quote, shown only while the
+ * position holds a physical to put them on: anywhere else they changed nothing
+ * on the page, and a field that changes nothing reads as a fault. Underlying
+ * legs on both sides get a line saying why there is no net price. */
 function renderNetPriceInputs() {
   const quote = currentCommodity().quote === 'cents' ? t('cents') : t('USD');
   $('basisUnit').textContent = quote;
   $('commissionUnit').textContent = quote;
   setField('basis', state.basis);
   setField('commission', state.commission);
+  const phys = physicalPosition();
+  $('netBlock').hidden = !phys;
   const underlying = activeLegs().filter(l => l.kind === 'underlying' && l.qty > 0);
-  const why = physicalPosition() ? ''
-    : underlying.length
-      ? t('Underlying legs on both sides: the page cannot tell the physical from a futures hedge, so it shows no net price.')
-      : t('The net price needs a leg for the physical: an underlying leg, long if you sell it, short if you buy it.');
+  const why = !phys && underlying.length
+    ? t('Underlying legs on both sides: the page cannot tell the physical from a futures hedge, so it shows no net price.')
+    : '';
   $('netInfo').textContent = why;
   $('netInfo').hidden = !why;
 }
@@ -2367,6 +2460,183 @@ function netPriceLine() {
       '{basis}, less what the options make net of their premiums, as the P&L counts them, plus commissions of {commission}.', parts);
 }
 
+/* ---------------- the summary at expiry ---------------- */
+
+/* An option as the summary names it, with its article: "the long call 4,000". */
+function optionName(l) {
+  const k = fmtPrice(l.strike, true);
+  if (l.kind === 'call') return l.side > 0 ? t('the long call {k}', { k }) : t('the short call {k}', { k });
+  return l.side > 0 ? t('the long put {k}', { k }) : t('the short put {k}', { k });
+}
+
+/* Dollars a point, with two significant figures where cents would round it to
+ * nothing, as the results' rising rate does. */
+function perPoint(x) {
+  const v = Math.abs(x);
+  return v >= 0.005 ? money(v) : '$' + v.toPrecision(2);
+}
+
+/* Which options a stretch exercises, or that none is. */
+function stretchWhat(r, count) {
+  if (!r.itm.length) return count === 1 ? t('the option expires worthless') : t('every option expires worthless');
+  // Two legs alike - the same strike, kind and side - are named once.
+  const names = r.itm.map(optionName).filter((x, i, all) => all.indexOf(x) === i);
+  return names.length === 1 ? t('{options} is exercised', { options: names[0] })
+    : t('{options} are exercised', { options: listOf(names) });
+}
+
+/* The stretch's prices: "Below 4,000", "Between 4,000 and 4,500". */
+function stretchRange(r) {
+  if (r.lo === 0) return t('Below {k}', { k: fmtPrice(r.hi, true) });
+  if (r.hi === Infinity) return t('Above {k}', { k: fmtPrice(r.lo, true) });
+  return t('Between {a} and {b}', { a: fmtPrice(r.lo, true), b: fmtPrice(r.hi, true) });
+}
+
+/* What the position makes in a stretch, in dollars, premiums and their
+ * interest included. */
+function pnlStretch(r) {
+  const rate = perPoint(r.slope);
+  if (!r.slope) {
+    return r.from > 0 ? t('a fixed profit of {amount}', { amount: money(r.from) })
+      : r.from < 0 ? t('a fixed loss of {amount}', { amount: money(r.from) }) : t('no profit or loss');
+  }
+  if (r.lo === 0) {
+    return t('the result goes from {near} at {k} to {far} if the price falls to zero, {rate} a point',
+      { near: money(r.to), k: fmtPrice(r.hi, true), far: money(r.from), rate });
+  }
+  if (r.hi === Infinity) {
+    return r.slope > 0 ? t('the result rises {rate} a point from {from}, without limit', { rate, from: money(r.from) })
+      : t('the result falls {rate} a point from {from}, without limit', { rate, from: money(r.from) });
+  }
+  return t('the result goes from {from} to {to}, {rate} a point', { from: money(r.from), to: money(r.to), rate });
+}
+
+/* What options pay in a stretch at their expiry, premiums aside. */
+function payoffStretch(r) {
+  const rate = perPoint(r.slope);
+  if (!r.slope) return t('the options\' payoff is a fixed {amount}', { amount: money(r.from) });
+  // From nothing at the strike, as one option's is: what is received or paid.
+  if (r.hi === Infinity && Math.abs(r.from) < 0.005) {
+    const p = { rate, k: fmtPrice(r.lo, true) };
+    return r.slope > 0 ? t('{rate} a point above {k} is received', p) : t('{rate} a point above {k} is paid', p);
+  }
+  if (r.lo === 0 && Math.abs(r.to) < 0.005) {
+    const p = { rate, k: fmtPrice(r.hi, true) };
+    return r.slope < 0 ? t('{rate} a point below {k} is received', p) : t('{rate} a point below {k} is paid', p);
+  }
+  if (r.lo === 0) {
+    return t('the options\' payoff goes from {near} at {k} to {far} if the price falls to zero, {rate} a point',
+      { near: money(r.to), k: fmtPrice(r.hi, true), far: money(r.from), rate });
+  }
+  if (r.hi === Infinity) {
+    return r.slope > 0 ? t('the options\' payoff rises {rate} a point from {from}, without limit', { rate, from: money(r.from) })
+      : t('the options\' payoff falls {rate} a point from {from}, without limit', { rate, from: money(r.from) });
+  }
+  return t('the options\' payoff goes from {from} to {to}, {rate} a point', { from: money(r.from), to: money(r.to), rate });
+}
+
+/* The net price in a stretch, for a seller (side 1) or a buyer: fixed, the
+ * futures price plus or less a constant, or, where the options cover part of
+ * the physical, its value at either end. A price with the physical trade's
+ * beside it where the market has one: 947.726 (348.23 USD/t). */
+function netStretch(r, side) {
+  const c = currentCommodity();
+  const phys = c.physical;
+  const price = x => fmtPrice(x) + (phys ? ` (${fmt(physicalPrice(x), 2)} ${t(phys.price)})` : '');
+  const sale = side > 0;
+  if (!r.slope) {
+    return sale ? t('the net sale price is fixed at {price}', { price: price(r.from) })
+      : t('the net purchase price is fixed at {price}', { price: price(r.from) });
+  }
+  if (Math.abs(r.slope - 1) < 1e-9) {
+    const k = r.from - r.lo;
+    const amount = fmtPrice(Math.abs(k));
+    if (sale) {
+      return k < 0 ? t('the net sale price is the futures price minus {amount}', { amount })
+        : t('the net sale price is the futures price plus {amount}', { amount });
+    }
+    return k < 0 ? t('the net purchase price is the futures price minus {amount}', { amount })
+      : t('the net purchase price is the futures price plus {amount}', { amount });
+  }
+  if (r.lo === 0) {
+    const p = { near: price(r.to), k: fmtPrice(r.hi, true), far: price(r.from) };
+    return sale ? t('the net sale price goes from {near} at {k} to {far} if the price falls to zero', p)
+      : t('the net purchase price goes from {near} at {k} to {far} if the price falls to zero', p);
+  }
+  if (r.hi === Infinity) {
+    const p = { from: price(r.from), k: fmtPrice(r.lo, true), rate: fmt(r.slope, 2) };
+    return sale ? t('the net sale price is {from} at {k} and moves {rate} for each point the futures price rises', p)
+      : t('the net purchase price is {from} at {k} and moves {rate} for each point the futures price rises', p);
+  }
+  const p = { from: price(r.from), to: price(r.to) };
+  return sale ? t('the net sale price goes from {from} to {to}', p) : t('the net purchase price goes from {from} to {to}', p);
+}
+
+/* One bullet: the prices in bold, then what happens there and what it comes
+ * to. Every value is escaped: the keys hold markup, so what fills them must not. */
+function stretchItem(range, what, result, zero) {
+  const p = { range: escapeHtml(range), what: escapeHtml(what), result: escapeHtml(result || '') };
+  if (!result) return `<li>${t('<strong>{range}</strong>: {what}.', p)}</li>`;
+  if (zero == null) return `<li>${t('<strong>{range}</strong>: {what}; {result}.', p)}</li>`;
+  return `<li>${t('<strong>{range}</strong>: {what}; {result}; breakeven at {x}.',
+    Object.assign(p, { x: escapeHtml(fmtPrice(zero)) }))}</li>`;
+}
+
+/* The summary at expiry, under Results: what each stretch of prices does to
+ * the position, or to its net price when it holds a physical, with options on
+ * one expiry; with options on several, what each expiry's options pay and what
+ * closing everything at the first comes to, the chart's own view. Hidden with
+ * no option. */
+function renderExpiry(a) {
+  const o = activeLegs().length ? expiryOutline() : null;
+  $('expiryBlock').hidden = !o;
+  if (!o) {
+    $('expiry').innerHTML = '';
+    $('expiryNote').textContent = '';
+    return;
+  }
+  const notes = [];
+  if (o.mode === 'single') {
+    $('expiry').innerHTML = '<ul class="expiry-list">' + o.regions.map(r => stretchItem(stretchRange(r), stretchWhat(r, o.count),
+      o.net ? netStretch(r, o.net) : pnlStretch(r), o.net ? null : r.zero)).join('') + '</ul>';
+    notes.push(state.financing.mode === 'none'
+      ? t('At expiry each option is worth what it is in the money, so none of this depends on volatility. ' +
+        'The premiums are counted, without interest.')
+      : t('At expiry each option is worth what it is in the money, so none of this depends on volatility. ' +
+        'The premiums are counted with their interest to expiry.'));
+  } else {
+    const when = n => (n === 1 ? t('{n} day', { n }) : t('{n} days', { n }));
+    const groups = o.groups.map(g => {
+      return `<p class="expiry-when">${escapeHtml(t('Options expiring in {when}', { when: when(g.days) }))}</p>` +
+        '<ul class="expiry-list">' + g.regions.map(r => stretchItem(stretchRange(r), stretchWhat(r, g.count),
+          r.slope || r.from ? payoffStretch(r) : '', null)).join('') + '</ul>';
+    }).join('');
+    const cost = netCost();
+    const lines = [cost >= 0 ? t('Net premium paid today: {amount}.', { amount: money(cost) })
+      : t('Net premium received today: {amount}.', { amount: money(-cost) })];
+    if (o.futures) {
+      const p = { rate: perPoint(o.futures.slope), price: fmtPrice(o.futures.even) };
+      lines.push(o.futures.slope > 0
+        ? t('The futures legs gain {rate} for each point above {price} and lose as much for each point below it.', p)
+        : t('The futures legs lose {rate} for each point above {price} and gain as much for each point below it.', p));
+    }
+    const p = { when: when(a.t), min: money(a.maxLoss), max: money(a.maxProfit) };
+    lines.push(a.breakevens.length
+      ? t('Closing every leg at the first expiry, in {when}, as the chart does: from {min} at worst to {max} at best, ' +
+        'breaking even at {breakevens}. The options still open then are valued by the model, each at its own volatility.',
+      Object.assign(p, { breakevens: listOf(a.breakevens.map(x => fmtPrice(x))) }))
+      : t('Closing every leg at the first expiry, in {when}, as the chart does: from {min} at worst to {max} at best, ' +
+        'with no breakeven. The options still open then are valued by the model, each at its own volatility.', p));
+    $('expiry').innerHTML = groups + lines.map(l => `<p class="expiry-line">${escapeHtml(l)}</p>`).join('');
+    notes.push(t('Each expiry\'s options are shown as if held to it, worth what they are in the money then.'));
+  }
+  if (state.style === 'american') notes.push(t('American options are taken as held to expiry.'));
+  if (activeLegs().some(l => legRatio(l) !== 1)) {
+    notes.push(t('Prices are those of the contract in the left panel, every month moving in proportion, as on the chart.'));
+  }
+  $('expiryNote').textContent = notes.join(' ');
+}
+
 function renderResults() {
   const a = analyse();
   const g = netGreeks();
@@ -2431,6 +2701,8 @@ function renderResults() {
           '{amount} a day at {rate}%.', { amount: money(-perDay), rate: ratePct })
         : ''}</p>`;
   }
+
+  renderExpiry(a);
 
   // What the net prices above are made of, beside them.
   const net = activeLegs().length ? netPriceLine() : '';

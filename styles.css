@@ -330,6 +330,16 @@ label.file-button:hover { filter: brightness(1.08); }
 .dot.live { background: var(--pos); }
 .dot.preset { background: var(--warn); }
 
+/* The summary at expiry, first under Results: a line for each stretch of
+ * prices, the stretch in bold, and with options on several expiries a heading
+ * for each. */
+#expiryBlock h3 { margin-top: 4px; }
+.expiry-list { margin: 0 0 6px; padding-left: 18px; }
+.expiry-list li { margin: 5px 0; line-height: 1.45; }
+.expiry-when { margin: 12px 0 2px; font-weight: 600; font-size: .9rem; }
+.expiry-line { margin: 6px 0; line-height: 1.45; }
+#expiryNote { margin: 4px 0 16px; }
+
 /* KPI summary */
 #summary {
   display: grid;

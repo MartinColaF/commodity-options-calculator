@@ -298,11 +298,12 @@
           <button id="hedgeUp" class="ghost">Hedge</button>
           <button id="hedgeDown" class="ghost">Hedge</button>
         </div>
+        <div id="netBlock" hidden>
         <div class="title-row mt-14">
           <h3>Net price</h3>
           <button type="button" class="help-btn" aria-expanded="false" aria-controls="netHelp" aria-label="How the net price is worked out">?</button>
         </div>
-        <p class="note help" id="netHelp" hidden>The net price is what the physical sells for, or costs, at the horizon, per unit: the futures price there plus the basis, with what the options make net of their premiums, interest included, and the commissions taken off. Enter both in the futures price&rsquo;s unit, cents a bushel for soybeans; a basis under the futures is below zero. The basis is held fixed, though in the market it moves too. The floor and the ceiling show under Results, and <strong>Net price</strong>, in the chart&rsquo;s Show list, draws it across prices.</p>
+        <p class="note help" id="netHelp" hidden>The net price is what the physical sells for, or costs, at the horizon, per unit: the futures price there plus the basis, with what the options make net of their premiums, interest included, and the commissions taken off. Enter both in the futures price&rsquo;s unit, cents a bushel for soybeans; a basis under the futures is below zero. The basis is held fixed, though in the market it moves too. Under Results, <strong>At expiry</strong> says what it comes to at each range of prices and the floor and the ceiling show beside the other results; <strong>Net price</strong>, in the chart&rsquo;s Show list, draws it across prices.</p>
         <div class="row tight field-row">
           <div>
             <label for="basis">Basis, in <span id="basisUnit">USD</span></label>
@@ -315,6 +316,7 @@
         </div>
         <p class="problem" id="basisProblem" role="alert"></p>
         <p class="problem" id="commissionProblem" role="alert"></p>
+        </div>
         <p class="note" id="netInfo" hidden></p>
         <div class="title-row mt-14">
           <h3>Strike that pays for the hedge</h3>
@@ -340,6 +342,11 @@
 
       <section class="card" id="cardResults" aria-labelledby="hResults">
         <h2 id="hResults">Results</h2>
+        <div id="expiryBlock" hidden>
+          <h3 id="hExpiry">At expiry</h3>
+          <div id="expiry"></div>
+          <p class="note" id="expiryNote"></p>
+        </div>
         <div id="summary"></div>
         <p class="note mt-12" id="netPriceInfo" hidden></p>
         <p class="note mt-12" id="reportsInfo" hidden></p>
